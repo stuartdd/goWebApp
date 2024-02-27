@@ -1,8 +1,8 @@
 {
     "configName": "goWebApp.json",
-    "port": 8082,
+    "port": 8083,
+    "ServerName": "TestServer",
     "logFileName": "",
     "ContentTypeCharset":"utf-8",
-    "ServerName": "MyServer",
     "LoggerLevel": {}
 }

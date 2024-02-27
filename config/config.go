@@ -10,58 +10,29 @@ import (
 
 const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
+const DefaultContentType = "application/json"
 
 /*
-Data - Read configuration data from the JSON configuration file.
+ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
 */
-type Data struct {
+type ConfigData struct {
 	Port               int
-	DefaultLogFileName string
 	ContentTypeCharset string
-	LoggerLevels       map[string]string
+	DefaultLogFileName string
+	ServerName         string
 	PanicResponseCode  int
+	LoggerLevels       map[string]string
 	ModuleName         string `json:"-"`
 	ConfigName         string `json:"-"`
 	Debugging          bool   `json:"-"`
 }
 
-func (p *Data) PortString() string {
-	return fmt.Sprintf(":%d", p.Port)
-}
-
-func (p *Data) ToString() (string, error) {
-	data, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to present data as Json:%s. Error:%s", p.ConfigName, err.Error())
-	}
-	return string(data), nil
-}
-
-/*
-ScriptData - For a goven OS define the scriptpath and the script data
-*/
-type MuxData struct {
-	Mux  *MuxData
-	Data []string
-}
-
-/*
-There should only ever be ONE of these
-*/
-var configDataInstance *Data
-
-/*
-GetConfigDataInstance get the confg data singleton
-*/
-func GetConfigDataInstance() *Data {
-	return configDataInstance
-}
-
 /*
 LoadConfigData method loads the config data from a file
 */
-func LoadConfigData(configFileName string) error {
+
+func NewConfigData(configFileName string) (*ConfigData, error) {
 
 	moduleName, debugging := getApplicationModuleName()
 	if configFileName == "" {
@@ -72,10 +43,11 @@ func LoadConfigData(configFileName string) error {
 		}
 	}
 
-	configDataInstance = &Data{
+	configDataInstance := &ConfigData{
 		Port:               8080,
 		DefaultLogFileName: "",
 		ContentTypeCharset: "utf-8",
+		ServerName:         moduleName,
 		LoggerLevels:       make(map[string]string),
 		PanicResponseCode:  500,
 		Debugging:          debugging,
@@ -88,15 +60,27 @@ func LoadConfigData(configFileName string) error {
 	*/
 	content, err := os.ReadFile(configDataInstance.ConfigName)
 	if err != nil {
-		return fmt.Errorf("failed to read config data file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
+		return nil, fmt.Errorf("failed to read config data file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
 	}
 
 	err = json.Unmarshal(content, &configDataInstance)
 	if err != nil {
-		return fmt.Errorf("failed to understand the config data in the file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
+		return nil, fmt.Errorf("failed to understand the config data in the file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
 	}
 
-	return nil
+	return configDataInstance, nil
+}
+
+func (p *ConfigData) PortString() string {
+	return fmt.Sprintf(":%d", p.Port)
+}
+
+func (p *ConfigData) ToString() (string, error) {
+	data, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to present data as Json:%s. Error:%s", p.ConfigName, err.Error())
+	}
+	return string(data), nil
 }
 
 /*
