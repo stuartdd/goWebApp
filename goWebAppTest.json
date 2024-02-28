@@ -3,6 +3,23 @@
     "port": 8083,
     "ServerName": "TestServer",
     "logFileName": "",
-    "ContentTypeCharset":"utf-8",
-    "LoggerLevel": {}
+    "ContentTypeCharset": "utf-8",
+    "LoggerLevel": {},
+    "Users": {
+        "bob": {
+            "name": "Bob",
+            "Locations": {
+                "home": "bHome",
+                "usr": "bobs"
+            }
+        },
+        "stuart": {
+            "name": "Stuart",
+            "Locations": {
+                "home": "sHome",
+                "pics": "testdata"
+            }
+        }
+    },
+    "UserDataRoot": ".."
 }

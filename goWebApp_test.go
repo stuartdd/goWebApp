@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestClient(t *testing.T) {
+func TestConfig(t *testing.T) {
 	resp, err := http.Get("http://localhost:8082/hello")
 	if err != nil {
 		panic(err)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,24 @@ import (
 )
 
 var serverState string = ""
+
+func TestFileServer(t *testing.T) {
+	configData, err := config.NewConfigData("../goWebAppTest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	go RunServer(configData)
+	time.Sleep(100 * time.Millisecond)
+	if serverState != "Running" {
+		t.Fatalf("Server state is %s. Expected 'Running'", serverState)
+	}
+
+	_, resBody := RunClient(t, configData, "files/user/stuart/loc/pics/name/testdata.json", 200, "?", 251)
+	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
+		t.Fatalf("Respons body does not start with...")
+	}
+
+}
 
 func TestClient(t *testing.T) {
 	configData, err := config.NewConfigData("../goWebAppTest.json")
@@ -25,20 +44,17 @@ func TestClient(t *testing.T) {
 		t.Fatalf("Server state is %s. Expected 'Running'", serverState)
 	}
 
-	res := RunClient(t, configData, "ABC", 404, "{\"status\":404, \"error\":\"Not Found\"}")
-	AssertHeaderEquals(t, res, "Content-Length", "35")
+	res, _ := RunClient(t, configData, "ABC", 404, "{\"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 64)
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.ContentTypeCharset))
 	AssertHeaderEquals(t, res, "Server", configData.ServerName)
-	res = RunClient(t, configData, "tap", 200, "{\"status\":200, \"error\":\"OK\"}")
-	AssertHeaderEquals(t, res, "Content-Length", "28")
-	res = RunClient(t, configData, "exit", 200, "{\"status\":200, \"error\":\"Accepted\"}")
-	AssertHeaderEquals(t, res, "Content-Length", "34")
+	RunClient(t, configData, "ping", 200, "{\"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 43)
+	RunClient(t, configData, "exit", http.StatusAccepted, "{\"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 59)
 	if serverState != "Stopped" {
 		t.Fatalf("Server state is %s. Expected 'Stopped'", serverState)
 	}
 }
 
-func RunClient(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string) *http.Response {
+func RunClient(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int) (*http.Response, string) {
 	requestURL := fmt.Sprintf("http://localhost:%d/%s", config.Port, path)
 	res, err := http.Get(requestURL)
 	if err != nil {
@@ -51,18 +67,34 @@ func RunClient(t *testing.T, config *config.ConfigData, path string, expectedSta
 	if err != nil {
 		t.Fatalf("client: could not read response body: %s\n", err)
 	}
-	if trimString(string(resBody)) != trimString(expectedBody) {
-		t.Fatalf("Status for path http://localhost:%d/%s.\nExpected '%s' \nActual   '%s'", config.Port, path, expectedBody, string(resBody))
+	if expectedBody != "?" {
+		if trimString(string(resBody)) != trimString(expectedBody) {
+			t.Fatalf("Status for path http://localhost:%d/%s.\nExpected '%s' \nActual   '%s'", config.Port, path, expectedBody, string(resBody))
+		}
 	}
-	return res
+	if expectedLen >= 0 {
+		len := res.Header["Content-Length"]
+		if len[0] != strconv.Itoa(expectedLen) {
+			t.Fatalf("Status for path http://localhost:%d/%s.\nExpected '%d' \nActual   '%s'", config.Port, path, expectedLen, len[0])
+		}
+	}
+	return res, string(resBody)
 }
 
 func trimString(res string) string {
 	var buffer bytes.Buffer
+	spaceCount := 0
 	for i := 0; i < len(res); i++ {
 		c := res[i]
 		if c >= 32 {
-			buffer.WriteByte(c)
+			if c == 32 {
+				spaceCount++
+			} else {
+				spaceCount = 0
+			}
+			if spaceCount <= 1 {
+				buffer.WriteByte(c)
+			}
 		}
 	}
 	return strings.Trim(buffer.String(), " ")
