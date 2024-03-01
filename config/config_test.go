@@ -10,17 +10,17 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, e := conf.UserDataPath(NewParameters(map[string]string{"user": "fred", "loc": "home"}))
+	_, e := conf.UserDataPath(NewParameters(map[string]string{"user": "fred", "loc": "home"}, conf))
 	if e == nil {
 		t.Fatalf("Should have returned User error")
 	}
 
-	_, e = conf.UserDataPath(NewParameters(map[string]string{"user": "stuart", "loc": "xxx"}))
+	_, e = conf.UserDataPath(NewParameters(map[string]string{"user": "stuart", "loc": "xxx"}, conf))
 	if e == nil {
 		t.Fatalf("Should have returned Location error")
 	}
 
-	u, e := conf.UserDataPath(NewParameters(map[string]string{"user": "stuart", "loc": "home"}))
+	u, e := conf.UserDataPath(NewParameters(map[string]string{"user": "stuart", "loc": "home"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
@@ -29,7 +29,7 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf("Should return /users/sHome")
 	}
 
-	f, e := conf.UserDataFile(NewParameters(map[string]string{"user": "bob", "loc": "home", "name": "data.json"}))
+	f, e := conf.UserDataFile(NewParameters(map[string]string{"user": "bob", "loc": "home", "name": "data.json"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
@@ -37,7 +37,7 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf("Should return /users/bHome/data.json")
 	}
 
-	f, e = conf.UserDataFile(NewParameters(map[string]string{"user": "stuart", "loc": "pics", "name": "data.json"}))
+	f, e = conf.UserDataFile(NewParameters(map[string]string{"user": "stuart", "loc": "pics", "name": "data.json"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}

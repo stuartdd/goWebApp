@@ -3,6 +3,7 @@
     "port": 8083,
     "ServerName": "TestServer",
     "logFileName": "",
+    "filterFiles": ["Json", "Data"],
     "ContentTypeCharset": "utf-8",
     "LoggerLevel": {},
     "Users": {
@@ -17,7 +18,9 @@
             "name": "Stuart",
             "Locations": {
                 "home": "sHome",
-                "pics": "testdata"
+                "pics": "testdata",
+                "picsPlus": "testdata/testfolder",
+                "picsMissing": "testdata/test_folder"
             }
         }
     },

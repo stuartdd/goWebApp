@@ -28,12 +28,14 @@ func NewUserData(name string, locations map[string]string) UserData {
 }
 
 type Parameters struct {
-	params map[string]string
+	configData *ConfigData
+	params     map[string]string
 }
 
-func NewParameters(p map[string]string) *Parameters {
+func NewParameters(p map[string]string, configData *ConfigData) *Parameters {
 	return &Parameters{
-		params: p,
+		params:     p,
+		configData: configData,
 	}
 }
 
@@ -43,6 +45,18 @@ func (p *Parameters) GetParam(key string) string {
 		return v
 	}
 	return ""
+}
+
+func (p *Parameters) UserDataFile() (string, error) {
+	return p.configData.UserDataFile(p)
+}
+
+func (p *Parameters) UserDataPath() (string, error) {
+	return p.configData.UserDataPath(p)
+}
+
+func (p *Parameters) FilterFiles() []string {
+	return p.configData.FilterFiles
 }
 
 func (p *Parameters) GetUser() string {
@@ -65,7 +79,9 @@ type ConfigData struct {
 	DefaultLogFileName string
 	ServerName         string
 	PanicResponseCode  int
+	FilterFiles        []string
 	LoggerLevels       map[string]string
+	CurrentPath        string `json:"-"`
 	ModuleName         string `json:"-"`
 	ConfigName         string `json:"-"`
 	Debugging          bool   `json:"-"`
@@ -86,6 +102,7 @@ func NewConfigData(configFileName string) (*ConfigData, error) {
 		}
 	}
 
+	wd, _ := os.Getwd()
 	configDataInstance := &ConfigData{
 		Port:               8080,
 		Users:              make(map[string]UserData),
@@ -93,9 +110,11 @@ func NewConfigData(configFileName string) (*ConfigData, error) {
 		DefaultLogFileName: "",
 		ContentTypeCharset: "utf-8",
 		ServerName:         moduleName,
+		FilterFiles:        []string{},
 		LoggerLevels:       make(map[string]string),
 		PanicResponseCode:  500,
 		Debugging:          debugging,
+		CurrentPath:        wd,
 		ModuleName:         moduleName,
 		ConfigName:         configFileName + configFileExtension,
 	}
@@ -111,6 +130,10 @@ func NewConfigData(configFileName string) (*ConfigData, error) {
 	err = json.Unmarshal(content, &configDataInstance)
 	if err != nil {
 		return nil, fmt.Errorf("failed to understand the config data in the file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
+	}
+
+	for i := 0; i < len(configDataInstance.FilterFiles); i++ {
+		configDataInstance.FilterFiles[i] = fmt.Sprintf(".%s", strings.ToLower(configDataInstance.FilterFiles[i]))
 	}
 
 	return configDataInstance, nil
