@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -24,14 +23,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, err := tools.NewLogger(cfg.DefaultLogFileName)
+	actionQueue := make(chan server.ActionId, 10)
+	defer close(actionQueue)
+
+	ld := cfg.LogData
+
+	logger, err := tools.NewLogger(ld.Path, ld.FileNameMask, ld.MonitorSeconds, ld.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
-
-	actionQueue := make(chan server.ActionId, 10)
-	defer close(actionQueue)
 
 	go func() {
 		for {
@@ -39,7 +40,9 @@ func main() {
 			switch a {
 			case server.Exit:
 				logger.Log("Server: Exit after 1 second\n")
-				time.Sleep(1 * time.Second)
+				time.Sleep(500 * time.Millisecond)
+				logger.Close()
+				time.Sleep(500 * time.Millisecond)
 				os.Exit(1)
 			case server.Ignore:
 				logger.Log("Server: Ignore\n")
@@ -48,7 +51,6 @@ func main() {
 	}()
 
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, logger)
-	fmt.Println(webAppServer.ToString())
 	webAppServer.Start()
 
 }

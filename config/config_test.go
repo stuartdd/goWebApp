@@ -25,37 +25,43 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf(e.Error())
 	}
 
-	if u != "/users/sHome" {
-		t.Fatalf("Should return /users/sHome")
+	if u != "../sHome" {
+		t.Fatalf("Should return ../sHome")
 	}
 
 	f, e := conf.UserDataFile(NewParameters(map[string]string{"user": "bob", "loc": "home", "name": "data.json"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
-	if f != "/users/bHome/data.json" {
-		t.Fatalf("Should return /users/bHome/data.json")
+	if f != "../bHome/data.json" {
+		t.Fatalf("Should return ../bHome/data.json")
 	}
 
 	f, e = conf.UserDataFile(NewParameters(map[string]string{"user": "stuart", "loc": "pics", "name": "data.json"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
-	if f != "/users/Photos/data.json" {
-		t.Fatalf("Should return /users/Photos/data.json. actual%s", f)
+	if f != "../testdata/data.json" {
+		t.Fatalf("Should return ../testdata/data.json. actual%s", f)
 	}
 
 }
 
 func TrialConfigUnMarshal(t *testing.T) {
+	ld := &LogData{
+		FileNameMask:   "fileNameMask",
+		Path:           "logs",
+		MonitorSeconds: 20,
+		LogLevel:       "quiet",
+	}
+
 	conf := &ConfigData{
 		Port:               8080,
 		Users:              make(map[string]UserData),
 		UserDataRoot:       "~/",
-		DefaultLogFileName: "",
+		LogData:            ld,
 		ContentTypeCharset: "utf-8",
 		ServerName:         "serverName",
-		LoggerLevels:       make(map[string]string),
 		PanicResponseCode:  500,
 		Debugging:          true,
 		ModuleName:         "moduleName",

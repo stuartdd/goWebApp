@@ -16,6 +16,22 @@ ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
 */
 
+type LogData struct {
+	FileNameMask   string
+	Path           string
+	MonitorSeconds int
+	LogLevel       string
+}
+
+func NewLogData() *LogData {
+	return &LogData{
+		FileNameMask:   "",
+		Path:           "",
+		MonitorSeconds: -1,
+		LogLevel:       "quiet",
+	}
+}
+
 type UserData struct {
 	Name      string
 	Locations map[string]string
@@ -76,11 +92,10 @@ type ConfigData struct {
 	Users              map[string]UserData
 	UserDataRoot       string
 	ContentTypeCharset string
-	DefaultLogFileName string
+	LogData            *LogData
 	ServerName         string
 	PanicResponseCode  int
 	FilterFiles        []string
-	LoggerLevels       map[string]string
 	CurrentPath        string `json:"-"`
 	ModuleName         string `json:"-"`
 	ConfigName         string `json:"-"`
@@ -107,11 +122,10 @@ func NewConfigData(configFileName string) (*ConfigData, error) {
 		Port:               8080,
 		Users:              make(map[string]UserData),
 		UserDataRoot:       "~/",
-		DefaultLogFileName: "",
+		LogData:            nil,
 		ContentTypeCharset: "utf-8",
 		ServerName:         moduleName,
 		FilterFiles:        []string{},
-		LoggerLevels:       make(map[string]string),
 		PanicResponseCode:  500,
 		Debugging:          debugging,
 		CurrentPath:        wd,

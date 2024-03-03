@@ -111,7 +111,7 @@ func TestReadFile(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/testdata.json", 200, "?", 251)
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/t1.JSON", 200, "?", 251)
 	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
 		t.Fatalf("Respons body does not start with...")
 	}

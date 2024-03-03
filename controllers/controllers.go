@@ -98,6 +98,7 @@ func (p *FileHandler) Submit() *ResponseData {
 		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File not found")
 	}
 
+	// s, _ := filepath.Abs(file)
 	stats, err := os.Stat(file)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File not found")

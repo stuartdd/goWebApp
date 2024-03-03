@@ -2,10 +2,14 @@
     "configName": "goWebApp.json",
     "port": 8083,
     "ServerName": "TestServer",
-    "logFileName": "",
     "filterFiles": ["Json", "Data"],
     "ContentTypeCharset": "utf-8",
-    "LoggerLevel": {},
+    "LogData": {
+        "FileNameMask": "goWebServer-%y-%m-%d-%H-%M.log",
+        "Path": "logs",
+        "MonitorSeconds": 30,
+        "LogLevel": "quiet"
+      },
     "Users": {
         "bob": {
             "name": "Bob",
