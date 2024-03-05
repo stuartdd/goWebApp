@@ -27,6 +27,9 @@ func (l *TLog) Log(s string) {
 func (l *TLog) Get() string {
 	return l.B.String()
 }
+func (l *TLog) IsOpen() bool {
+	return true
+}
 
 var serverState string = ""
 var logger = &TLog{}
@@ -35,6 +38,26 @@ const postDataFile1 = "{\"Data\":\"This is the data for 1\"}"
 const postDataFile2 = "{\"Data\":\"This is the data for 2\"}"
 const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
+
+func TestGetFavicon(t *testing.T) {
+	configData, err := config.NewConfigData("../goWebAppTest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	resp, _ := RunClientGet(t, configData, "favicon.ico", 200, "?", -1)
+	if resp.StatusCode != 200 {
+		t.Fatalf("did not get the icon!")
+	}
+	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+
+}
 
 func TestPostFile(t *testing.T) {
 	configData, err := config.NewConfigData("../goWebAppTest.json")

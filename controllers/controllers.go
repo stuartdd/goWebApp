@@ -27,7 +27,7 @@ func (p *ResponseData) ToString() string {
 	buffer.WriteString(", ")
 	buffer.WriteString(fmt.Sprintf("Content-Length:%d", p.ContentLength()))
 	buffer.WriteString(", ")
-	buffer.WriteString(fmt.Sprintf("Content-Type:%s", config.LookupContentType(p.MimeType)))
+	buffer.WriteString(fmt.Sprintf("Content-Type:%s", config.LookupContentType(p.MimeType, "")))
 	return buffer.String()
 }
 
@@ -126,7 +126,6 @@ func (p *DirHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found")
 	}
-
 	stats, err := os.Stat(file)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found")
@@ -174,6 +173,17 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	}
 
 	return NewResponseData(http.StatusAccepted).WithContentStatusJson("File saved")
+}
+
+func GetFaveIcon(configData *config.ConfigData) *ResponseData {
+	if configData.FaviconIcoPath == "" {
+		return NewResponseData(http.StatusNotFound).WithContentStatusJson("favicon.ico not defined")
+	}
+	fileContent, err := os.ReadFile(configData.FaviconIcoPath)
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentStatusJson("favicon.ico not found")
+	}
+	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType("ico")
 }
 
 func StatusAsJson(status int, reason string) []byte {

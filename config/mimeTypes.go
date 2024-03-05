@@ -1,6 +1,9 @@
 package config
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 var contentTypesMap = makeContentTypesMap()
 
@@ -21,26 +24,26 @@ func makeContentTypesMap() map[string]string {
 	mime["bz"] = "application/x-bzip"
 	mime["bz2"] = "application/x-bzip2"
 	mime["csh"] = "application/x-csh"
-	mime["css"] = "text/css"
-	mime["csv"] = "text/csv"
+	mime["css"] = "text/css%0"
+	mime["csv"] = "text/csv%0"
 	mime["doc"] = "application/msword"
 	mime["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 	mime["eot"] = "application/vnd.ms-fontobject"
 	mime["epub"] = "application/epub+zip"
 	mime["gif"] = "image/gif"
-	mime["htm"] = "text/html"
-	mime["html"] = "text/html"
+	mime["htm"] = "text/html%0"
+	mime["html"] = "text/html%0"
 	mime["ico"] = "image/vnd.microsoft.icon" // Some browsers use image/x-icon. Add to config data to override!
-	mime["ics"] = "text/calendar"
+	mime["ics"] = "text/calendar%0"
 	mime["jar"] = "application/java-archive"
 	mime["jpeg"] = "image/jpeg"
 	mime["jpg"] = "image/jpeg"
-	mime["js"] = "text/javascript"
-	mime["json"] = "application/json"
-	mime["jsonld"] = "application/ld+json"
+	mime["js"] = "text/javascript%0"
+	mime["json"] = "application/json%0"
+	mime["jsonld"] = "application/ld+json%0"
 	mime["mid"] = "audio/midi audio/x-midi"
 	mime["midi"] = "audio/midi audio/x-midi"
-	mime["mjs"] = "text/javascript"
+	mime["mjs"] = "text/javascript%0"
 	mime["mp3"] = "audio/mpeg"
 	mime["mpeg"] = "video/mpeg"
 	mime["mpkg"] = "application/vnd.apple.installer+xml"
@@ -56,16 +59,16 @@ func makeContentTypesMap() map[string]string {
 	mime["ppt"] = "application/vnd.ms-powerpoint"
 	mime["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 	mime["rar"] = "application/x-rar-compressed"
-	mime["rtf"] = "application/rtf"
+	mime["rtf"] = "application/rtf%0"
 	mime["sh"] = "application/x-sh"
-	mime["svg"] = "image/svg+xml"
+	mime["svg"] = "image/svg+xml%0"
 	mime["swf"] = "application/x-shockwave-flash"
 	mime["tar"] = "application/x-tar"
 	mime["tif"] = "image/tiff"
 	mime["tiff"] = "image/tiff"
 	mime["ts"] = "video/mp2t"
 	mime["ttf"] = "font/ttf"
-	mime["txt"] = "text/plain"
+	mime["txt"] = "text/plain%0"
 	mime["vsd"] = "application/vnd.visio"
 	mime["wav"] = "audio/wav"
 	mime["weba"] = "audio/webm"
@@ -73,10 +76,10 @@ func makeContentTypesMap() map[string]string {
 	mime["webp"] = "image/webp"
 	mime["woff"] = "font/woff"
 	mime["woff2"] = "font/woff2"
-	mime["xhtml"] = "application/xhtml+xml"
+	mime["xhtml"] = "application/xhtml+xml%0"
 	mime["xls"] = "application/vnd.ms-excel"
 	mime["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-	mime["xml"] = "application/xml"
+	mime["xml"] = "application/xml%0"
 	mime["xul"] = "application/vnd.mozilla.xul+xml"
 	mime["zip"] = "application/zip"
 	mime["7z"] = "application/x-7z-compressed"
@@ -92,8 +95,12 @@ func AddNewContentTypeToMap(ext string, mime string) {
 
 /*
 LookupContentType for a given url return the content type based on the .ext
+
+	    A mapping ends with %0 it will have '; charset=x' added where x is defined
+		in config 'ContentTypeCharset'. If ContentTypeCharset is empty then no
+		charset is added.
 */
-func LookupContentType(url string) string {
+func LookupContentType(url string, charset string) string {
 	ext := url
 	pos := strings.LastIndex(url, ".")
 	if pos > 0 {
@@ -101,6 +108,9 @@ func LookupContentType(url string) string {
 	}
 	mapping, found := contentTypesMap[ext]
 	if found {
+		if charset != "" && strings.HasSuffix(mapping, "%0") {
+			return strings.ReplaceAll(mapping, "%0", fmt.Sprintf("; charset=%s", charset))
+		}
 		return mapping
 	}
 	return DefaultContentType

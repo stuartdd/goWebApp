@@ -19,6 +19,7 @@ const (
 	Ignore
 )
 
+var getFaviconMatch = tools.NewUrlRequestParts("/favicon.ico").WithReqType("GET")
 var getExitMatch = tools.NewUrlRequestParts("/exit").WithReqType("GET")
 var getPingMatch = tools.NewUrlRequestParts("/ping").WithReqType("GET")
 var getFileUserLocMatch = tools.NewUrlRequestParts("/files/user/*/loc/*").WithReqType("GET")
@@ -67,11 +68,15 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewDirHandler(urlParts.UrlParamMap(getFileUserLocMatch), h.config).Submit())
 		return
 	}
+	if urlParts.Match(getFaviconMatch) {
+		h.writeResponse(w, controllers.GetFaveIcon(h.config))
+		return
+	}
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentStatusJson("Resource not found"))
 }
 
 func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.ResponseData) {
-	contentType := config.LookupContentType(resp.MimeType)
+	contentType := config.LookupContentType(resp.MimeType, p.config.ContentTypeCharset)
 
 	p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
 	hj, ok := w.(http.Hijacker)
@@ -87,7 +92,7 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 	defer conn.Close()
 	bufrw.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\n", resp.Status, http.StatusText(resp.Status)))
 	bufrw.WriteString(fmt.Sprintf("Content-Length: %d\n", resp.ContentLength()))
-	bufrw.WriteString(fmt.Sprintf("Content-Type: %s; charset=%s\n", contentType, p.config.ContentTypeCharset))
+	bufrw.WriteString(fmt.Sprintf("Content-Type: %s\n", contentType))
 	bufrw.WriteString(fmt.Sprintf("Date: %s\n", timeAsString()))
 	bufrw.WriteString(fmt.Sprintf("Server: %s\n", p.config.ServerName))
 	bufrw.WriteString("\n")

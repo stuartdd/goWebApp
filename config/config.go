@@ -94,6 +94,7 @@ type ConfigData struct {
 	ContentTypeCharset string
 	LogData            *LogData
 	ServerName         string
+	FaviconIcoPath     string
 	PanicResponseCode  int
 	FilterFiles        []string
 	CurrentPath        string `json:"-"`
@@ -126,6 +127,7 @@ func NewConfigData(configFileName string) (*ConfigData, error) {
 		ContentTypeCharset: "utf-8",
 		ServerName:         moduleName,
 		FilterFiles:        []string{},
+		FaviconIcoPath:     "",
 		PanicResponseCode:  500,
 		Debugging:          debugging,
 		CurrentPath:        wd,

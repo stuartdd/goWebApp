@@ -4,6 +4,7 @@
     "ContentTypeCharset":"utf-8",
     "ServerName": "MyServer",
     "filterFiles": ["Json", "Data"],
+    "faviconIcoPath" : "favicon1.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d.log",
         "Path": "logs",

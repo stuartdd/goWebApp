@@ -13,6 +13,7 @@ import (
 
 type Logger interface {
 	Log(string)
+	IsOpen() bool
 	Close()
 }
 
@@ -22,8 +23,8 @@ type logFileData struct {
 	err      error
 }
 
-func newLogFileData(path, fileNameMask string) *logFileData {
-	fn := deriveFileName(fileNameMask)
+func newLogFileData(path, fileNameMask string, t time.Time) *logFileData {
+	fn := deriveFileName(fileNameMask, t)
 
 	stats, err := os.Stat(path)
 	if err != nil {
@@ -42,8 +43,7 @@ func newLogFileData(path, fileNameMask string) *logFileData {
 		}
 	}
 
-	ffn := filepath.Join(path, fn)
-	f, err := os.OpenFile(ffn, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile(filepath.Join(path, fn), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return &logFileData{
 			logFile:  nil,
@@ -58,10 +58,10 @@ func newLogFileData(path, fileNameMask string) *logFileData {
 	}
 }
 
-func (p *logFileData) restart(path, fileNameMask string) *logFileData {
-	if p.fileName != deriveFileName(fileNameMask) {
+func (p *logFileData) reOpen(path, fileNameMask string, t time.Time) *logFileData {
+	if p.isOpen() && p.fileName != deriveFileName(fileNameMask, t) {
 		p.close()
-		return newLogFileData(path, fileNameMask)
+		return newLogFileData(path, fileNameMask, t)
 	}
 	return p
 }
@@ -83,41 +83,37 @@ type logger struct {
 	path           string
 	monitorSeconds int
 	level          string
-
-	file          *logFileData
-	datePrefix    string
-	open          bool
-	nextFileCheck time.Time
-	queue         chan string
-	mu            sync.Mutex
+	file           *logFileData
+	datePrefix     string
+	nextFileCheck  time.Time
+	queue          chan string
+	mu             sync.Mutex
 }
 
 const padding0 = "000000000000"
 
 func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel string) (Logger, error) {
-
 	l := &logger{
 		fileNameMask:   pFileNameMask,
 		path:           pPath,
 		monitorSeconds: pMonitorSeconds,
 		level:          pLevel,
-		file:           newLogFileData(pPath, pFileNameMask),
-		datePrefix:     getDatePrefix(),
-		nextFileCheck:  nextMonitorTime(pMonitorSeconds),
-		queue:          make(chan string, 10),
-		open:           false,
+		file:           newLogFileData(pPath, pFileNameMask, time.Now()),
+		datePrefix:     newDatePrefix(time.Now()),
+		nextFileCheck:  getNextMonitorTime(pMonitorSeconds),
+		queue:          make(chan string, 20),
 	}
-
-	l.open = l.file.isOpen()
-
 	go l.deQueue()
 	return l, l.file.err
 }
 
 func (l *logger) Close() {
 	l.file.close()
-	l.open = false
 	close(l.queue)
+}
+
+func (l *logger) IsOpen() bool {
+	return l.file.isOpen()
 }
 
 func (l *logger) Log(msg string) {
@@ -132,27 +128,25 @@ func (l *logger) deQueue() {
 		h := t.Hour()
 		m := t.Minute()
 		s := t.Second()
-		if l.file.isOpen() {
+		if t.After(l.nextFileCheck) {
+			l.nextFileCheck = getNextMonitorTime(l.monitorSeconds)
+			l.datePrefix = newDatePrefix(t)
+			l.file = l.file.reOpen(l.path, l.fileNameMask, t)
+		}
+		if l.IsOpen() {
 			l.file.logFile.WriteString(fmt.Sprintf("%s%2d:%2d:%2d %s\n", l.datePrefix, h, m, s, msg))
 		}
 		os.Stderr.WriteString(fmt.Sprintf("%s%2d:%2d:%2d %s.\n", l.datePrefix, h, m, s, msg))
-
-		if t.After(l.nextFileCheck) {
-			l.nextFileCheck = nextMonitorTime(l.monitorSeconds)
-			l.datePrefix = getDatePrefix()
-			l.file = l.file.restart(l.path, l.fileNameMask)
-		}
 	}
 }
 
-func nextMonitorTime(n int) time.Time {
+func getNextMonitorTime(n int) time.Time {
 	t := time.Now()
 	t = t.Add(time.Second * time.Duration(n))
 	return t
 }
 
-func getDatePrefix() string {
-	t := time.Now()
+func newDatePrefix(t time.Time) string {
 	y := t.Year()
 	m := t.Month()
 	d := t.Day()
@@ -163,21 +157,20 @@ func getDatePrefix() string {
 		buffer.WriteRune('0')
 		buffer.WriteRune(rune(48 + m))
 	} else {
-		buffer.WriteString(fmt.Sprint(m))
+		buffer.WriteString(strconv.Itoa(int(m)))
 	}
 	buffer.WriteRune('/')
 	if d < 10 {
 		buffer.WriteRune('0')
 		buffer.WriteRune(rune(48 + d))
 	} else {
-		buffer.WriteString(fmt.Sprint(d))
+		buffer.WriteString(strconv.Itoa(d))
 	}
 	buffer.WriteRune(' ')
 	return buffer.String()
 }
 
-func deriveFileName(m string) string {
-	t := time.Now()
+func deriveFileName(m string, t time.Time) string {
 	m = strings.ReplaceAll(m, "%y", fixedLenInt(t.Year(), 4))
 	m = strings.ReplaceAll(m, "%m", fixedLenInt(int(t.Month()), 2))
 	m = strings.ReplaceAll(m, "%d", fixedLenInt(t.Day(), 2))
