@@ -168,6 +168,9 @@ func (p *ConfigData) UserDataPath(parameters *Parameters) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("user location not found")
 	}
+	if strings.HasPrefix(loc, "***") {
+		return loc[3:], nil
+	}
 	return fmt.Sprintf("%s%c%s", p.UserDataRoot, os.PathSeparator, loc), nil
 }
 

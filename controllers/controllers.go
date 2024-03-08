@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -86,6 +87,10 @@ type DirHandler struct {
 	parameters *config.Parameters
 }
 
+type TreeHandler struct {
+	parameters *config.Parameters
+}
+
 func NewFileHandler(parameters map[string]string, configData *config.ConfigData) Handler {
 	return &FileHandler{
 		parameters: config.NewParameters(parameters, configData),
@@ -113,6 +118,47 @@ func (p *FileHandler) Submit() *ResponseData {
 		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File could not be read")
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.parameters.GetName())
+}
+
+func NewTreeHandler(parameters map[string]string, configData *config.ConfigData) Handler {
+	return &TreeHandler{
+		parameters: config.NewParameters(parameters, configData),
+	}
+}
+
+func (p *TreeHandler) Submit() *ResponseData {
+	file, err := p.parameters.UserDataPath()
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found")
+	}
+	stats, err := os.Stat(file)
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found")
+	}
+	if !stats.IsDir() {
+		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Is not a dir")
+	}
+
+	root := newTreeNode("root")
+	err = filepath.Walk(file,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "_") && info.IsDir() {
+				err := root.AddPath(path)
+				if err == nil {
+					fmt.Printf("ADD:%s\n", path)
+				} else {
+					fmt.Printf("---:%s\n", path)
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir cannot be read")
+	}
+	return NewResponseData(http.StatusOK).WithContentBytesJson([]byte(root.ToJson(false))).WithMimeType("json")
 }
 
 func NewDirHandler(parameters map[string]string, configData *config.ConfigData) Handler {
@@ -234,4 +280,108 @@ func filterDirNames(e fs.DirEntry, filter []string) bool {
 		}
 	}
 	return false
+}
+
+type treeNode struct {
+	name string
+	subs []*treeNode
+}
+
+func (p *treeNode) ToJson(indented bool) string {
+	return p.toJson(0, indented)
+}
+
+func (p *treeNode) AddPath(path string) error {
+	return p.addPath(strings.Split(path, "/"))
+}
+
+func (p *treeNode) Len() int {
+	return len(p.subs)
+}
+
+// --- 120 -- 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+const tabs = "                                                                                                                        "
+
+func (p *treeNode) toJson(tab int, indented bool) string {
+	var buffer bytes.Buffer
+	var tabStr string
+	var pad string
+
+	if indented {
+		if (tab * 2) < len(tabs) {
+			tabStr = "\n" + tabs[0:tab*2]
+		} else {
+			tabStr = "\n" + tabs
+		}
+		pad = " "
+	} else {
+		pad = ""
+		tabStr = ""
+	}
+	subC := len(p.subs)
+	buffer.WriteString(tabStr)
+	buffer.WriteString("{\"name\":\"")
+	buffer.WriteString(p.name)
+	if subC > 0 {
+		buffer.WriteString("\",")
+		buffer.WriteString(tabStr)
+		buffer.WriteString(pad)
+		buffer.WriteString("\"subs\":[")
+		for i := 0; i < len(p.subs); i++ {
+			buffer.WriteString(p.subs[i].toJson(tab+1, indented))
+			if i <= len(p.subs)-2 {
+				buffer.WriteString(",")
+			}
+		}
+		buffer.WriteString(tabStr)
+		buffer.WriteString(pad)
+		buffer.WriteString("]")
+		buffer.WriteString(tabStr)
+		buffer.WriteString("}")
+	} else {
+		buffer.WriteString("\"}")
+	}
+	return buffer.String()
+
+}
+
+func findInSubs(subs []*treeNode, name string) *treeNode {
+	for i := 0; i < len(subs); i++ {
+		if subs[i].name == name {
+			return subs[i]
+		}
+	}
+	return nil
+}
+
+func (p *treeNode) addPath(names []string) error {
+	pp := p
+	for i := 0; i < len(names); i++ {
+		n := names[i]
+		if len(n) > 0 {
+			if strings.HasPrefix(n, ".") {
+				return fmt.Errorf("not added")
+			}
+			xx := findInSubs(pp.subs, n)
+			if xx == nil {
+				pp = pp.add(n)
+			} else {
+				pp = xx
+			}
+		}
+	}
+	return nil
+}
+
+func (p *treeNode) add(name string) *treeNode {
+	sub := newTreeNode(name)
+	p.subs = append(p.subs, sub)
+	return sub
+}
+
+func newTreeNode(name string) *treeNode {
+	return &treeNode{
+		name: name,
+		subs: make([]*treeNode, 0),
+	}
 }

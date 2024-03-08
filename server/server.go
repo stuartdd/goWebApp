@@ -22,6 +22,7 @@ const (
 var getFaviconMatch = tools.NewUrlRequestParts("/favicon.ico").WithReqType("GET")
 var getExitMatch = tools.NewUrlRequestParts("/exit").WithReqType("GET")
 var getPingMatch = tools.NewUrlRequestParts("/ping").WithReqType("GET")
+var getFileUserLocTreeMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/tree").WithReqType("GET")
 var getFileUserLocMatch = tools.NewUrlRequestParts("/files/user/*/loc/*").WithReqType("GET")
 var getFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("GET")
 var postFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("POST")
@@ -66,6 +67,10 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if urlParts.Match(getFileUserLocMatch) {
 		h.writeResponse(w, controllers.NewDirHandler(urlParts.UrlParamMap(getFileUserLocMatch), h.config).Submit())
+		return
+	}
+	if urlParts.Match(getFileUserLocTreeMatch) {
+		h.writeResponse(w, controllers.NewTreeHandler(urlParts.UrlParamMap(getFileUserLocTreeMatch), h.config).Submit())
 		return
 	}
 	if urlParts.Match(getFaviconMatch) {

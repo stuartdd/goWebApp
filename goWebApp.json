@@ -23,7 +23,8 @@
             "name": "Stuart",
             "Locations": {
                 "home": "sHome",
-                "pics": "testdata"
+                "pics": "testdata",
+                "testtree": "***/home/stuart/git"
             }
         }
     },
