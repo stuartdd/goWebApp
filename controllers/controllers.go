@@ -139,7 +139,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Is not a dir")
 	}
 
-	root := newTreeNode("fs")
+	root := NewTreeNode("fs")
 	err = filepath.Walk(file,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -282,34 +282,46 @@ func filterDirNames(e fs.DirEntry, filter []string) bool {
 	return false
 }
 
-type treeDirNode struct {
-	name string
-	subs []*treeDirNode
+type TreeDirNode struct {
+	Name string         `json:"name"`
+	Subs []*TreeDirNode `json:"subs,omitempty"`
 }
 
-func newTreeNode(name string) *treeDirNode {
-	return &treeDirNode{
-		name: name,
-		subs: make([]*treeDirNode, 0),
+func NewTreeNode(name string) *TreeDirNode {
+	return &TreeDirNode{
+		Name: name,
+		Subs: nil,
 	}
 }
 
-func (p *treeDirNode) ToJson(indented bool) []byte {
+func (p *TreeDirNode) ToJson(indented bool) []byte {
 	return p.toJson(0, indented)
 }
 
-func (p *treeDirNode) AddPath(path string) error {
+func (p *TreeDirNode) AddPath(path string) error {
 	return p.addPath(strings.Split(path, "/"))
 }
 
-func (p *treeDirNode) Len() int {
-	return len(p.subs)
+func (p *TreeDirNode) Len() int {
+	if p.Subs == nil {
+		return 0
+	}
+	return len(p.Subs)
 }
+
+/*
+	  Could use json.Marshal(tn) to serialise but this is faster
+	    Marshal 5..8 microseconds
+		ToJson 0..1 microseconds
+		See controllers_test
+*/
 
 // --- 120 -- 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
 const tabs = "                                                                                                                        "
+const namePrefix = "{\"name\":\""
+const subsPrefix = "\"subs\":["
 
-func (p *treeDirNode) toJson(tab int, indented bool) []byte {
+func (p *TreeDirNode) toJson(tab int, indented bool) []byte {
 	var buffer bytes.Buffer
 	tabStr := ""
 	pad := ""
@@ -321,22 +333,23 @@ func (p *treeDirNode) toJson(tab int, indented bool) []byte {
 		}
 		pad = " "
 	}
-	subC := len(p.subs)
 	if indented {
 		buffer.WriteString(tabStr)
 	}
-	buffer.WriteString("{\"name\":\"")
-	buffer.WriteString(p.name)
+	buffer.WriteString(namePrefix)
+	buffer.WriteString(p.Name)
+
+	subC := p.Len()
 	if subC > 0 {
 		buffer.WriteString("\",")
 		if indented {
 			buffer.WriteString(tabStr)
 			buffer.WriteString(pad)
 		}
-		buffer.WriteString("\"subs\":[")
-		for i := 0; i < len(p.subs); i++ {
-			buffer.Write(p.subs[i].toJson(tab+1, indented))
-			if i <= len(p.subs)-2 {
+		buffer.WriteString(subsPrefix)
+		for i := 0; i < subC; i++ {
+			buffer.Write(p.Subs[i].toJson(tab+1, indented))
+			if i <= subC-2 {
 				buffer.WriteString(",")
 			}
 		}
@@ -356,16 +369,19 @@ func (p *treeDirNode) toJson(tab int, indented bool) []byte {
 
 }
 
-func findInSubs(subs []*treeDirNode, name string) *treeDirNode {
+func findInSubs(subs []*TreeDirNode, name string) *TreeDirNode {
+	if subs == nil {
+		return nil
+	}
 	for i := 0; i < len(subs); i++ {
-		if subs[i].name == name {
+		if subs[i].Name == name {
 			return subs[i]
 		}
 	}
 	return nil
 }
 
-func (p *treeDirNode) addPath(names []string) error {
+func (p *TreeDirNode) addPath(names []string) error {
 	pp := p
 	for i := 0; i < len(names); i++ {
 		n := names[i]
@@ -373,10 +389,13 @@ func (p *treeDirNode) addPath(names []string) error {
 			if strings.HasPrefix(n, ".") {
 				return fmt.Errorf("not added")
 			}
-			su := findInSubs(pp.subs, n)
+			su := findInSubs(pp.Subs, n)
 			if su == nil {
-				su = newTreeNode(n)
-				pp.subs = append(pp.subs, su)
+				su = NewTreeNode(n)
+				if pp.Subs == nil {
+					pp.Subs = make([]*TreeDirNode, 0)
+				}
+				pp.Subs = append(pp.Subs, su)
 				pp = su
 			} else {
 				pp = su

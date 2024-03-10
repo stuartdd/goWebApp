@@ -33,6 +33,7 @@ func (p *UrlRequestParts) WithQuery(q map[string][]string) *UrlRequestParts {
 	p.Query = q
 	return p
 }
+
 func (p *UrlRequestParts) WithHeader(h map[string][]string) *UrlRequestParts {
 	p.Header = h
 	return p

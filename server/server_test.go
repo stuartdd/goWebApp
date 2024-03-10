@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"stuartdd.com/config"
+	"stuartdd.com/controllers"
 	"stuartdd.com/tools"
 )
 
@@ -39,6 +41,35 @@ const postDataFile2 = "{\"Data\":\"This is the data for 2\"}"
 const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
 
+func TestGetListDirFile(t *testing.T) {
+	configData, err := config.NewConfigData("../goWebAppTest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	url := "files/user/stuart/loc/picsPlus/tree"
+
+	resp, dirList := RunClientGet(t, configData, url, 200, "?", -1)
+	if resp.StatusCode != 200 {
+		t.Fatalf("did not get the icon!")
+	}
+
+	tn := &controllers.TreeDirNode{}
+	err = json.Unmarshal([]byte(dirList), tn)
+	if err != nil {
+		t.Fatalf("failed to understand the JSON. Error:%s", err.Error())
+	}
+
+	resp, _ = RunClientGet(t, configData, "favicon.ico", 200, "?", -1)
+	if resp.StatusCode != 200 {
+		t.Fatalf("did not get the icon!")
+	}
+
+}
 func TestGetFavicon(t *testing.T) {
 	configData, err := config.NewConfigData("../goWebAppTest.json")
 	if err != nil {
