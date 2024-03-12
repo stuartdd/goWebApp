@@ -15,14 +15,21 @@
         "bob": {
             "name": "Bob",
             "Locations": {
-                "home": "/home",
-                "usr": "bobs"
+                "home": "testdata",
+                "usr": "testdata/testfolder"
             }
         },
         "stuart": {
             "name": "Stuart",
+            "Exec": {
+                "c1": {
+                    "cmd": ["cmd1"],
+                    "dir": "dir1",
+                    "log": "pics/logs"
+                }
+            },
             "Locations": {
-                "home": "sHome",
+                "home": "",
                 "pics": "testdata",
                 "testtree": "***/home/stuart/git"
             }

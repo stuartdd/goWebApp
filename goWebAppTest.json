@@ -2,30 +2,57 @@
     "configName": "goWebApp.json",
     "port": 8083,
     "ServerName": "TestServer",
-    "filterFiles": ["Json", "Data"],
+    "filterFiles": [
+        "Json",
+        "Data"
+    ],
     "ContentTypeCharset": "utf-8",
-    "FaviconIcoPath" : "../favicon1.ico",
+    "FaviconIcoPath": "../favicon1.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d-%H-%M.log",
         "Path": "logs",
         "MonitorSeconds": 30,
         "LogLevel": "quiet"
-      },
+    },
     "Users": {
         "bob": {
             "name": "Bob",
             "Locations": {
-                "home": "bHome",
-                "usr": "bobs"
+                "home": "testdata",
+                "usr": "testdata/logs"
+            },
+            "Exec": {
+                "c1": {
+                    "cmd": ["cmd1"],
+                    "dir": "dir1",
+                    "log": "usr/boblog1"
+                },
+                "c2": {
+                    "cmd": ["cmd2"],
+                    "dir": "dir2",
+                    "log": "home/boblog2"
+                }
             }
         },
         "stuart": {
             "name": "Stuart",
             "Locations": {
-                "home": "sHome",
+                "home": "testdata",
                 "pics": "testdata",
                 "picsPlus": "testdata/testfolder",
                 "picsMissing": "testdata/test_folder"
+            },
+            "exec": {
+                "c1": {
+                    "cmd": ["cmd1"],
+                    "dir": "dir1",
+                    "log": "home/stulog1"
+                },
+                "c2": {
+                    "cmd": ["cmd2"],
+                    "dir": "dir2",
+                    "log": "pics/stupicslog2"
+                }
             }
         }
     },

@@ -4,6 +4,21 @@ import (
 	"testing"
 )
 
+func TestCommands(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json")
+	if len(errlist) != 1 {
+		t.Fatal(errlist)
+	}
+	if conf == nil {
+		t.Fatal("Config is nil. Load failed")
+	}
+	c1, err := conf.UserExec("bob", "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Fatalf("%s\n", c1.ToString())
+}
+
 func TestUserDataPath(t *testing.T) {
 	conf, err := NewConfigData("../goWebAppTest.json")
 	if err != nil {

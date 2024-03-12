@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -32,9 +33,20 @@ func NewLogData() *LogData {
 	}
 }
 
+type ExecInfo struct {
+	Cmd []string
+	Dir string
+	Log string
+}
+
+func (p *ExecInfo) ToString() string {
+	return fmt.Sprintf("CMD:%s, Dir:%s, Log:%s", p.Cmd, p.Dir, p.Log)
+}
+
 type UserData struct {
 	Name      string
 	Locations map[string]string
+	Exec      map[string]*ExecInfo
 }
 
 func NewUserData(name string, locations map[string]string) UserData {
@@ -103,11 +115,85 @@ type ConfigData struct {
 	Debugging          bool   `json:"-"`
 }
 
+func checkExists(p string, f string, isFile bool) string {
+	var fr string
+	var err error
+
+	if !strings.HasPrefix(f, "***") {
+		pf := fmt.Sprintf("%s%c%s", p, os.PathSeparator, f)
+		fr, err = filepath.Abs(pf)
+		if err != nil {
+			return fmt.Sprintf("[%s] not resolved to path", f)
+		}
+	} else {
+		fr = f[3:]
+	}
+	stats, err := os.Stat(fr)
+	if err != nil {
+		return fmt.Sprintf("Path [%s] Not found", fr)
+	} else {
+		if isFile {
+			if stats.IsDir() {
+				return fmt.Sprintf("Path [%s] Not a File", fr)
+			}
+		} else {
+			if !stats.IsDir() {
+				return fmt.Sprintf("Path[%s] Not a Directory", fr)
+			}
+		}
+	}
+	return ""
+}
+
+func (p *ConfigData) resolveLocations() (*ConfigData, []string) {
+	errorList := make([]string, 0)
+
+	e := checkExists(p.UserDataRoot, "", false)
+	if e != "" {
+		errorList = append(errorList, fmt.Sprintf("Config Error: User Data Root %s", e))
+	}
+
+	e = checkExists(p.UserDataRoot, p.FaviconIcoPath, true)
+	if e != "" {
+		errorList = append(errorList, fmt.Sprintf("Config Error: faviconIcoPath not found %s", e))
+	}
+
+	e = checkExists(p.UserDataRoot, p.LogData.Path, false)
+	if e != "" {
+		errorList = append(errorList, fmt.Sprintf("Config Error: LogData.Path %s", e))
+	}
+
+	for userName, userData := range p.Users {
+		for locName, location := range userData.Locations {
+			e := checkExists(p.UserDataRoot, location, false)
+			if e != "" {
+				errorList = append(errorList, fmt.Sprintf("Config Error: User [%s] Location [%s] %s", userName, locName, e))
+			}
+		}
+		for execName, execData := range userData.Exec {
+			if execData.Log != "" {
+				s := strings.SplitN(execData.Log, "/", 2)
+				if len(s) == 2 {
+					loc, ok := userData.Locations[s[0]]
+					if !ok {
+						errorList = append(errorList, fmt.Sprintf("Config Error: User [%s] Exec [%s] Invalid Log[%s]. Loc [%s] Not found", userName, execName, execData.Log, s[0]))
+					} else {
+						execData.Log = fmt.Sprintf("%s%c%s%c%s", p.UserDataRoot, os.PathSeparator, loc, os.PathSeparator, s[1])
+					}
+				} else {
+					errorList = append(errorList, fmt.Sprintf("Config Error: User [%s] Exec [%s] Invalid Log[%s]. Use loc/filename", userName, execName, execData.Log))
+				}
+			}
+		}
+	}
+	return p, errorList
+}
+
 /*
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string) (*ConfigData, error) {
+func NewConfigData(configFileName string) (*ConfigData, []string) {
 
 	moduleName, debugging := getApplicationModuleName()
 	if configFileName == "" {
@@ -140,19 +226,19 @@ func NewConfigData(configFileName string) (*ConfigData, error) {
 	*/
 	content, err := os.ReadFile(configDataInstance.ConfigName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config data file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
+		return nil, []string{fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataInstance.ConfigName, err.Error())}
 	}
 
 	err = json.Unmarshal(content, &configDataInstance)
 	if err != nil {
-		return nil, fmt.Errorf("failed to understand the config data in the file:%s. Error:%s", configDataInstance.ConfigName, err.Error())
+		return nil, []string{fmt.Sprintf("FSailed to understand the config data in the file:%s. Error:%s", configDataInstance.ConfigName, err.Error())}
 	}
 
 	for i := 0; i < len(configDataInstance.FilterFiles); i++ {
 		configDataInstance.FilterFiles[i] = fmt.Sprintf(".%s", strings.ToLower(configDataInstance.FilterFiles[i]))
 	}
 
-	return configDataInstance, nil
+	return configDataInstance.resolveLocations()
 }
 
 func (p *ConfigData) PortString() string {
@@ -172,6 +258,18 @@ func (p *ConfigData) UserDataPath(parameters *Parameters) (string, error) {
 		return loc[3:], nil
 	}
 	return fmt.Sprintf("%s%c%s", p.UserDataRoot, os.PathSeparator, loc), nil
+}
+
+func (p *ConfigData) UserExec(user, execid string) (*ExecInfo, error) {
+	userData, ok := p.Users[user]
+	if !ok {
+		return nil, fmt.Errorf("user not found")
+	}
+	exec, ok := userData.Exec[execid]
+	if !ok {
+		return nil, fmt.Errorf("exec: id not found")
+	}
+	return exec, nil
 }
 
 func (p *ConfigData) UserDataFile(parameters *Parameters) (string, error) {

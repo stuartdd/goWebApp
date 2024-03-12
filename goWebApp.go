@@ -17,9 +17,15 @@ func main() {
 		configFileName = os.Args[1]
 	}
 
-	cfg, err := config.NewConfigData(configFileName)
-	if err != nil {
-		log.Fatal(err)
+	cfg, errorList := config.NewConfigData(configFileName)
+	if len(errorList) > 0 {
+		for _, err := range errorList {
+			os.Stdout.WriteString(err)
+			os.Stdout.WriteString("\n")
+		}
+		os.Exit(1)
+	}
+	if cfg == nil {
 		os.Exit(1)
 	}
 
