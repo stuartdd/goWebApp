@@ -3,6 +3,7 @@ package runCommand
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -15,6 +16,7 @@ type execData struct {
 func (p *execData) ToString() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, Log:%s", p.Cmd, p.Dir, p.StdOut)
 }
+
 func NewExecData(commands []string, dir string, stdOut string) *execData {
 	return &execData{
 		Cmd:    commands,
@@ -23,18 +25,37 @@ func NewExecData(commands []string, dir string, stdOut string) *execData {
 	}
 }
 
-func (p *execData) Run(done func(string, string)) error {
+func (p *execData) Run() ([]byte, []byte, int, error) {
 	cmd := exec.Command(p.Cmd[0], p.Cmd[1:]...)
 	if p.Dir != "" {
 		cmd.Dir = p.Dir
 	}
 	var stdout, stderr bytes.Buffer
+	code := 0
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("command failed %e", err)
+		_, ok := err.(*os.PathError)
+		if ok {
+			return nil, nil, -1, fmt.Errorf("exec failed to change dir")
+		}
+		ee, ok := err.(*exec.ExitError)
+		if ok {
+			code = ee.ExitCode()
+		} else {
+			ex, ok := err.(*exec.Error)
+			if ok {
+				return nil, nil, 1, fmt.Errorf("exec cmd %s not on Path", ex.Name)
+			}
+			return nil, nil, 1, fmt.Errorf("exec failed %s", err.Error())
+		}
 	}
-	done(stdout.String(), stderr.String())
-	return err
+	if p.StdOut != "" {
+		err = os.WriteFile(p.StdOut, stdout.Bytes(), 0644)
+		if err != nil {
+			return nil, nil, -1, fmt.Errorf("exec failed to write stdout %s", err.Error())
+		}
+	}
+	return stdout.Bytes(), stderr.Bytes(), code, nil
 }

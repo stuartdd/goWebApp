@@ -4,7 +4,32 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"stuartdd.com/config"
 )
+
+func TestExec(t *testing.T) {
+	conf, errlist := config.NewConfigData("../goWebAppTest.json")
+	if errlist.Len() != 1 {
+		t.Fatal(errlist.ToString())
+	}
+	if conf == nil {
+		t.Fatal("Config is nil. Load failed")
+	}
+	params := map[string]string{"user": "bob", "sync": "ls"}
+
+	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
+		if ec == 0 {
+			return map[string]interface{}{"error": false, "code": ec, "out": string(out), "err": string(err)}
+		}
+		return map[string]interface{}{"error": true, "code": ec, "out": string(out), "err": string(err)}
+	})
+
+	res := ex.Submit()
+
+	t.Fatal(string(res.content))
+
+}
 
 func TestMarshal(t *testing.T) {
 	jj := "{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\",\"subs\":[{\"name\":\"a1\"}]},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]},{\"name\":\"sub3\",\"subs\":[{\"name\":\"a1\",\"subs\":[{\"name\":\"a2\"}]}]}]}"
@@ -28,7 +53,7 @@ func TestMarshal(t *testing.T) {
 	tim4 := time.Now().UnixMicro()
 
 	tim5 := time.Now().UnixMicro()
-	xx := tn.ToJson(true)
+	tn.ToJson(true)
 	tim6 := time.Now().UnixMicro()
 
 	AssertEquals(t, "Marshal", jj4, jj)
@@ -38,7 +63,9 @@ func TestMarshal(t *testing.T) {
 	if timToJson >= timMarshal {
 		t.Fatalf("Time Marshal:%d Time ToJson:%d Time ToJsonIndent:%d. Time ToJson should be faster!", timMarshal, timToJson, timToJsonInd)
 	}
-	t.Fatalf("Time Marshal:%d Time ToJson:%d Time ToJsonIndent:%d. Time ToJson should be faster!\n%s", timMarshal, timToJson, timToJsonInd, xx)
+	if timToJsonInd >= timMarshal {
+		t.Fatalf("Time Marshal:%d Time ToJson:%d Time ToJsonIndent:%d. Time ToJsonIndent should be faster!", timMarshal, timToJson, timToJsonInd)
+	}
 }
 
 func TestTreeNode(t *testing.T) {

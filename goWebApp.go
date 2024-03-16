@@ -18,11 +18,8 @@ func main() {
 	}
 
 	cfg, errorList := config.NewConfigData(configFileName)
-	if len(errorList) > 0 {
-		for _, err := range errorList {
-			os.Stdout.WriteString(err)
-			os.Stdout.WriteString("\n")
-		}
+	if errorList.Len() > 0 {
+		os.Stdout.WriteString(errorList.ToString())
 		os.Exit(1)
 	}
 	if cfg == nil {
@@ -32,7 +29,7 @@ func main() {
 	actionQueue := make(chan server.ActionId, 10)
 	defer close(actionQueue)
 
-	ld := cfg.LogData
+	ld := cfg.GetLogData()
 
 	logger, err := tools.NewLogger(ld.Path, ld.FileNameMask, ld.MonitorSeconds, ld.LogLevel)
 	if err != nil {

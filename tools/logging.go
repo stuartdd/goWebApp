@@ -126,17 +126,31 @@ func (l *logger) deQueue() {
 	for msg := range l.queue {
 		t := time.Now()
 		h := t.Hour()
+		hs := strconv.Itoa(h)
+		if len(hs) < 2 {
+			hs = "0" + hs
+		}
 		m := t.Minute()
+		ms := strconv.Itoa(m)
+		if len(ms) < 2 {
+			ms = "0" + ms
+		}
+
 		s := t.Second()
+		ss := strconv.Itoa(s)
+		if len(ss) < 2 {
+			ss = "0" + ss
+		}
+
 		if t.After(l.nextFileCheck) {
 			l.nextFileCheck = getNextMonitorTime(l.monitorSeconds)
 			l.datePrefix = newDatePrefix(t)
 			l.file = l.file.reOpen(l.path, l.fileNameMask, t)
 		}
 		if l.IsOpen() {
-			l.file.logFile.WriteString(fmt.Sprintf("%s%2d:%2d:%2d %s\n", l.datePrefix, h, m, s, msg))
+			l.file.logFile.WriteString(fmt.Sprintf("%s%s:%s:%s %s\n", l.datePrefix, hs, ms, ss, msg))
 		}
-		os.Stderr.WriteString(fmt.Sprintf("%s%2d:%2d:%2d %s.\n", l.datePrefix, h, m, s, msg))
+		os.Stderr.WriteString(fmt.Sprintf("%s%s:%s:%s %s.\n", l.datePrefix, hs, ms, ss, msg))
 	}
 }
 

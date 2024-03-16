@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"stuartdd.com/config"
@@ -26,6 +25,7 @@ var getFileUserLocTreeMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/tree
 var getFileUserLocMatch = tools.NewUrlRequestParts("/files/user/*/loc/*").WithReqType("GET")
 var getFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("GET")
 var postFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("POST")
+var execRequestSyncMatch = tools.NewUrlRequestParts("/exec/user/*/sync/*").WithReqType("GET")
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -50,11 +50,11 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	urlParts := tools.NewUrlRequestParts(r.RequestURI).WithReqType(r.Method).WithQuery(r.URL.Query()).WithHeader(r.Header)
 	if urlParts.Match(getExitMatch) {
 		h.actionQueue <- Exit
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentStatusJson("Server Stopped"))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentStatusJson("Server Stopped", false))
 		return
 	}
 	if urlParts.Match(getPingMatch) {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentStatusJson("Ping"))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentStatusJson("Ping", false))
 		return
 	}
 	if urlParts.Match(getFileUserLocNameMatch) {
@@ -77,13 +77,20 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
 		return
 	}
-	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentStatusJson("Resource not found"))
+	if urlParts.Match(execRequestSyncMatch) {
+		h.writeResponse(w, controllers.NewExecHandler(urlParts.UrlParamMap(execRequestSyncMatch), h.config, nil).Submit())
+		return
+	}
+	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentStatusJson("Resource not found", true))
 }
 
 func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.ResponseData) {
-	contentType := config.LookupContentType(resp.MimeType, p.config.ContentTypeCharset)
-
-	p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
+	contentType := config.LookupContentType(resp.MimeType)
+	if resp.GetShouldLog() {
+		p.Log(fmt.Sprintf("Error: Status:%d: '%s'", resp.Status, resp.ContentLimit(150)))
+	} else {
+		p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
+	}
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "webserver doesn't support hijacking", http.StatusInternalServerError)
@@ -99,7 +106,7 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 	bufrw.WriteString(fmt.Sprintf("Content-Length: %d\n", resp.ContentLength()))
 	bufrw.WriteString(fmt.Sprintf("Content-Type: %s\n", contentType))
 	bufrw.WriteString(fmt.Sprintf("Date: %s\n", timeAsString()))
-	bufrw.WriteString(fmt.Sprintf("Server: %s\n", p.config.ServerName))
+	bufrw.WriteString(fmt.Sprintf("Server: %s\n", p.config.GetServerName()))
 	bufrw.WriteString("\n")
 	bufrw.Write(resp.Content())
 	bufrw.Flush()
@@ -127,12 +134,11 @@ func (p *WebAppServer) Log(s string) {
 }
 
 func (p *WebAppServer) Start() {
-	fp, _ := filepath.Abs(p.Handler.config.UserDataRoot)
 	p.Log("Server running.")
-	p.Log(fmt.Sprintf("Server Port:%d.", p.Handler.config.Port))
+	p.Log(fmt.Sprintf("Server Port:%s.", p.Handler.config.GetPortString()))
 	p.Log(fmt.Sprintf("Server Path:%s.", p.Handler.config.CurrentPath))
-	p.Log(fmt.Sprintf("User Data:  %s.", fp))
-	log.Fatal(http.ListenAndServe(p.Handler.config.PortString(), p.Handler))
+	p.Log(fmt.Sprintf("User Data:  %s.", p.Handler.config.GetUserDataRoot()))
+	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))
 }
 
 func (p *WebAppServer) ToString() string {

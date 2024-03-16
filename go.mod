@@ -10,6 +10,8 @@ replace stuartdd.com/tools => ./tools
 
 replace stuartdd.com/controllers => ./controllers
 
+replace stuartdd.com/runCommand => ./runCommand
+
 require (
 	stuartdd.com/config v0.0.0-00010101000000-000000000000
 	stuartdd.com/server v0.0.0-00010101000000-000000000000
@@ -17,5 +19,6 @@ require (
 
 require (
 	stuartdd.com/controllers v0.0.0-00010101000000-000000000000 // indirect
-	stuartdd.com/tools v0.0.0-00010101000000-000000000000 
+	stuartdd.com/runCommand v0.0.0-00010101000000-000000000000 // indirect
+	stuartdd.com/tools v0.0.0-00010101000000-000000000000
 )

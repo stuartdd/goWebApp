@@ -6,6 +6,7 @@ import (
 )
 
 var contentTypesMap = makeContentTypesMap()
+var contentTypesCharset = "utf-8"
 
 const DefaultContentType = "application/json"
 
@@ -89,8 +90,9 @@ func makeContentTypesMap() map[string]string {
 /*
 AddNewContentTypeToMap for a given url return the content type based on the .ext
 */
-func AddNewContentTypeToMap(ext string, mime string) {
-	contentTypesMap[ext] = mime
+
+func SetContentTypeCharset(charset string) {
+	contentTypesCharset = charset
 }
 
 /*
@@ -100,7 +102,7 @@ LookupContentType for a given url return the content type based on the .ext
 		in config 'ContentTypeCharset'. If ContentTypeCharset is empty then no
 		charset is added.
 */
-func LookupContentType(url string, charset string) string {
+func LookupContentType(url string) string {
 	ext := url
 	pos := strings.LastIndex(url, ".")
 	if pos > 0 {
@@ -108,8 +110,11 @@ func LookupContentType(url string, charset string) string {
 	}
 	mapping, found := contentTypesMap[ext]
 	if found {
-		if charset != "" && strings.HasSuffix(mapping, "%0") {
-			return strings.ReplaceAll(mapping, "%0", fmt.Sprintf("; charset=%s", charset))
+		if strings.HasSuffix(mapping, "%0") {
+			if contentTypesCharset == "" {
+				return mapping
+			}
+			return strings.ReplaceAll(mapping, "%0", fmt.Sprintf("; charset=%s", contentTypesCharset))
 		}
 		return mapping
 	}

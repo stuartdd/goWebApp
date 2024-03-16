@@ -42,9 +42,9 @@ const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
 
 func TestGetListDirFile(t *testing.T) {
-	configData, err := config.NewConfigData("../goWebAppTest.json")
-	if err != nil {
-		t.Fatal(err)
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
 	}
 
 	if serverState != "Running" {
@@ -59,7 +59,7 @@ func TestGetListDirFile(t *testing.T) {
 	}
 
 	tn := &controllers.TreeDirNode{}
-	err = json.Unmarshal([]byte(dirList), tn)
+	err := json.Unmarshal([]byte(dirList), tn)
 	if err != nil {
 		t.Fatalf("failed to understand the JSON. Error:%s", err.Error())
 	}
@@ -71,9 +71,9 @@ func TestGetListDirFile(t *testing.T) {
 
 }
 func TestGetFavicon(t *testing.T) {
-	configData, err := config.NewConfigData("../goWebAppTest.json")
-	if err != nil {
-		t.Fatal(err)
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
 	}
 
 	if serverState != "Running" {
@@ -91,9 +91,9 @@ func TestGetFavicon(t *testing.T) {
 }
 
 func TestPostFile(t *testing.T) {
-	configData, err := config.NewConfigData("../goWebAppTest.json")
-	if err != nil {
-		t.Fatal(err)
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
 	}
 
 	if serverState != "Running" {
@@ -101,7 +101,7 @@ func TestPostFile(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	file := fmt.Sprintf("%s/%s", testdatapath, testdatafile)
-	_, err = os.Stat(file)
+	_, err := os.Stat(file)
 	if err == nil {
 		os.Remove(file)
 		time.Sleep(100 * time.Millisecond)
@@ -126,9 +126,9 @@ func TestPostFile(t *testing.T) {
 
 func TestReadDir(t *testing.T) {
 
-	configData, err := config.NewConfigData("../goWebAppTest.json")
-	if err != nil {
-		t.Fatal(err)
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
 	}
 
 	if serverState != "Running" {
@@ -155,9 +155,9 @@ func TestReadDir(t *testing.T) {
 
 func TestReadFile(t *testing.T) {
 
-	configData, err := config.NewConfigData("../goWebAppTest.json")
-	if err != nil {
-		t.Fatal(err)
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
 	}
 
 	if serverState != "Running" {
@@ -184,9 +184,9 @@ func TestReadFile(t *testing.T) {
 //
 
 func TestClient(t *testing.T) {
-	configData, err := config.NewConfigData("../goWebAppTest.json")
-	if err != nil {
-		t.Fatal(err)
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
 	}
 
 	if serverState != "Running" {
@@ -195,8 +195,8 @@ func TestClient(t *testing.T) {
 	}
 
 	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 64)
-	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.ContentTypeCharset))
-	AssertHeaderEquals(t, res, "Server", configData.ServerName)
+	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
+	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
 	RunClientGet(t, configData, "ping", 200, "{\"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 43)
 	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 59)
 	AssertLogContains(t, logger, []string{"Req:  /ABC", "Resp: Status:404"})
@@ -205,26 +205,26 @@ func TestClient(t *testing.T) {
 
 // /////////////////////////////////////////////////////////////////////////////
 func RunClientPost(t *testing.T, config *config.ConfigData, path string, expectedStatus int, data string) (*http.Response, string) {
-	requestURL := fmt.Sprintf("http://localhost:%d/%s", config.Port, path)
+	requestURL := fmt.Sprintf("http://localhost:%s/%s", config.GetPortString(), path)
 	myReader := strings.NewReader(data)
 	res, err := http.Post(requestURL, "application/json", myReader)
 	if err != nil {
 		t.Fatalf("Client Post error: %s", err.Error())
 	}
 	if res.StatusCode != expectedStatus {
-		t.Fatalf("Status for path http://localhost:%d/%s. Expected %d Actual %d", config.Port, path, expectedStatus, res.StatusCode)
+		t.Fatalf("Status for path http://localhost:%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
 	}
 	return res, ""
 }
 
 func RunClientGet(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int) (*http.Response, string) {
-	requestURL := fmt.Sprintf("http://localhost:%d/%s", config.Port, path)
+	requestURL := fmt.Sprintf("http://localhost:%s/%s", config.GetPortString(), path)
 	res, err := http.Get(requestURL)
 	if err != nil {
 		t.Fatalf("Client error: %s", err.Error())
 	}
 	if res.StatusCode != expectedStatus {
-		t.Fatalf("Status for path http://localhost:%d/%s. Expected %d Actual %d", config.Port, path, expectedStatus, res.StatusCode)
+		t.Fatalf("Status for path http://localhost:%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
 	}
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -232,13 +232,13 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 	}
 	if expectedBody != "?" {
 		if trimString(string(resBody)) != trimString(expectedBody) {
-			t.Fatalf("Status for path http://localhost:%d/%s.\nExpected '%s' \nActual   '%s'", config.Port, path, expectedBody, string(resBody))
+			t.Fatalf("Status for path http://localhost:%s/%s.\nExpected '%s' \nActual   '%s'", config.GetPortString(), path, expectedBody, string(resBody))
 		}
 	}
 	if expectedLen >= 0 {
 		len := res.Header["Content-Length"]
 		if len[0] != strconv.Itoa(expectedLen) {
-			t.Fatalf("Status for path http://localhost:%d/%s.\nExpected '%d' \nActual   '%s'", config.Port, path, expectedLen, len[0])
+			t.Fatalf("Status for path http://localhost:%s/%s.\nExpected '%d' \nActual   '%s'", config.GetPortString(), path, expectedLen, len[0])
 		}
 	}
 	return res, string(resBody)

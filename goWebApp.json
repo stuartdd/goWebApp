@@ -23,9 +23,9 @@
             "name": "Stuart",
             "Exec": {
                 "c1": {
-                    "cmd": ["cmd1"],
-                    "dir": "dir1",
-                    "log": "pics/logs"
+                    "cmd": ["ls", "-ltaz"],
+                    "dir": "***/home/stuart/git",
+                    "log": "pics/logs.txt"
                 }
             },
             "Locations": {
