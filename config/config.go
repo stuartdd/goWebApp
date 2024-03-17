@@ -168,6 +168,7 @@ type ConfigData struct {
 	ModuleName  string
 	ConfigName  string
 	Debugging   bool
+	Environment map[string]string
 }
 
 /*
@@ -175,6 +176,16 @@ LoadConfigData method loads the config data from a file
 */
 
 func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
+	environ := make(map[string]string)
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		switch len(pair) {
+		case 1:
+			environ[pair[0]] = ""
+		case 2:
+			environ[pair[0]] = pair[1]
+		}
+	}
 
 	moduleName, debugging := getApplicationModuleName()
 	if configFileName == "" {
@@ -192,6 +203,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 		CurrentPath: wd,
 		ModuleName:  moduleName,
 		ConfigName:  configFileName + configFileExtension,
+		Environment: environ,
 	}
 
 	configDataInternal := &ConfigDataInternal{
@@ -353,6 +365,14 @@ func (p *ConfigData) GetLogDataPath() string {
 
 func (p *ConfigData) GetLogData() *LogData {
 	return p.internal.LogData
+}
+
+func (p *ConfigData) GetEnvValue(key string) (string, error) {
+	v, ok := p.Environment[key]
+	if ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("environment var '%s' not found", key)
 }
 
 func (p *ConfigData) GetPortString() string {
