@@ -21,10 +21,12 @@ const (
 var getFaviconMatch = tools.NewUrlRequestParts("/favicon.ico").WithReqType("GET")
 var getExitMatch = tools.NewUrlRequestParts("/exit").WithReqType("GET")
 var getPingMatch = tools.NewUrlRequestParts("/ping").WithReqType("GET")
+
 var getFileUserLocTreeMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/tree").WithReqType("GET")
 var getFileUserLocMatch = tools.NewUrlRequestParts("/files/user/*/loc/*").WithReqType("GET")
 var getFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("GET")
 var postFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("POST")
+
 var execRequestSyncMatch = tools.NewUrlRequestParts("/exec/user/*/sync/*").WithReqType("GET")
 
 type ServerHandler struct {
@@ -50,11 +52,11 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	urlParts := tools.NewUrlRequestParts(r.RequestURI).WithReqType(r.Method).WithQuery(r.URL.Query()).WithHeader(r.Header)
 	if urlParts.Match(getExitMatch) {
 		h.actionQueue <- Exit
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentStatusJson("Server Stopped", false))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson("Server Stopped", false))
 		return
 	}
 	if urlParts.Match(getPingMatch) {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentStatusJson("Ping", false))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
 		return
 	}
 	if urlParts.Match(getFileUserLocNameMatch) {
@@ -81,7 +83,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewExecHandler(urlParts.UrlParamMap(execRequestSyncMatch), h.config, nil).Submit())
 		return
 	}
-	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentStatusJson("Resource not found", true))
+	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true))
 }
 
 func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.ResponseData) {

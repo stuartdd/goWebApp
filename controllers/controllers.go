@@ -85,7 +85,7 @@ func (p *ResponseData) GetShouldLog() bool {
 	return p.shouldLog
 }
 
-func (p *ResponseData) WithContentStatusJson(reason string, error bool) *ResponseData {
+func (p *ResponseData) WithContentReasonAsJson(reason string, error bool) *ResponseData {
 	p.content = StatusAsJson(p.Status, reason, error)
 	return p
 }
@@ -140,22 +140,22 @@ func NewFileHandler(parameters map[string]string, configData *config.ConfigData)
 func (p *FileHandler) Submit() *ResponseData {
 	file, err := p.parameters.UserLocFilePath()
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
 
 	// s, _ := filepath.Abs(file)
 	stats, err := os.Stat(file)
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
 
 	if stats.IsDir() {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Is not a file", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a file", true)
 	}
 
 	fileContent, err := os.ReadFile(file)
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File could not be read", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File could not be read", true)
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.parameters.GetName())
 }
@@ -169,14 +169,14 @@ func NewTreeHandler(parameters map[string]string, configData *config.ConfigData)
 func (p *TreeHandler) Submit() *ResponseData {
 	file, err := p.parameters.UserLocPath()
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	if !stats.IsDir() {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Is not a dir", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
 	}
 
 	root := NewTreeNode("fs")
@@ -196,7 +196,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 			return nil
 		})
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir cannot be read", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(root.ToJson(false)).WithMimeType("json")
 }
@@ -210,18 +210,18 @@ func NewDirHandler(parameters map[string]string, configData *config.ConfigData) 
 func (p *DirHandler) Submit() *ResponseData {
 	file, err := p.parameters.UserLocPath()
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	if !stats.IsDir() {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Is not a dir", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
 	}
 	entries, err := os.ReadDir(file)
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir cannot be read", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(DirAsJson(entries, p.parameters.FilterFiles()))
 }
@@ -236,29 +236,29 @@ func NewFilePostHandler(parameters map[string]string, configData *config.ConfigD
 func (p *PostFileHandler) Submit() *ResponseData {
 	dir, err := p.parameters.UserLocPath()
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	stats, err := os.Stat(dir)
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	if !stats.IsDir() {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Is not a dir", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
 	}
 	body, err := io.ReadAll(p.request.Body)
 	if err != nil {
-		return NewResponseData(http.StatusUnprocessableEntity).WithContentStatusJson("Failed to read input", true)
+		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to read input", true)
 	}
 	file, err := p.parameters.UserLocFilePath()
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("File name not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File name not found", true)
 	}
 	err = os.WriteFile(file, body, 0644)
 	if err != nil {
-		return NewResponseData(http.StatusUnprocessableEntity).WithContentStatusJson("Failed to save data", true)
+		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save data", true)
 	}
 
-	return NewResponseData(http.StatusAccepted).WithContentStatusJson("File saved", false)
+	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File saved", false)
 }
 
 func NewExecHandler(parameters map[string]string, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}) Handler {
@@ -271,12 +271,12 @@ func NewExecHandler(parameters map[string]string, configData *config.ConfigData,
 func (p *ExecHandler) Submit() *ResponseData {
 	execInfo, err := p.parameters.UserExec()
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("Exec not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.Log)
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
-		return NewResponseData(http.StatusFailedDependency).WithContentStatusJson(err.Error(), true)
+		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
 	}
 	var dataMap map[string]interface{}
 	if p.createMap != nil {
@@ -298,11 +298,11 @@ func (p *ExecHandler) Submit() *ResponseData {
 
 func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 	if configData.GetFaviconIcoPath() == "" {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("favicon.ico not defined", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("favicon.ico not defined", true)
 	}
 	fileContent, err := os.ReadFile(configData.GetFaviconIcoPath())
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentStatusJson("favicon.ico not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("favicon.ico not found", true)
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType("ico")
 }
