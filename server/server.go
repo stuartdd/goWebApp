@@ -26,8 +26,7 @@ var getFileUserLocTreeMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/tree
 var getFileUserLocMatch = tools.NewUrlRequestParts("/files/user/*/loc/*").WithReqType("GET")
 var getFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("GET")
 var postFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("POST")
-
-var execRequestSyncMatch = tools.NewUrlRequestParts("/exec/user/*/sync/*").WithReqType("GET")
+var execUserCmdMatch = tools.NewUrlRequestParts("/exec/user/*/exec/*").WithReqType("GET")
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -79,8 +78,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
 		return
 	}
-	if urlParts.Match(execRequestSyncMatch) {
-		h.writeResponse(w, controllers.NewExecHandler(urlParts.UrlParamMap(execRequestSyncMatch), h.config, nil).Submit())
+	if urlParts.Match(execUserCmdMatch) {
+		h.writeResponse(w, controllers.NewExecHandler(urlParts.UrlParamMap(execUserCmdMatch), h.config, nil).Submit())
 		return
 	}
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true))
@@ -137,7 +136,7 @@ func (p *WebAppServer) Log(s string) {
 
 func (p *WebAppServer) Start() {
 	p.Log("Server running.")
-	p.Log(fmt.Sprintf("Server Port:%s.", p.Handler.config.GetPortString()))
+	p.Log(fmt.Sprintf("Server Port%s.", p.Handler.config.GetPortString()))
 	p.Log(fmt.Sprintf("Server Path:%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("User Data:  %s.", p.Handler.config.GetUserDataRoot()))
 	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))

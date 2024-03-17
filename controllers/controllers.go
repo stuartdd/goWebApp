@@ -185,7 +185,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 			if err != nil {
 				return err
 			}
-			if !strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "_") && info.IsDir() {
+			if info.IsDir() && !strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "_") {
 				err := root.AddPath(path)
 				if err == nil {
 					fmt.Printf("ADD:%s\n", path)
@@ -198,7 +198,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(root.ToJson(false)).WithMimeType("json")
+	return NewResponseData(http.StatusOK).WithContentBytesJson(TreeAsJson(root)).WithMimeType("json")
 }
 
 func NewDirHandler(parameters map[string]string, configData *config.ConfigData) Handler {
@@ -273,7 +273,9 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.Log)
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.Log, func(r []rune) string {
+		return p.parameters.SubstituteFromMap(r)
+	})
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
 		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
@@ -319,6 +321,14 @@ func StatusAsJson(status int, reason string, error bool) []byte {
 	b.WriteString(reason)
 	b.WriteString("\"}")
 	return b.Bytes()
+}
+
+func TreeAsJson(root *TreeDirNode) []byte {
+	var buffer bytes.Buffer
+	buffer.WriteString("{\"error\":false, \"tree\":")
+	buffer.WriteString(string(root.ToJson(false)))
+	buffer.WriteString("}")
+	return buffer.Bytes()
 }
 
 func DirAsJson(ent []fs.DirEntry, filter []string) []byte {
@@ -395,7 +405,7 @@ func (p *TreeDirNode) Len() int {
 
 // --- 120 -- 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
 const tabs = "                                                                                                                        "
-const namePrefix = "{\"error\":false, \"name\":\""
+const namePrefix = "{\"name\":\""
 const subsPrefix = "\"subs\":["
 
 func (p *TreeDirNode) toJson(tab int, indented bool) []byte {

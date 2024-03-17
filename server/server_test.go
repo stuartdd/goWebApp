@@ -51,6 +51,7 @@ func TestGetListDirFile(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
+
 	url := "files/user/stuart/loc/picsPlus/tree"
 
 	resp, dirList := RunClientGet(t, configData, url, 200, "?", -1)
@@ -123,7 +124,6 @@ func TestPostFile(t *testing.T) {
 	os.Remove(file)
 
 }
-
 func TestReadDir(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
@@ -136,18 +136,18 @@ func TestReadDir(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1)
-	if resBody != "{\"file\":\"t1.JSON\",\"file\":\"t2.Data\"}" {
+	if resBody != "{\"error\":false, \"file\":\"t1.JSON\",\"file\":\"t2.Data\"}" {
 		t.Fatalf("Respons body does not equal..1")
 	}
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1)
-	if resBody != "{\"file\":\"t5.json\"}" {
+	if resBody != "{\"error\":false, \"file\":\"t5.json\"}" {
 		t.Fatalf("Respons body does not equal..2")
 	}
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1)
-	if resBody != "{\"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
-		t.Fatalf("Respons body does not equal..2")
+	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
+		t.Fatalf("Respons body does not equal..3")
 	}
 	AssertLogContains(t, logger, []string{"Server running", "Port:8083", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
@@ -170,7 +170,7 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("Respons body does not start with...")
 	}
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/testfolder", 404, "?", 59)
+	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/testfolder", 404, "?", 73)
 	if !strings.Contains(trimString(resBody), "Is not a file") {
 		t.Fatalf("Respons body does not contain 'Is not a file'")
 	}
@@ -194,37 +194,37 @@ func TestClient(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 64)
+	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 78)
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
-	RunClientGet(t, configData, "ping", 200, "{\"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 43)
-	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 59)
-	AssertLogContains(t, logger, []string{"Req:  /ABC", "Resp: Status:404"})
+	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58)
+	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 74)
+	AssertLogContains(t, logger, []string{"Req:  /ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
 
 // /////////////////////////////////////////////////////////////////////////////
 func RunClientPost(t *testing.T, config *config.ConfigData, path string, expectedStatus int, data string) (*http.Response, string) {
-	requestURL := fmt.Sprintf("http://localhost:%s/%s", config.GetPortString(), path)
+	requestURL := fmt.Sprintf("http://localhost%s/%s", config.GetPortString(), path)
 	myReader := strings.NewReader(data)
 	res, err := http.Post(requestURL, "application/json", myReader)
 	if err != nil {
 		t.Fatalf("Client Post error: %s", err.Error())
 	}
 	if res.StatusCode != expectedStatus {
-		t.Fatalf("Status for path http://localhost:%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
+		t.Fatalf("Status for path http://localhost%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
 	}
 	return res, ""
 }
 
 func RunClientGet(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int) (*http.Response, string) {
-	requestURL := fmt.Sprintf("http://localhost:%s/%s", config.GetPortString(), path)
+	requestURL := fmt.Sprintf("http://localhost%s/%s", config.GetPortString(), path)
 	res, err := http.Get(requestURL)
 	if err != nil {
 		t.Fatalf("Client error: %s", err.Error())
 	}
 	if res.StatusCode != expectedStatus {
-		t.Fatalf("Status for path http://localhost:%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
+		t.Fatalf("Status for path http://localhost%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
 	}
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -232,13 +232,13 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 	}
 	if expectedBody != "?" {
 		if trimString(string(resBody)) != trimString(expectedBody) {
-			t.Fatalf("Status for path http://localhost:%s/%s.\nExpected '%s' \nActual   '%s'", config.GetPortString(), path, expectedBody, string(resBody))
+			t.Fatalf("Status for path http://localhost%s/%s.\nExpected '%s' \nActual   '%s'", config.GetPortString(), path, expectedBody, string(resBody))
 		}
 	}
 	if expectedLen >= 0 {
 		len := res.Header["Content-Length"]
 		if len[0] != strconv.Itoa(expectedLen) {
-			t.Fatalf("Status for path http://localhost:%s/%s.\nExpected '%d' \nActual   '%s'", config.GetPortString(), path, expectedLen, len[0])
+			t.Fatalf("Status for path http://localhost%s/%s.\nExpected '%d' \nActual   '%s'", config.GetPortString(), path, expectedLen, len[0])
 		}
 	}
 	return res, string(resBody)

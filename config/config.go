@@ -19,37 +19,6 @@ ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
 */
 
-type ConfigErrorData struct {
-	errors []string
-}
-
-func NewConfigErrorData(m string) *ConfigErrorData {
-	ed := &ConfigErrorData{
-		errors: make([]string, 0),
-	}
-	if m != "" {
-		ed.Add(m)
-	}
-	return ed
-}
-
-func (p *ConfigErrorData) Len() int {
-	return len(p.errors)
-}
-
-func (p *ConfigErrorData) Add(s string) {
-	p.errors = append(p.errors, s)
-}
-
-func (p *ConfigErrorData) ToString() string {
-	var buffer bytes.Buffer
-	for _, err := range p.errors {
-		buffer.WriteString(err)
-		buffer.WriteString("\n")
-	}
-	return buffer.String()
-}
-
 type LogData struct {
 	FileNameMask   string
 	Path           string
@@ -66,6 +35,9 @@ func NewLogData() *LogData {
 	}
 }
 
+/*
+Users can have Exex actions. Derived from JSON!
+*/
 type ExecInfo struct {
 	Cmd []string
 	Dir string
@@ -76,6 +48,9 @@ func (p *ExecInfo) ToString() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, Log:%s", p.Cmd, p.Dir, p.Log)
 }
 
+/*
+Users Data. Derived from JSON!
+*/
 type UserData struct {
 	Name      string
 	Locations map[string]string
@@ -88,6 +63,17 @@ func NewUserData(name string, locations map[string]string) UserData {
 		Locations: locations}
 }
 
+/*
+Used to manage a set of request parameters.
+
+Parameters are used to locate data in the users data set.
+
+typical values:
+
+	user=fred - The name of the user
+	loc=pics - The location id within the user data identifies a location in the file system
+	exec=execId - Exec id identifies an exec within the user data
+*/
 type Parameters struct {
 	configData *ConfigData
 	params     map[string]string
@@ -115,19 +101,39 @@ func (p *Parameters) UserExec() (exi *ExecInfo, err error) {
 			exi = nil
 		}
 	}()
-	return p.configData.UserExec(p.GetParam("user"), p.GetParam("sync"))
+	return p.configData.UserExec(p.GetUser(), p.GetCmdId())
 }
 
+/*
+get File Path (with file name) for 'user', loc' and 'name' parameters
+Fails is 'user' or 'loc' are not found.
+Does not check the file path exists
+*/
 func (p *Parameters) UserLocFilePath() (string, error) {
 	return p.configData.GetUserLocFilePathParams(p)
 }
 
+/*
+get Directory Path for 'user' and loc' parameters
+Fails is 'user' or 'loc' are not found.
+Does not check the directory path exists
+*/
 func (p *Parameters) UserLocPath() (string, error) {
 	return p.configData.GetUserLocPathParams(p)
 }
 
+/*
+ */
 func (p *Parameters) FilterFiles() []string {
 	return p.configData.internal.FilterFiles
+}
+
+func (p *Parameters) SubstituteFromMap(cmd []rune) string {
+	return SubstituteFromMap(cmd, p.configData.Environment)
+}
+
+func (p *Parameters) Environment() map[string]string {
+	return p.configData.Environment
 }
 
 func (p *Parameters) GetUser() string {
@@ -140,6 +146,10 @@ func (p *Parameters) GetLocation() string {
 
 func (p *Parameters) GetName() string {
 	return p.GetParam("name")
+}
+
+func (p *Parameters) GetCmdId() string {
+	return p.GetParam("exec")
 }
 
 type ConfigDataInternal struct {
@@ -367,14 +377,6 @@ func (p *ConfigData) GetLogData() *LogData {
 	return p.internal.LogData
 }
 
-func (p *ConfigData) GetEnvValue(key string) (string, error) {
-	v, ok := p.Environment[key]
-	if ok {
-		return v, nil
-	}
-	return "", fmt.Errorf("environment var '%s' not found", key)
-}
-
 func (p *ConfigData) GetPortString() string {
 	return fmt.Sprintf(":%d", p.internal.Port)
 }
@@ -444,6 +446,109 @@ func (p *ConfigData) ToString() (string, error) {
 		return "", fmt.Errorf("failed to present data as Json:%s. Error:%s", p.ConfigName, err.Error())
 	}
 	return string(data), nil
+}
+
+func (p *ConfigData) SubstituteFromMap(cmd []rune) string {
+	return SubstituteFromMap(cmd, p.Environment)
+}
+
+func SubstituteFromMap(cmd []rune, env map[string]string) string {
+	var buff bytes.Buffer
+	var name bytes.Buffer
+	havePC := 0
+	recoverFrom := 0
+	for i, c := range cmd {
+		switch havePC {
+		case 0:
+			if c == '%' {
+				havePC = 1
+				recoverFrom = i
+			} else {
+				buff.WriteRune(c)
+			}
+		case 1:
+			if c == '%' {
+				buff.WriteRune('%')
+				havePC = 1
+				recoverFrom = i
+			} else {
+				if c == '{' {
+					havePC++
+				} else {
+					buff.WriteRune('%')
+					buff.WriteRune(c)
+					havePC = 0
+					name.Reset()
+				}
+			}
+		default:
+			if c == '}' {
+				v, ok := env[name.String()]
+				if ok {
+					buff.WriteString(v)
+				} else {
+					buff.WriteRune('%')
+					buff.WriteRune('{')
+					buff.Write(name.Bytes())
+					buff.WriteRune('}')
+				}
+				havePC = 0
+				name.Reset()
+			} else {
+				if c == '%' && havePC == 2 {
+					havePC = 1
+					recoverFrom = i
+					buff.WriteRune('%')
+					buff.WriteRune('{')
+				} else {
+					name.WriteRune(c)
+				}
+			}
+		}
+	}
+	if name.Len() > 0 {
+		for i := recoverFrom; i < len(cmd); i++ {
+			buff.WriteRune(cmd[i])
+		}
+	}
+	return buff.String()
+}
+
+/*
+A list of issues found with the configuration data
+
+If returned with a nil ConfigData then it is fatal.
+If returned with a ConfigData then it is warnings.
+*/
+type ConfigErrorData struct {
+	errors []string
+}
+
+func NewConfigErrorData(m string) *ConfigErrorData {
+	ed := &ConfigErrorData{
+		errors: make([]string, 0),
+	}
+	if m != "" {
+		ed.Add(m)
+	}
+	return ed
+}
+
+func (p *ConfigErrorData) Len() int {
+	return len(p.errors)
+}
+
+func (p *ConfigErrorData) Add(s string) {
+	p.errors = append(p.errors, s)
+}
+
+func (p *ConfigErrorData) ToString() string {
+	var buffer bytes.Buffer
+	for _, err := range p.errors {
+		buffer.WriteString(err)
+		buffer.WriteString("\n")
+	}
+	return buffer.String()
 }
 
 /*

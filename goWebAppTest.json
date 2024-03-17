@@ -23,7 +23,7 @@
             },
             "Exec": {
                 "ls": {
-                    "cmd": ["ls","-ltaz"],
+                    "cmd": ["ls","-lta"],
                     "dir": "",
                     "log": "usr/boblog1"
                 },

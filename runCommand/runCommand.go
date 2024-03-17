@@ -17,9 +17,18 @@ func (p *execData) ToString() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, Log:%s", p.Cmd, p.Dir, p.StdOut)
 }
 
-func NewExecData(commands []string, dir string, stdOut string) *execData {
+func NewExecData(commands []string, dir string, stdOut string, substitute func([]rune) string) *execData {
+	var subCmd []string
+	if substitute != nil {
+		subCmd = make([]string, len(commands))
+		for pos, cmd := range commands {
+			subCmd[pos] = substitute([]rune(cmd))
+		}
+	} else {
+		subCmd = commands
+	}
 	return &execData{
-		Cmd:    commands,
+		Cmd:    subCmd,
 		Dir:    dir,
 		StdOut: stdOut,
 	}

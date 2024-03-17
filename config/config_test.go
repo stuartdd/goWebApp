@@ -5,6 +5,39 @@ import (
 	"testing"
 )
 
+func TestSubstitute(t *testing.T) {
+	m := map[string]string{"A": "X", "b": "Y"}
+	assertSub(t, "Ab9", "-%%{%%{A}%{b}}-", "-%%{%XY}-", m)
+
+	assertSub(t, "A2", "-%%{%%{A}}-", "-%%{%X}-", m)
+	assertSub(t, "A3", "-%{%%{A}}-", "-%{%X}-", m)
+	assertSub(t, "A4", "-%{%{A}}-", "-%{X}-", m)
+	assertSub(t, "A5", "-{%%{A}}-", "-{%X}-", m)
+	assertSub(t, "A6", "-{%{A}}-", "-{X}-", m)
+	assertSub(t, "A7", "-%{A}}-", "-X}-", m)
+	assertSub(t, "A8", "-%{A}-", "-X-", m)
+	assertSub(t, "A9", "-%%{A}-", "-%X-", m)
+
+	assertSub(t, "A5", "-%{A-", "-%{A-", m)
+	assertSub(t, "A6", "-%%{A-", "-%%{A-", m)
+	assertSub(t, "A8", "-%%A-", "-%%A-", m)
+	assertSub(t, "A9", "-%A-", "-%A-", m)
+
+	assertSub(t, "Z4", "-%{Z}-", "-%{Z}-", m)
+	assertSub(t, "Z5", "-%{Z-", "-%{Z-", m)
+	assertSub(t, "Z6", "-%%{Z-", "-%%{Z-", m)
+	assertSub(t, "Z7", "-%%{Z}-", "-%%{Z}-", m)
+	assertSub(t, "Z8", "-%%Z-", "-%%Z-", m)
+	assertSub(t, "Z9", "-%Z-", "-%Z-", m)
+}
+
+func assertSub(t *testing.T, id, sub, expected string, m map[string]string) {
+	r := SubstituteFromMap([]rune(sub), m)
+	if r != expected {
+		t.Fatalf("Substitution: %s, \nExpected [%s]\nActual  [%s]", id, expected, r)
+	}
+}
+
 func TestUserExec(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
@@ -13,7 +46,7 @@ func TestUserExec(t *testing.T) {
 	if conf == nil {
 		t.Fatal("Config is nil. Load failed")
 	}
-	p := NewParameters(map[string]string{"user": "bob", "sync": "c2"}, conf)
+	p := NewParameters(map[string]string{"user": "bob", "exec": "c2"}, conf)
 	exec, err := p.UserExec()
 	if err != nil {
 		t.Fatalf("%s", err.Error())
@@ -21,7 +54,7 @@ func TestUserExec(t *testing.T) {
 	if exec.ToString() != "CMD:[cmd2], Dir:testdata, Log:../testdata/boblog2" {
 		t.Fatal("Did not find the correct exec!")
 	}
-	p = NewParameters(map[string]string{"user": "bob", "sync": "X2"}, conf)
+	p = NewParameters(map[string]string{"user": "bob", "exec": "X2"}, conf)
 	_, err = p.UserExec()
 	if err == nil {
 		t.Fatal("Should NOT find exec X2")
@@ -29,7 +62,7 @@ func TestUserExec(t *testing.T) {
 	if !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("Error should contain 'not found'. Actual:'%s'", err.Error())
 	}
-	p = NewParameters(map[string]string{"user": "notbob", "sync": "c2"}, conf)
+	p = NewParameters(map[string]string{"user": "notbob", "exec": "c2"}, conf)
 	_, err = p.UserExec()
 	if err == nil {
 		t.Fatal("Should NOT find notbob")

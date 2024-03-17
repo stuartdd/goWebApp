@@ -7,7 +7,7 @@ import (
 
 func TestLs(t *testing.T) {
 
-	tc := NewExecData([]string{"ls", "-lta"}, "..", "cmdout.txt")
+	tc := NewExecData([]string{"ls", "-lta"}, "..", "cmdout.txt", nil)
 	stdOut, _, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)
@@ -19,7 +19,7 @@ func TestLs(t *testing.T) {
 
 func TestPWD(t *testing.T) {
 
-	tc := NewExecData([]string{"pwd"}, "..", "cmdout.txt")
+	tc := NewExecData([]string{"pwd"}, "..", "cmdout.txt", nil)
 	stdOut, _, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)
@@ -32,7 +32,7 @@ func TestPWD(t *testing.T) {
 }
 func TestGo(t *testing.T) {
 
-	tc := NewExecData([]string{"go", "version"}, "", "cmdout.txt")
+	tc := NewExecData([]string{"go", "version"}, "", "cmdout.txt", nil)
 	stdOut, _, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)
