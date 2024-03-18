@@ -6,35 +6,39 @@ import (
 )
 
 func TestSubstitute(t *testing.T) {
-	m := map[string]string{"A": "X", "b": "Y"}
-	assertSub(t, "Ab9", "-%%{%%{A}%{b}}-", "-%%{%XY}-", m)
+	m1 := map[string]string{"A": "X", "b": "Y"}
+	m2 := map[string]string{"UA": "UX", "Ub": "UY"}
 
-	assertSub(t, "A2", "-%%{%%{A}}-", "-%%{%X}-", m)
-	assertSub(t, "A3", "-%{%%{A}}-", "-%{%X}-", m)
-	assertSub(t, "A4", "-%{%{A}}-", "-%{X}-", m)
-	assertSub(t, "A5", "-{%%{A}}-", "-{%X}-", m)
-	assertSub(t, "A6", "-{%{A}}-", "-{X}-", m)
-	assertSub(t, "A7", "-%{A}}-", "-X}-", m)
-	assertSub(t, "A8", "-%{A}-", "-X-", m)
-	assertSub(t, "A9", "-%%{A}-", "-%X-", m)
+	assertSub(t, "Ab8", "-%{UA}-%{A}-%{b}-%{Ub}-", "-%{UX}-X-Y-%{UY}-", m1, m2)
 
-	assertSub(t, "A5", "-%{A-", "-%{A-", m)
-	assertSub(t, "A6", "-%%{A-", "-%%{A-", m)
-	assertSub(t, "A8", "-%%A-", "-%%A-", m)
-	assertSub(t, "A9", "-%A-", "-%A-", m)
+	assertSub(t, "Ab9", "-%%{%%{A}%{b}}-", "-%%{%XY}-", m1, m2)
 
-	assertSub(t, "Z4", "-%{Z}-", "-%{Z}-", m)
-	assertSub(t, "Z5", "-%{Z-", "-%{Z-", m)
-	assertSub(t, "Z6", "-%%{Z-", "-%%{Z-", m)
-	assertSub(t, "Z7", "-%%{Z}-", "-%%{Z}-", m)
-	assertSub(t, "Z8", "-%%Z-", "-%%Z-", m)
-	assertSub(t, "Z9", "-%Z-", "-%Z-", m)
+	assertSub(t, "A2", "-%%{%%{A}}-", "-%%{%X}-", m1, m2)
+	assertSub(t, "A3", "-%{%%{A}}-", "-%{%X}-", m1, m2)
+	assertSub(t, "A4", "-%{%{A}}-", "-%{X}-", m1, m2)
+	assertSub(t, "A5", "-{%%{A}}-", "-{%X}-", m1, m2)
+	assertSub(t, "A6", "-{%{A}}-", "-{X}-", m1, m2)
+	assertSub(t, "A7", "-%{A}}-", "-X}-", m1, m2)
+	assertSub(t, "A8", "-%{A}-", "-X-", m1, m2)
+	assertSub(t, "A9", "-%%{A}-", "-%X-", m1, m2)
+
+	assertSub(t, "A5", "-%{A-", "-%{A-", m1, m2)
+	assertSub(t, "A6", "-%%{A-", "-%%{A-", m1, m2)
+	assertSub(t, "A8", "-%%A-", "-%%A-", m1, m2)
+	assertSub(t, "A9", "-%A-", "-%A-", m1, m2)
+
+	assertSub(t, "Z4", "-%{Z}-", "-%{Z}-", m1, m2)
+	assertSub(t, "Z5", "-%{Z-", "-%{Z-", m1, m2)
+	assertSub(t, "Z6", "-%%{Z-", "-%%{Z-", m1, m2)
+	assertSub(t, "Z7", "-%%{Z}-", "-%%{Z}-", m1, m2)
+	assertSub(t, "Z8", "-%%Z-", "-%%Z-", m1, m2)
+	assertSub(t, "Z9", "-%Z-", "-%Z-", m1, m2)
 }
 
-func assertSub(t *testing.T, id, sub, expected string, m map[string]string) {
-	r := SubstituteFromMap([]rune(sub), m)
+func assertSub(t *testing.T, id, sub, expected string, m1 map[string]string, m2 map[string]string) {
+	r := SubstituteFromMap([]rune(sub), m1, m2)
 	if r != expected {
-		t.Fatalf("Substitution: %s, \nExpected [%s]\nActual  [%s]", id, expected, r)
+		t.Fatalf("Substitution: %s, \nExpected [%s]\nActual   [%s]", id, expected, r)
 	}
 }
 
@@ -163,35 +167,5 @@ func TestUserDataPath(t *testing.T) {
 	if !strings.HasSuffix(f, "/testdata/testfolder/pics.json") {
 		t.Fatalf("Should return path to /testdata/testfolder/pics.json")
 	}
-
-}
-
-func TrialConfigUnMarshal(t *testing.T) {
-	ld := &LogData{
-		FileNameMask:   "fileNameMask",
-		Path:           "logs",
-		MonitorSeconds: 20,
-		LogLevel:       "quiet",
-	}
-
-	conf := &ConfigDataInternal{
-		Port:               8080,
-		Users:              make(map[string]UserData),
-		UserDataRoot:       "~/",
-		LogData:            ld,
-		ContentTypeCharset: "utf-8",
-		ServerName:         "serverName",
-		PanicResponseCode:  500,
-		FaviconIcoPath:     "",
-	}
-
-	conf.Users["stuart"] = NewUserData("Stuart", map[string]string{"home": "/home", "usr": "stuarts"})
-	conf.Users["bob"] = NewUserData("Bob", map[string]string{"home": "/home", "usr": "bobs"})
-
-	s, e := conf.toString()
-	if e != nil {
-		t.Fatalf(e.Error())
-	}
-	t.Fatal(s)
 
 }

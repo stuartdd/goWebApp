@@ -55,12 +55,7 @@ type UserData struct {
 	Name      string
 	Locations map[string]string
 	Exec      map[string]*ExecInfo
-}
-
-func NewUserData(name string, locations map[string]string) UserData {
-	return UserData{
-		Name:      name,
-		Locations: locations}
+	Env       map[string]string
 }
 
 /*
@@ -128,8 +123,8 @@ func (p *Parameters) FilterFiles() []string {
 	return p.configData.internal.FilterFiles
 }
 
-func (p *Parameters) SubstituteFromMap(cmd []rune) string {
-	return SubstituteFromMap(cmd, p.configData.Environment)
+func (p *Parameters) SubstituteFromMap(cmd []rune, m map[string]string) string {
+	return SubstituteFromMap(cmd, p.configData.Environment, m)
 }
 
 func (p *Parameters) Environment() map[string]string {
@@ -138,6 +133,10 @@ func (p *Parameters) Environment() map[string]string {
 
 func (p *Parameters) GetUser() string {
 	return p.GetParam("user")
+}
+
+func (p *Parameters) GetUserData() *UserData {
+	return p.configData.GetUserData(p.GetUser())
 }
 
 func (p *Parameters) GetLocation() string {
@@ -358,6 +357,14 @@ func (p *ConfigData) GetServerName() string {
 	return p.internal.ServerName
 }
 
+func (p *ConfigData) GetUserData(user string) *UserData {
+	ud, ok := p.internal.Users[user]
+	if ok {
+		return &ud
+	}
+	return nil
+}
+
 func (p *ConfigData) GetUserDataRoot() string {
 	return p.toFullFilePath(p.internal.UserDataRoot, "")
 }
@@ -448,11 +455,11 @@ func (p *ConfigData) ToString() (string, error) {
 	return string(data), nil
 }
 
-func (p *ConfigData) SubstituteFromMap(cmd []rune) string {
-	return SubstituteFromMap(cmd, p.Environment)
+func (p *ConfigData) SubstituteFromMap(cmd []rune, env map[string]string) string {
+	return SubstituteFromMap(cmd, p.Environment, env)
 }
 
-func SubstituteFromMap(cmd []rune, env map[string]string) string {
+func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]string) string {
 	var buff bytes.Buffer
 	var name bytes.Buffer
 	havePC := 0
@@ -483,14 +490,19 @@ func SubstituteFromMap(cmd []rune, env map[string]string) string {
 			}
 		default:
 			if c == '}' {
-				v, ok := env[name.String()]
+				v, ok := env1[name.String()]
 				if ok {
 					buff.WriteString(v)
 				} else {
-					buff.WriteRune('%')
-					buff.WriteRune('{')
-					buff.Write(name.Bytes())
-					buff.WriteRune('}')
+					v, ok = env1[name.String()]
+					if ok {
+						buff.WriteString(v)
+					} else {
+						buff.WriteRune('%')
+						buff.WriteRune('{')
+						buff.Write(name.Bytes())
+						buff.WriteRune('}')
+					}
 				}
 				havePC = 0
 				name.Reset()
