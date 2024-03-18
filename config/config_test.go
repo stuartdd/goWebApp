@@ -8,9 +8,9 @@ import (
 func TestSubstitute(t *testing.T) {
 	m1 := map[string]string{"A": "X", "b": "Y"}
 	m2 := map[string]string{"UA": "UX", "Ub": "UY"}
+	m3 := map[string]string{"UA": "UX", "Ub": "UX", "A": "UA"}
 
-	assertSub(t, "Ab8", "-%{UA}-%{A}-%{b}-%{Ub}-", "-%{UX}-X-Y-%{UY}-", m1, m2)
-
+	assertSub(t, "Ab8", "-%{UA}-%{A}-%{b}-%{Ub}-%{A}-", "-UX-UA-Y-UX-UA-", m1, m3)
 	assertSub(t, "Ab9", "-%%{%%{A}%{b}}-", "-%%{%XY}-", m1, m2)
 
 	assertSub(t, "A2", "-%%{%%{A}}-", "-%%{%X}-", m1, m2)

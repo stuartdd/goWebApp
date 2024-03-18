@@ -372,6 +372,7 @@ func (p *ConfigData) GetUserDataRoot() string {
 func (p *ConfigData) GetContentTypeCharset() string {
 	return p.internal.ContentTypeCharset
 }
+
 func (p *ConfigData) GetFaviconIcoPath() string {
 	return p.toFullFilePath("", p.internal.FaviconIcoPath)
 }
@@ -490,7 +491,7 @@ func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]strin
 			}
 		default:
 			if c == '}' {
-				v, ok := env1[name.String()]
+				v, ok := env2[name.String()]
 				if ok {
 					buff.WriteString(v)
 				} else {

@@ -1,16 +1,19 @@
 {
     "configName": "goWebApp.json",
     "port": 8082,
-    "ContentTypeCharset":"utf-8",
+    "ContentTypeCharset": "utf-8",
     "ServerName": "MyServer",
-    "filterFiles": ["Json", "Data"],
-    "faviconIcoPath" : "favicon1.ico",
+    "filterFiles": [
+        "Json",
+        "Data"
+    ],
+    "faviconIcoPath": "favicon1.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d.log",
         "Path": "logs",
         "MonitorSeconds": 30,
         "LogLevel": "quiet"
-      },
+    },
     "Users": {
         "bob": {
             "name": "Bob",
@@ -23,7 +26,10 @@
             "name": "Stuart",
             "Exec": {
                 "c1": {
-                    "cmd": ["ls", "-ltaz"],
+                    "cmd": [
+                        "ls",
+                        "%{lsargs}"
+                    ],
                     "dir": "***/home/stuart/git",
                     "log": "pics/logs.txt"
                 }
@@ -32,6 +38,9 @@
                 "home": "",
                 "pics": "testdata",
                 "testtree": "***/home/stuart/git"
+            },
+            "Env": {
+                "lsargs": "-l"
             }
         }
     },
