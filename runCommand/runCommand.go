@@ -9,16 +9,17 @@ import (
 )
 
 type execData struct {
-	Cmd    []string
-	Dir    string
-	StdOut string
+	Cmd       []string
+	Dir       string
+	StdOutLog string
+	StdErrLog string
 }
 
 func (p *execData) ToString() string {
-	return fmt.Sprintf("CMD:%s, Dir:%s, Log:%s", p.Cmd, p.Dir, p.StdOut)
+	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, substitute func([]rune) string) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, substitute func([]rune) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -29,9 +30,10 @@ func NewExecData(commands []string, dir string, stdOut string, substitute func([
 		subCmd = commands
 	}
 	return &execData{
-		Cmd:    subCmd,
-		Dir:    dir,
-		StdOut: stdOut,
+		Cmd:       subCmd,
+		Dir:       dir,
+		StdOutLog: stdOut,
+		StdErrLog: stdErr,
 	}
 }
 
@@ -77,11 +79,23 @@ func (p *execData) Run() ([]byte, []byte, int, error) {
 			return nil, nil, 1, fmt.Errorf("exec failed: %s", err.Error())
 		}
 	}
-	if p.StdOut != "" {
-		err = os.WriteFile(p.StdOut, stdout.Bytes(), 0644)
-		if err != nil {
-			return nil, nil, -1, fmt.Errorf("exec failed: could not write stdout %s", err.Error())
+	sob := stdout.Bytes()
+	if p.StdOutLog != "" {
+		if len(sob) > 0 {
+			err = os.WriteFile(p.StdOutLog, sob, 0644)
+			if err != nil {
+				return nil, nil, -1, fmt.Errorf("exec failed: could not write stdout %s", err.Error())
+			}
 		}
 	}
-	return stdout.Bytes(), stderr.Bytes(), code, nil
+	seb := stderr.Bytes()
+	if p.StdErrLog != "" {
+		if len(seb) > 0 {
+			err = os.WriteFile(p.StdErrLog, seb, 0644)
+			if err != nil {
+				return nil, nil, -1, fmt.Errorf("exec failed: could not write stderr %s", err.Error())
+			}
+		}
+	}
+	return sob, seb, code, nil
 }

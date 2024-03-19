@@ -7,7 +7,7 @@
         "Data"
     ],
     "ContentTypeCharset": "utf-8",
-    "FaviconIcoPath": "favicon1.ico",
+    "FaviconIcoPath": "favicon.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d-%H-%M.log",
         "Path": "logs",
@@ -18,43 +18,44 @@
         "bob": {
             "name": "Bob",
             "Locations": {
-                "home": "testdata",
-                "usr": "testdata/logs"
+                "home": "",
+                "usr": "logs"
             },
             "Exec": {
                 "ls": {
                     "cmd": ["ls","-lta"],
                     "dir": "",
-                    "log": "usr/boblog1"
+                    "log": "logs"
                 },
                 "c2": {
                     "cmd": ["cmd2"],
-                    "dir": "testdata",
-                    "log": "home/boblog2"
+                    "dir": "",
+                    "log": "logs",
+                    "logOut" : "logOut.txt"
                 }
             }
         },
         "stuart": {
             "name": "Stuart",
             "Locations": {
-                "home": "testdata",
-                "pics": "testdata",
-                "picsPlus": "testdata/testfolder",
-                "picsMissing": "testdata/test_folder"
+                "home": "",
+                "pics": "pics",
+                "picsPlus": "testfolder",
+                "picsMissing": "test_folder"
             },
             "exec": {
                 "c1": {
                     "cmd": ["cmd1"],
-                    "dir": "testdata",
-                    "log": "home/stulog1"
+                    "dir": "",
+                    "log": "logs"
                 },
                 "c2": {
                     "cmd": ["cmd2"],
-                    "dir": "testdata",
-                    "log": "pics/stupicslog2"
+                    "dir": "",
+                    "log": "logs"
                 }
             }
         }
     },
-    "UserDataRoot": ".."
+    "UserDataRoot": "../testdata"
 }

@@ -273,7 +273,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.Log, func(r []rune) string {
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), func(r []rune) string {
 		userData := p.parameters.GetUserData()
 		if userData == nil {
 			return p.parameters.SubstituteFromMap(r, map[string]string{})

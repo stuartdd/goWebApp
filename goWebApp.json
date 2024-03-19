@@ -31,7 +31,7 @@
                         "%{lsargs}"
                     ],
                     "dir": "***/home/stuart/git",
-                    "log": "pics/logs.txt"
+                    "log": "testdata/logs"
                 }
             },
             "Locations": {

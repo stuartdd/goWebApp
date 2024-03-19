@@ -12,7 +12,7 @@ import (
 
 const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
-const absFilePrefix = "***/"
+const absFilePrefix = "***"
 
 /*
 ConfigData - Read configuration data from the JSON configuration file.
@@ -39,13 +39,29 @@ func NewLogData() *LogData {
 Users can have Exex actions. Derived from JSON!
 */
 type ExecInfo struct {
-	Cmd []string
-	Dir string
-	Log string
+	Cmd    []string
+	Dir    string
+	Log    string
+	LogOut string
+	LogErr string
+}
+
+func (p *ExecInfo) GetOutLogFile() string {
+	if p.Log == "" || p.LogOut == "" {
+		return ""
+	}
+	return filepath.Join(p.Log, p.LogOut)
+}
+
+func (p *ExecInfo) GetErrLogFile() string {
+	if p.Log == "" || p.LogErr == "" {
+		return ""
+	}
+	return filepath.Join(p.Log, p.LogErr)
 }
 
 func (p *ExecInfo) ToString() string {
-	return fmt.Sprintf("CMD:%s, Dir:%s, Log:%s", p.Cmd, p.Dir, p.Log)
+	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.GetOutLogFile(), p.GetErrLogFile())
 }
 
 /*
@@ -246,108 +262,167 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 		configDataInternal.FilterFiles[i] = fmt.Sprintf(".%s", strings.ToLower(configDataInternal.FilterFiles[i]))
 	}
 
-	e := configDataExtternal.checkPathExists(configDataInternal.UserDataRoot) // test UserDataRoot exists!
-	if e != "" {
-		return nil, NewConfigErrorData(fmt.Sprintf("Faild to find UserDataRoot:%s.", configDataInternal.UserDataRoot))
-	}
-
 	SetContentTypeCharset(configDataInternal.ContentTypeCharset)
 	return configDataExtternal.resolveLocations()
 }
 
-func (p *ConfigData) checkPathExists(path string) string {
-	stats, err := os.Stat(path)
+func (p *ConfigData) checkPathExists(path string) (string, error) {
+	jp, err := p.joinPathElements(path, "", nil)
 	if err != nil {
-		return fmt.Sprintf("Path [%s] Not found", path)
+		return "", fmt.Errorf("path [%s] is invalid", path)
+	}
+	f, err := filepath.Abs(jp)
+	if err != nil {
+		return "", fmt.Errorf("path [%s] is invalid", jp)
+	}
+	stats, err := os.Stat(f)
+	if err != nil {
+		return "", fmt.Errorf("path [%s] Not found", f)
 	} else {
 		if !stats.IsDir() {
-			return fmt.Sprintf("Path[%s] Not a Directory", path)
+			return "", fmt.Errorf("path[%s] Not a Directory", path)
 		}
 	}
-	return ""
+	return f, nil
 }
 
-func (p *ConfigData) checkFileExists(file string) string {
-	stats, err := os.Stat(file)
+func (p *ConfigData) checkFileExists(file string) (string, error) {
+	jp, err := p.joinPathElements("", file, nil)
 	if err != nil {
-		return fmt.Sprintf("File [%s] Not found", file)
+		return "", fmt.Errorf("file [%s] is invalid", file)
+	}
+	f, err := filepath.Abs(jp)
+	if err != nil {
+		return "", err
+	}
+	stats, err := os.Stat(f)
+	if err != nil {
+		return "", fmt.Errorf("file [%s] Not found", f)
 	} else {
 		if stats.IsDir() {
-			return fmt.Sprintf("File[%s] is a Directory", file)
+			return "", fmt.Errorf("file[%s] is a Directory", f)
 		}
 	}
-	return ""
+	return f, nil
 }
 
-func (p *ConfigData) toFullFilePath(relative string, name string) string {
-	var root string
-	if strings.HasPrefix(relative, absFilePrefix) {
-		root = relative[3:]
-	} else {
-		if relative == "" {
-			root = p.internal.UserDataRoot
-		} else {
-			root = fmt.Sprintf("%s%c%s", p.internal.UserDataRoot, os.PathSeparator, relative)
-		}
-	}
-	if name == "" {
-		fr, err := filepath.Abs(root)
-		if err != nil {
-			return root
-		}
-		return fr
-	}
-	root = fmt.Sprintf("%s%c%s", root, os.PathSeparator, name)
-	fr, err := filepath.Abs(root)
+func (p *ConfigData) joinPathElements(path string, name string, err error) (string, error) {
 	if err != nil {
-		return root
+		return "", err
 	}
-	return fr
+	var joined string
+
+	if path == "" {
+		if name == "" {
+			joined = p.GetUserDataRoot()
+		} else {
+			joined = filepath.Join(p.GetUserDataRoot(), name)
+		}
+	} else {
+		if strings.HasPrefix(path, absFilePrefix) {
+			joined = path[len(absFilePrefix):]
+		} else {
+			if p.GetUserDataRoot() == path {
+				joined = path
+			} else {
+				joined = filepath.Join(p.GetUserDataRoot(), path)
+			}
+		}
+	}
+	return joined, nil
 }
+
+// func (p *ConfigData) resolvePathElements(relative string, name string) string {
+// 	var root string
+// 	if strings.HasPrefix(relative, absFilePrefix) {
+// 		root = relative[3:]
+// 	} else {
+// 		if relative == "" {
+// 			root = p.internal.UserDataRoot
+// 		} else {
+// 			root = fmt.Sprintf("%s%c%s", p.internal.UserDataRoot, os.PathSeparator, relative)
+// 		}
+// 	}
+// 	if name == "" {
+// 		fr, err := filepath.Abs(root)
+// 		if err != nil {
+// 			return root
+// 		}
+// 		return fr
+// 	}
+// 	root = fmt.Sprintf("%s%c%s", root, os.PathSeparator, name)
+// 	fr, err := filepath.Abs(root)
+// 	if err != nil {
+// 		return root
+// 	}
+// 	return fr
+// }
 
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
-	errorList := NewConfigErrorData("")
 
-	e := p.checkFileExists(p.GetFaviconIcoPath())
-	if e != "" {
-		errorList.Add(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e))
+	f, e := p.checkPathExists(p.GetUserDataRoot())
+	if e != nil {
+		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s.", p.internal.UserDataRoot))
+	} else {
+		p.SetUserDataRoot(f)
 	}
 
-	e = p.checkPathExists(p.GetLogDataPath())
-	if e != "" {
+	errorList := NewConfigErrorData("")
+
+	f, e = p.checkPathExists(p.GetLogDataPath())
+	if e != nil {
 		errorList.Add(fmt.Sprintf("Config Error: LogData.Path %s", e))
+	} else {
+		p.SetLogDataPath(f)
+	}
+
+	f, e = p.checkFileExists(p.GetFaviconIcoPath())
+	if e != nil {
+		errorList.Add(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
+	} else {
+		p.SetFaviconIcoPath(f)
 	}
 
 	for userName, userData := range p.internal.Users {
+		// userConfigEnv := p.GetConfigEnv(userName, false)
+
 		for locName, _ := range userData.Locations {
-			ulp, err := p.GetUserLocPath(userName, locName)
+			path, err := p.GetUserLocPath(userName, locName)
 			if err != nil {
 				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
 			}
-			e := p.checkPathExists(ulp)
-			if e != "" {
-				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e))
+			f, e := p.checkPathExists(path)
+			if e != nil {
+				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
 			}
+			userData.Locations[locName] = f
 		}
+
 		for execName, execData := range userData.Exec {
 			if execData.Log != "" {
-				s := strings.SplitN(execData.Log, "/", 2)
-				if len(s) == 2 {
-					loc, ok := userData.Locations[s[0]]
-					if !ok {
-						errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Invalid Log[%s]. Loc [%s] Not found", userName, execName, execData.Log, s[0]))
-					} else {
-						execData.Log = fmt.Sprintf("%s%c%s%c%s", p.internal.UserDataRoot, os.PathSeparator, loc, os.PathSeparator, s[1])
-					}
+				path, err := p.GetUseExecLogPath(userName, execName)
+				if err != nil {
+					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
+				}
+				f, e := p.checkPathExists(path)
+				if e != nil {
+					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
 				} else {
-					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Invalid Log[%s]. Use loc/filename", userName, execName, execData.Log))
+					execData.Log = f
 				}
 			}
-			e := p.checkPathExists(p.toFullFilePath(execData.Dir, ""))
-			if e != "" {
-				errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Dir [%s] %s", userName, execName, execData.Dir, e))
+			if execData.Dir != "" {
+				path, err := p.GetUseExecDirectory(userName, execName)
+				if err != nil {
+					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
+				}
+				f, e := p.checkPathExists(path)
+				if e != nil {
+					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
+				} else {
+					execData.Dir = f
+				}
 			}
-			execData.Dir = strings.TrimPrefix(execData.Dir, "***")
 		}
 	}
 	return p, errorList
@@ -366,7 +441,11 @@ func (p *ConfigData) GetUserData(user string) *UserData {
 }
 
 func (p *ConfigData) GetUserDataRoot() string {
-	return p.toFullFilePath(p.internal.UserDataRoot, "")
+	return p.internal.UserDataRoot
+}
+
+func (p *ConfigData) SetUserDataRoot(f string) {
+	p.internal.UserDataRoot = f
 }
 
 func (p *ConfigData) GetContentTypeCharset() string {
@@ -374,19 +453,68 @@ func (p *ConfigData) GetContentTypeCharset() string {
 }
 
 func (p *ConfigData) GetFaviconIcoPath() string {
-	return p.toFullFilePath("", p.internal.FaviconIcoPath)
+	return p.internal.FaviconIcoPath
+}
+
+func (p *ConfigData) SetFaviconIcoPath(f string) {
+	p.internal.FaviconIcoPath = f
 }
 
 func (p *ConfigData) GetLogDataPath() string {
-	return p.toFullFilePath("", p.internal.LogData.Path)
+	return p.internal.LogData.Path
+}
+
+func (p *ConfigData) SetLogDataPath(f string) {
+	p.internal.LogData.Path = f
 }
 
 func (p *ConfigData) GetLogData() *LogData {
 	return p.internal.LogData
 }
 
+func (p *ConfigData) GetConfigEnv(user string, includeLocations bool) map[string]string {
+	m := make(map[string]string)
+	userData, ok := p.internal.Users[user]
+	if ok {
+		for n, v := range userData.Env {
+			m["env."+n] = v
+		}
+		if includeLocations {
+			for n, v := range userData.Locations {
+				m["loc."+n] = v
+			}
+		}
+	}
+	m["user.name"] = user
+	return m
+}
+
 func (p *ConfigData) GetPortString() string {
 	return fmt.Sprintf(":%d", p.internal.Port)
+}
+
+func (p *ConfigData) GetUseExecLogPath(user string, exec string) (string, error) {
+	userData, ok := p.internal.Users[user]
+	if !ok {
+		return "", fmt.Errorf("user not found")
+	}
+	execData, ok := userData.Exec[exec]
+	if !ok {
+		return "", fmt.Errorf("exec id not found")
+	}
+	return execData.Log, nil
+}
+
+func (p *ConfigData) GetUseExecDirectory(user string, exec string) (string, error) {
+	userData, ok := p.internal.Users[user]
+	if !ok {
+		return "", fmt.Errorf("user not found")
+	}
+	execData, ok := userData.Exec[exec]
+	if !ok {
+		return "", fmt.Errorf("exec id not found")
+	}
+	return execData.Dir, nil
 }
 
 func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
@@ -398,42 +526,28 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("user location not found")
 	}
-	if strings.HasPrefix(locData, "***") {
-		return locData[3:], nil
-	}
-	return p.toFullFilePath(locData, ""), nil
+	return locData, nil
 }
 
-func (p *ConfigData) GetUserLocPathParams(parameters *Parameters) (res string, err error) {
+func (p *ConfigData) GetUserLocPathParams(parameters *Parameters) (path string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
-			res = ""
+			path = ""
 		}
 	}()
-	path, err := p.GetUserLocPath(parameters.GetUser(), parameters.GetLocation())
-	if err != nil {
-		return "", err
-	}
-	return path, nil
+	return p.GetUserLocPath(parameters.GetUser(), parameters.GetLocation())
 }
 
-func (p *ConfigData) GetUserLocFilePathParams(parameters *Parameters) (res string, err error) {
+func (p *ConfigData) GetUserLocFilePathParams(parameters *Parameters) (file string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
-			res = ""
+			file = ""
 		}
 	}()
-	path, e := p.GetUserLocPath(parameters.GetUser(), parameters.GetLocation())
-	if e != nil {
-		return "", e
-	}
-	fileName := parameters.GetName()
-	if fileName == "" {
-		return "", fmt.Errorf("filename not defined")
-	}
-	return fmt.Sprintf("%s%c%s", path, os.PathSeparator, fileName), nil
+	pa, err := p.GetUserLocPath(parameters.GetUser(), parameters.GetLocation())
+	return filepath.Join(pa, parameters.GetName()), err
 }
 
 func (p *ConfigData) UserExec(user, execid string) (*ExecInfo, error) {

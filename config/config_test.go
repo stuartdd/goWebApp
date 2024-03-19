@@ -55,8 +55,8 @@ func TestUserExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
-	if exec.ToString() != "CMD:[cmd2], Dir:testdata, Log:../testdata/boblog2" {
-		t.Fatal("Did not find the correct exec!")
+	if exec.ToString() != "CMD:[cmd2], Dir:, LogOut:/home/stuart/git/golang/goWebApp/testdata/logs/logOut.txt, LogErr:" {
+		t.Fatalf("Did not find the correct exec! Actual '%s'", exec.ToString())
 	}
 	p = NewParameters(map[string]string{"user": "bob", "exec": "X2"}, conf)
 	_, err = p.UserExec()
@@ -97,7 +97,7 @@ func TestCommands(t *testing.T) {
 	if c1.Dir != "" {
 		t.Fatal("Command Dir should be empty")
 	}
-	if c1.Log != "../testdata/logs/boblog1" {
+	if c1.Log != "/home/stuart/git/golang/goWebApp/testdata/logs" {
 		t.Fatal("Command Log should be ../testdata/logs/boblog1")
 	}
 
