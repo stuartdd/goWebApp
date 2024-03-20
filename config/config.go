@@ -12,7 +12,8 @@ import (
 
 const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
-const absFilePrefix = "***"
+const AbsolutePathPrefix = "***"
+const guestUserPath = "guest"
 
 var emptyMap = map[string]string{}
 
@@ -269,64 +270,58 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	return configDataExtternal.resolveLocations()
 }
 
-func (p *ConfigData) checkPathExists(path string, userEnv map[string]string) (string, error) {
-	jp := p.joinPathElements(p.SubstituteFromMap([]rune(path), userEnv), "")
-	f, err := filepath.Abs(jp)
+func (p *ConfigData) checkPathExists(relPath string, userPath string, userEnv map[string]string) (string, error) {
+	absPath := p.prefixRelativePaths(relPath, userPath)
+	absPathSub := p.SubstituteFromMap([]rune(absPath), userEnv)
+	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
-		return "", fmt.Errorf("path [%s] is invalid", jp)
+		return "", fmt.Errorf("path [%s] is invalid", absPathSub)
 	}
-	stats, err := os.Stat(f)
+	stats, err := os.Stat(absPathPath)
 	if err != nil {
-		return "", fmt.Errorf("path [%s] Not found", f)
+		return "", fmt.Errorf("path [%s] Not found", absPathPath)
 	} else {
 		if !stats.IsDir() {
-			return "", fmt.Errorf("path[%s] Not a Directory", path)
+			return "", fmt.Errorf("path[%s] Not a Directory", absPathPath)
 		}
 	}
-	return f, nil
+	return absPathPath, nil
 }
 
-func (p *ConfigData) checkFileExists(path string, file string, userEnv map[string]string) (string, error) {
-	jp := p.joinPathElements(p.SubstituteFromMap([]rune(path), userEnv), file)
-	f, err := filepath.Abs(jp)
+func (p *ConfigData) checkFileExists(relPath string, userPath string, file string, userEnv map[string]string) (string, error) {
+	absPath := p.prefixRelativePaths(relPath, userPath)
+	absPathSub := p.SubstituteFromMap([]rune(absPath), userEnv)
+	absFilePath, err := filepath.Abs(absPathSub)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("path [%s] is invalid", absPathSub)
 	}
-	stats, err := os.Stat(f)
+	if file == "" {
+		return "", fmt.Errorf("file is undefined. Path [%s]", absFilePath)
+	}
+	absFilePath = filepath.Join(absFilePath, file)
+	stats, err := os.Stat(absFilePath)
 	if err != nil {
-		return "", fmt.Errorf("file [%s] Not found", f)
+		return "", fmt.Errorf("file [%s] Not found", absFilePath)
 	} else {
 		if stats.IsDir() {
-			return "", fmt.Errorf("file[%s] is a Directory", f)
+			return "", fmt.Errorf("file[%s] is a Directory", absFilePath)
 		}
 	}
-	return f, nil
+	return absFilePath, nil
 }
 
-func (p *ConfigData) joinPathElements(path string, name string) string {
-	var joined string
-	if path == "" {
-		joined = p.GetServerDataRoot()
-	} else {
-		if strings.HasPrefix(path, absFilePrefix) {
-			joined = path[len(absFilePrefix):]
-		} else {
-			if p.GetServerDataRoot() == path {
-				joined = path
-			} else {
-				joined = filepath.Join(p.GetServerDataRoot(), path)
-			}
-		}
+func (p *ConfigData) prefixRelativePaths(relPath string, userPath string) string {
+	if strings.HasPrefix(relPath, AbsolutePathPrefix) {
+		return relPath[len(AbsolutePathPrefix):]
 	}
-	if name != "" {
-		joined = filepath.Join(joined, name)
+	if relPath == "" {
+		return filepath.Join(p.GetServerDataRoot(), userPath)
 	}
-
-	return joined
+	return filepath.Join(filepath.Join(p.GetServerDataRoot(), userPath), strings.TrimPrefix(relPath, ".."))
 }
 
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
-	f, e := p.checkPathExists(p.GetServerDataRoot(), emptyMap)
+	f, e := p.checkPathExists("", "", emptyMap) // Will check GetServerDataRoot
 	if e != nil {
 		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s.", p.internal.ServerDataRoot))
 	} else {
@@ -335,14 +330,14 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 
 	errorList := NewConfigErrorData("")
 
-	f, e = p.checkPathExists(p.GetLogDataPath(), emptyMap)
+	f, e = p.checkPathExists(p.GetLogDataPath(), "", emptyMap)
 	if e != nil {
 		errorList.Add(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
 		p.SetLogDataPath(f)
 	}
 
-	f, e = p.checkFileExists("", p.GetFaviconIcoPath(), emptyMap)
+	f, e = p.checkFileExists("", "", p.GetFaviconIcoPath(), emptyMap)
 	if e != nil {
 		errorList.Add(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
 	} else {
@@ -350,14 +345,14 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 	}
 
 	for userName, userData := range p.internal.Users {
-
+		userPathPrefix := userData.Home
 		for locName, _ := range userData.Locations {
 			path, err := p.GetUserLocPath(userName, locName)
 			if err != nil {
 				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
 			}
 
-			f, e := p.checkPathExists(path, emptyMap)
+			f, e := p.checkPathExists(path, userPathPrefix, emptyMap)
 			if e != nil {
 				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
 			}
@@ -371,7 +366,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 				if err != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
 				}
-				f, e := p.checkPathExists(strings.TrimPrefix(path, ".."), userConfigEnv)
+				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
 				if e != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
 				} else {
@@ -383,7 +378,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 				if err != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
 				}
-				f, e := p.checkPathExists(strings.TrimPrefix(path, ".."), userConfigEnv)
+				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
 				if e != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
 				} else {
@@ -417,13 +412,13 @@ func (p *ConfigData) GetUserNamesList() []string {
 	return unl
 }
 
-func (p *ConfigData) GetUserDataRoot(user string) string {
-	ud := p.GetUserData(user)
-	if ud == nil || ud.Home == "" {
-		return filepath.Join(p.GetServerDataRoot(), "guest")
-	}
-	return filepath.Join(p.GetServerDataRoot(), ud.Home)
-}
+// func (p *ConfigData) GetUserDataRoot(user string) string {
+// 	ud := p.GetUserData(user)
+// 	if ud == nil || ud.Home == "" {
+// 		return filepath.Join(p.GetServerDataRoot(), "guest")
+// 	}
+// 	return filepath.Join(p.GetServerDataRoot(), ud.Home)
+// }
 
 func (p *ConfigData) GetServerDataRoot() string {
 	return p.internal.ServerDataRoot
@@ -511,10 +506,7 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("user location not found")
 	}
-	if strings.HasPrefix(locData, absFilePrefix) {
-		return locData, nil
-	}
-	return filepath.Join(userData.Home, strings.TrimPrefix(locData, "..")), nil
+	return locData, nil
 }
 
 func (p *ConfigData) GetUserLocPathParams(parameters *Parameters) (path string, err error) {

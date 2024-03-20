@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -160,6 +161,31 @@ func (p *FileHandler) Submit() *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.parameters.GetName())
 }
 
+func NewDirHandler(parameters map[string]string, configData *config.ConfigData) Handler {
+	return &DirHandler{
+		parameters: config.NewParameters(parameters, configData),
+	}
+}
+
+func (p *DirHandler) Submit() *ResponseData {
+	file, err := p.parameters.UserLocPath()
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
+	}
+	stats, err := os.Stat(file)
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
+	}
+	if !stats.IsDir() {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
+	}
+	entries, err := os.ReadDir(file)
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
+	}
+	return NewResponseData(http.StatusOK).WithContentBytesJson(DirAsJson(entries, p.parameters.FilterFiles()))
+}
+
 func NewTreeHandler(parameters map[string]string, configData *config.ConfigData) Handler {
 	return &TreeHandler{
 		parameters: config.NewParameters(parameters, configData),
@@ -186,12 +212,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 				return err
 			}
 			if info.IsDir() && !strings.HasPrefix(path, ".") && !strings.HasPrefix(path, "_") {
-				err := root.AddPath(path)
-				if err == nil {
-					fmt.Printf("ADD:%s\n", path)
-				} else {
-					fmt.Printf("---:%s\n", path)
-				}
+				root.AddPath(path)
 			}
 			return nil
 		})
@@ -199,31 +220,6 @@ func (p *TreeHandler) Submit() *ResponseData {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(TreeAsJson(root)).WithMimeType("json")
-}
-
-func NewDirHandler(parameters map[string]string, configData *config.ConfigData) Handler {
-	return &DirHandler{
-		parameters: config.NewParameters(parameters, configData),
-	}
-}
-
-func (p *DirHandler) Submit() *ResponseData {
-	file, err := p.parameters.UserLocPath()
-	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
-	}
-	stats, err := os.Stat(file)
-	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
-	}
-	if !stats.IsDir() {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
-	}
-	entries, err := os.ReadDir(file)
-	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
-	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(DirAsJson(entries, p.parameters.FilterFiles()))
 }
 
 func NewFilePostHandler(parameters map[string]string, configData *config.ConfigData, r *http.Request) Handler {
@@ -343,7 +339,10 @@ func DirAsJson(ent []fs.DirEntry, filter []string) []byte {
 	for i := 0; i < entLen; i++ {
 		e := ent[i]
 		if filterDirNames(e, filter) {
-			buffer.WriteString("\"file\":\"")
+			b64Name := base64.StdEncoding.EncodeToString([]byte(e.Name()))
+			buffer.WriteString("\"")
+			buffer.WriteString(b64Name)
+			buffer.WriteString("\":\"")
 			buffer.WriteString(e.Name())
 			buffer.WriteString("\"")
 			buffer.WriteRune(',')

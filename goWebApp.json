@@ -5,7 +5,8 @@
     "ServerName": "MyServer",
     "filterFiles": [
         "Json",
-        "Data"
+        "Data",
+        "jpeg"
     ],
     "faviconIcoPath": "favicon1.ico",
     "LogData": {

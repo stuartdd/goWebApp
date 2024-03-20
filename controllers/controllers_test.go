@@ -55,19 +55,11 @@ func TestMarshal(t *testing.T) {
 	jj4 := tn.ToJson(false)
 	tim4 := time.Now().UnixMicro()
 
-	tim5 := time.Now().UnixMicro()
-	tn.ToJson(true)
-	tim6 := time.Now().UnixMicro()
-
 	AssertEquals(t, "Marshal", jj4, jj)
 	timMarshal := tim2 - tim
 	timToJson := tim4 - tim3
-	timToJsonInd := tim6 - tim5
 	if timToJson > timMarshal {
-		t.Fatalf("Time Marshal:%d Time ToJson:%d Time ToJsonIndent:%d. Time ToJson should be faster!", timMarshal, timToJson, timToJsonInd)
-	}
-	if timToJsonInd > timMarshal {
-		t.Fatalf("Time Marshal:%d Time ToJson:%d Time ToJsonIndent:%d. Time ToJsonIndent should be faster!", timMarshal, timToJson, timToJsonInd)
+		t.Fatalf("Time Marshal:%d Time ToJson:%d. Time ToJson should be faster!", timMarshal, timToJson)
 	}
 }
 

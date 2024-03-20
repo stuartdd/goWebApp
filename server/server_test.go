@@ -52,7 +52,7 @@ func TestGetListDirFile(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	url := "files/user/stuart/loc/picsPlus/tree"
+	url := "files/user/stuart/loc/testtree/tree"
 
 	resp, dirList := RunClientGet(t, configData, url, 200, "?", -1)
 	if resp.StatusCode != 200 {
@@ -136,20 +136,26 @@ func TestReadDir(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1)
-	if resBody != "{\"error\":false, \"file\":\"t1.JSON\",\"file\":\"t2.Data\"}" {
+	if resBody != "{\"error\":false, \"dDEuSlNPTg==\":\"t1.JSON\",\"dDIuRGF0YQ==\":\"t2.Data\"}" {
 		t.Fatalf("Respons body does not equal..1")
 	}
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1)
-	if resBody != "{\"error\":false, \"file\":\"t5.json\"}" {
-		t.Fatalf("Respons body does not equal..2")
+	if !strings.Contains(resBody, "\"dDUuanNvbg==\":\"t5.json\"") {
+		t.Fatalf("Respons body does contain \"fidDUuanNvbg==le\":\"t5.json\"")
+	}
+	if !strings.Contains(resBody, ":\"testdata.json\"") {
+		t.Fatalf("Respons body does contain :\"testdata.json\"")
+	}
+	if !strings.Contains(resBody, "\"error\":false") {
+		t.Fatalf("Respons body does contain \"error\":false")
 	}
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1)
 	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
 		t.Fatalf("Respons body does not equal..3")
 	}
-	AssertLogContains(t, logger, []string{"Server running", "Port:8083", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server running", ":8083.", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 
@@ -170,18 +176,14 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("Respons body does not start with...")
 	}
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/testfolder", 404, "?", 73)
+	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", 404, "?", 73)
 	if !strings.Contains(trimString(resBody), "Is not a file") {
 		t.Fatalf("Respons body does not contain 'Is not a file'")
 	}
 
-	AssertLogContains(t, logger, []string{"Server running", "Port:8083", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server running", ":8083.", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
-
-//
-// "{\"status\":404, \"msg\":\"Not Found\", \"reason\":\"Is not a file\"}"
-//
 
 func TestClient(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")

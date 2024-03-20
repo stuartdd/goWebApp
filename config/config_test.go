@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,27 +10,27 @@ import (
 func TestJoinPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatal(errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.ToString())
 	}
 	if conf == nil {
-		t.Fatal("Config is nil. Load failed")
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
 	var f string
 	pre := conf.GetServerDataRoot()
 
-	f = conf.joinPathElements("/dir", "")
+	f = conf.prefixRelativePaths("/dir", "")
 	assertEquals(t, "file 3", f, filepath.Join(pre, "dir"))
-	f = conf.joinPathElements("***/dir", "")
+	f = conf.prefixRelativePaths("***/dir", "")
 	assertEquals(t, "file 4", f, "/dir")
-	f = conf.joinPathElements("***/dir", "file.txt")
-	assertEquals(t, "file 5", f, "/dir/file.txt")
-	f = conf.joinPathElements("***dir", "file.txt")
-	assertEquals(t, "file 6", f, "dir/file.txt")
-	f = conf.joinPathElements("dir", "file.txt")
-	assertEquals(t, "file 7", f, filepath.Join(pre, "dir/file.txt"))
-	f = conf.joinPathElements("", "file.txt")
-	assertEquals(t, "file 8", f, filepath.Join(pre, "file.txt"))
-	f = conf.joinPathElements("dir", "")
+	f = conf.prefixRelativePaths("***/dir", "stuart")
+	assertEquals(t, "file 5", f, "/dir")
+	f = conf.prefixRelativePaths("***dir", "bob")
+	assertEquals(t, "file 6", f, "dir")
+	f = conf.prefixRelativePaths("dir", "stuart")
+	assertEquals(t, "file 7", f, filepath.Join(pre, "stuart/dir"))
+	f = conf.prefixRelativePaths("", "john")
+	assertEquals(t, "file 8", f, filepath.Join(pre, "john"))
+	f = conf.prefixRelativePaths("dir", "")
 	assertEquals(t, "file 9", f, filepath.Join(pre, "dir"))
 }
 
@@ -87,17 +88,20 @@ func assertEquals(t *testing.T, message string, actual string, expected string) 
 func TestUserExec(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatal(errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.ToString())
 	}
 	if conf == nil {
-		t.Fatal("Config is nil. Load failed")
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
 	p := NewParameters(map[string]string{"user": "bob", "exec": "c2"}, conf)
+	pre := conf.GetServerDataRoot()
+
 	exec, err := p.UserExec()
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
-	if exec.ToString() != "CMD:[cmd2], Dir:, LogOut:/home/stuart/git/golang/goWebApp/testdata/logs/logOut.txt, LogErr:" {
+
+	if exec.ToString() != fmt.Sprintf("CMD:[cmd2], Dir:, LogOut:%s/bob/logs/logOut.txt, LogErr:", pre) {
 		t.Fatalf("Did not find the correct exec! Actual '%s'", exec.ToString())
 	}
 	p = NewParameters(map[string]string{"user": "bob", "exec": "X2"}, conf)
@@ -121,10 +125,10 @@ func TestUserExec(t *testing.T) {
 func TestCommands(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatal(errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.ToString())
 	}
 	if conf == nil {
-		t.Fatal("Config is nil. Load failed")
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
 	c1, err := conf.UserExec("bob", "ls")
 	if err != nil {
@@ -139,8 +143,8 @@ func TestCommands(t *testing.T) {
 	if c1.Dir != "" {
 		t.Fatal("Command Dir should be empty")
 	}
-	if c1.Log != "/home/stuart/git/golang/goWebApp/testdata/logs" {
-		t.Fatal("Command Log should be ../testdata/logs/boblog1")
+	if !strings.HasSuffix(c1.Log, "/testdata/bob/logs") {
+		t.Fatal("Command Log should end /testdata/bob/logs")
 	}
 
 }
@@ -148,7 +152,10 @@ func TestCommands(t *testing.T) {
 func TestUserDataPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatal(errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.ToString())
+	}
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
 
 	_, e := conf.GetUserLocPathParams(NewParameters(map[string]string{"xxxx": "fred", "loc": "home"}, conf))
@@ -190,24 +197,24 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf(e.Error())
 	}
 
-	if !strings.HasSuffix(u, "/testdata") {
-		t.Fatalf("Should return path to /testdata")
+	if !strings.HasSuffix(u, "/testdata/stuart") {
+		t.Fatalf("Should return path to /testdata/stuart")
 	}
 
 	f, e := conf.GetUserLocFilePathParams(NewParameters(map[string]string{"user": "bob", "loc": "home", "name": "data.json"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
-	if !strings.HasSuffix(f, "/testdata/data.json") {
-		t.Fatalf("Should return path to /testdata/data.json")
+	if !strings.HasSuffix(f, "/testdata/bob/data.json") {
+		t.Fatalf("Should return path to /testdata/bob/data.json")
 	}
 
 	f, e = conf.GetUserLocFilePathParams(NewParameters(map[string]string{"user": "stuart", "loc": "picsPlus", "name": "pics.json"}, conf))
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
-	if !strings.HasSuffix(f, "/testdata/testfolder/pics.json") {
-		t.Fatalf("Should return path to /testdata/testfolder/pics.json")
+	if !strings.HasSuffix(f, "/testdata/stuart/s-pics/s-testfolder/pics.json") {
+		t.Fatalf("Should return path to /testdata/stuart/s-pics/s-testfolder/pics.json")
 	}
 
 }

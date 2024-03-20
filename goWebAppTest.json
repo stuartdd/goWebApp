@@ -17,40 +17,54 @@
     "Users": {
         "bob": {
             "name": "Bob",
+            "home": "bob",
             "Locations": {
                 "home": "",
-                "usr": "../logs"
+                "usr": "b-testfolder",
+                "pics": "b-pics"
             },
             "Exec": {
                 "ls": {
-                    "cmd": ["ls","-lta"],
+                    "cmd": [
+                        "ls",
+                        "-lta"
+                    ],
                     "dir": "",
                     "log": "logs"
                 },
                 "c2": {
-                    "cmd": ["cmd2"],
+                    "cmd": [
+                        "cmd2"
+                    ],
                     "dir": "",
                     "log": "logs",
-                    "logOut" : "logOut.txt"
+                    "logOut": "logOut.txt"
                 }
             }
         },
         "stuart": {
             "name": "Stuart",
+            "home": "stuart",
             "Locations": {
                 "home": "",
-                "pics": "pics",
-                "picsPlus": "testfolder",
-                "picsMissing": "test_folder"
+                "usr": "s-testfolder",
+                "pics": "s-pics",
+                "testtree": "***/opt",
+                "picsPlus": "s-pics/s-testfolder",
+                "picsMissing": "missingfolder"
             },
             "exec": {
                 "c1": {
-                    "cmd": ["cmd1"],
+                    "cmd": [
+                        "cmd1"
+                    ],
                     "dir": "",
                     "log": "logs"
                 },
                 "c2": {
-                    "cmd": ["cmd2"],
+                    "cmd": [
+                        "cmd2"
+                    ],
                     "dir": "",
                     "log": "logs"
                 }

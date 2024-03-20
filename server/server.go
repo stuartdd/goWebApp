@@ -141,7 +141,7 @@ func (p *WebAppServer) Start() {
 	p.Log(fmt.Sprintf("Server Path (wd):%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("Server Data Root:%s.", p.Handler.config.GetServerDataRoot()))
 	for _, un := range p.Handler.config.GetUserNamesList() {
-		p.Log(fmt.Sprintf("Server User     :%s --> %s", un, p.Handler.config.GetUserDataRoot(un)))
+		p.Log(fmt.Sprintf("Server User     :%s", un))
 	}
 	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))
 }
