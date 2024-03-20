@@ -88,6 +88,6 @@ func TestTreeNode(t *testing.T) {
 
 func AssertEquals(t *testing.T, message string, actual []byte, expected string) {
 	if string(actual) != expected {
-		t.Fatalf("%s.\nExpected:%s\nActual:  %s\nActual:  %s", message, expected, string(actual), actual)
+		t.Fatalf("%s.\nExpected:%s\nActual:  %s:", message, expected, string(actual))
 	}
 }

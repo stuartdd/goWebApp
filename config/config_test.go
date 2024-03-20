@@ -1,9 +1,37 @@
 package config
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestJoinPath(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json")
+	if errlist.Len() != 1 {
+		t.Fatal(errlist.ToString())
+	}
+	if conf == nil {
+		t.Fatal("Config is nil. Load failed")
+	}
+	var f string
+	pre := conf.GetServerDataRoot()
+
+	f = conf.joinPathElements("/dir", "")
+	assertEquals(t, "file 3", f, filepath.Join(pre, "dir"))
+	f = conf.joinPathElements("***/dir", "")
+	assertEquals(t, "file 4", f, "/dir")
+	f = conf.joinPathElements("***/dir", "file.txt")
+	assertEquals(t, "file 5", f, "/dir/file.txt")
+	f = conf.joinPathElements("***dir", "file.txt")
+	assertEquals(t, "file 6", f, "dir/file.txt")
+	f = conf.joinPathElements("dir", "file.txt")
+	assertEquals(t, "file 7", f, filepath.Join(pre, "dir/file.txt"))
+	f = conf.joinPathElements("", "file.txt")
+	assertEquals(t, "file 8", f, filepath.Join(pre, "file.txt"))
+	f = conf.joinPathElements("dir", "")
+	assertEquals(t, "file 9", f, filepath.Join(pre, "dir"))
+}
 
 func TestSubstitute(t *testing.T) {
 	m1 := map[string]string{"A": "X", "b": "Y"}
@@ -33,12 +61,26 @@ func TestSubstitute(t *testing.T) {
 	assertSub(t, "Z7", "-%%{Z}-", "-%%{Z}-", m1, m2)
 	assertSub(t, "Z8", "-%%Z-", "-%%Z-", m1, m2)
 	assertSub(t, "Z9", "-%Z-", "-%Z-", m1, m2)
+
+	assertEquals(t, "empty", SubstituteFromMap([]rune(""), m1, m2), "")
+	assertEquals(t, "1 ch", SubstituteFromMap([]rune("%"), m1, m2), "%")
+	assertEquals(t, "2 ch", SubstituteFromMap([]rune("%{"), m1, m2), "%{")
+	assertEquals(t, "3 ch", SubstituteFromMap([]rune("%{}"), m1, m2), "%{}")
+	assertEquals(t, "4 chA", SubstituteFromMap([]rune("%{A}"), m1, m2), "X")
+	assertEquals(t, "4 chX", SubstituteFromMap([]rune("%{Z}"), m1, m2), "%{Z}")
+
 }
 
 func assertSub(t *testing.T, id, sub, expected string, m1 map[string]string, m2 map[string]string) {
 	r := SubstituteFromMap([]rune(sub), m1, m2)
 	if r != expected {
 		t.Fatalf("Substitution: %s, \nExpected [%s]\nActual   [%s]", id, expected, r)
+	}
+}
+
+func assertEquals(t *testing.T, message string, actual string, expected string) {
+	if actual != expected {
+		t.Fatalf("%s.\nExpected:%s\nActual:  %s", message, expected, string(actual))
 	}
 }
 

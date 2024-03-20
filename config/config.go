@@ -14,6 +14,8 @@ const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
 const absFilePrefix = "***"
 
+var emptyMap = map[string]string{}
+
 /*
 ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
@@ -69,6 +71,7 @@ Users Data. Derived from JSON!
 */
 type UserData struct {
 	Name      string
+	Home      string
 	Locations map[string]string
 	Exec      map[string]*ExecInfo
 	Env       map[string]string
@@ -175,7 +178,7 @@ type ConfigDataInternal struct {
 	ServerName         string
 	PanicResponseCode  int
 	FilterFiles        []string
-	UserDataRoot       string
+	ServerDataRoot     string
 	FaviconIcoPath     string
 }
 
@@ -239,7 +242,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 		ServerName:         moduleName,
 		FilterFiles:        []string{},
 		PanicResponseCode:  500,
-		UserDataRoot:       "~/",
+		ServerDataRoot:     "~/",
 		FaviconIcoPath:     "",
 	}
 
@@ -266,11 +269,8 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	return configDataExtternal.resolveLocations()
 }
 
-func (p *ConfigData) checkPathExists(path string) (string, error) {
-	jp, err := p.joinPathElements(path, "", nil)
-	if err != nil {
-		return "", fmt.Errorf("path [%s] is invalid", path)
-	}
+func (p *ConfigData) checkPathExists(path string, userEnv map[string]string) (string, error) {
+	jp := p.joinPathElements(p.SubstituteFromMap([]rune(path), userEnv), "")
 	f, err := filepath.Abs(jp)
 	if err != nil {
 		return "", fmt.Errorf("path [%s] is invalid", jp)
@@ -286,11 +286,8 @@ func (p *ConfigData) checkPathExists(path string) (string, error) {
 	return f, nil
 }
 
-func (p *ConfigData) checkFileExists(file string) (string, error) {
-	jp, err := p.joinPathElements("", file, nil)
-	if err != nil {
-		return "", fmt.Errorf("file [%s] is invalid", file)
-	}
+func (p *ConfigData) checkFileExists(path string, file string, userEnv map[string]string) (string, error) {
+	jp := p.joinPathElements(p.SubstituteFromMap([]rune(path), userEnv), file)
 	f, err := filepath.Abs(jp)
 	if err != nil {
 		return "", err
@@ -306,77 +303,46 @@ func (p *ConfigData) checkFileExists(file string) (string, error) {
 	return f, nil
 }
 
-func (p *ConfigData) joinPathElements(path string, name string, err error) (string, error) {
-	if err != nil {
-		return "", err
-	}
+func (p *ConfigData) joinPathElements(path string, name string) string {
 	var joined string
-
 	if path == "" {
-		if name == "" {
-			joined = p.GetUserDataRoot()
-		} else {
-			joined = filepath.Join(p.GetUserDataRoot(), name)
-		}
+		joined = p.GetServerDataRoot()
 	} else {
 		if strings.HasPrefix(path, absFilePrefix) {
 			joined = path[len(absFilePrefix):]
 		} else {
-			if p.GetUserDataRoot() == path {
+			if p.GetServerDataRoot() == path {
 				joined = path
 			} else {
-				joined = filepath.Join(p.GetUserDataRoot(), path)
+				joined = filepath.Join(p.GetServerDataRoot(), path)
 			}
 		}
 	}
-	return joined, nil
+	if name != "" {
+		joined = filepath.Join(joined, name)
+	}
+
+	return joined
 }
 
-// func (p *ConfigData) resolvePathElements(relative string, name string) string {
-// 	var root string
-// 	if strings.HasPrefix(relative, absFilePrefix) {
-// 		root = relative[3:]
-// 	} else {
-// 		if relative == "" {
-// 			root = p.internal.UserDataRoot
-// 		} else {
-// 			root = fmt.Sprintf("%s%c%s", p.internal.UserDataRoot, os.PathSeparator, relative)
-// 		}
-// 	}
-// 	if name == "" {
-// 		fr, err := filepath.Abs(root)
-// 		if err != nil {
-// 			return root
-// 		}
-// 		return fr
-// 	}
-// 	root = fmt.Sprintf("%s%c%s", root, os.PathSeparator, name)
-// 	fr, err := filepath.Abs(root)
-// 	if err != nil {
-// 		return root
-// 	}
-// 	return fr
-// }
-
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
-
-	f, e := p.checkPathExists(p.GetUserDataRoot())
+	f, e := p.checkPathExists(p.GetServerDataRoot(), emptyMap)
 	if e != nil {
-		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s.", p.internal.UserDataRoot))
+		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s.", p.internal.ServerDataRoot))
 	} else {
-		p.SetUserDataRoot(f)
+		p.SetServerDataRoot(f)
 	}
 
 	errorList := NewConfigErrorData("")
 
-	f, e = p.checkPathExists(p.GetLogDataPath())
+	f, e = p.checkPathExists(p.GetLogDataPath(), emptyMap)
 	if e != nil {
 		errorList.Add(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
 		p.SetLogDataPath(f)
 	}
 
-	f, e = p.checkFileExists(p.GetFaviconIcoPath())
+	f, e = p.checkFileExists("", p.GetFaviconIcoPath(), emptyMap)
 	if e != nil {
 		errorList.Add(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
 	} else {
@@ -384,27 +350,28 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 	}
 
 	for userName, userData := range p.internal.Users {
-		// userConfigEnv := p.GetConfigEnv(userName, false)
 
 		for locName, _ := range userData.Locations {
 			path, err := p.GetUserLocPath(userName, locName)
 			if err != nil {
 				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
 			}
-			f, e := p.checkPathExists(path)
+
+			f, e := p.checkPathExists(path, emptyMap)
 			if e != nil {
 				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
 			}
 			userData.Locations[locName] = f
 		}
 
+		userConfigEnv := p.GetConfigEnv(userName, false)
 		for execName, execData := range userData.Exec {
 			if execData.Log != "" {
 				path, err := p.GetUseExecLogPath(userName, execName)
 				if err != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
 				}
-				f, e := p.checkPathExists(path)
+				f, e := p.checkPathExists(strings.TrimPrefix(path, ".."), userConfigEnv)
 				if e != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
 				} else {
@@ -416,13 +383,15 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 				if err != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
 				}
-				f, e := p.checkPathExists(path)
+				f, e := p.checkPathExists(strings.TrimPrefix(path, ".."), userConfigEnv)
 				if e != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
 				} else {
 					execData.Dir = f
 				}
 			}
+			execData.LogOut = p.SubstituteFromMap([]rune(execData.LogOut), userConfigEnv)
+			execData.LogErr = p.SubstituteFromMap([]rune(execData.LogErr), userConfigEnv)
 		}
 	}
 	return p, errorList
@@ -440,12 +409,28 @@ func (p *ConfigData) GetUserData(user string) *UserData {
 	return nil
 }
 
-func (p *ConfigData) GetUserDataRoot() string {
-	return p.internal.UserDataRoot
+func (p *ConfigData) GetUserNamesList() []string {
+	unl := []string{}
+	for na, _ := range p.internal.Users {
+		unl = append(unl, na)
+	}
+	return unl
 }
 
-func (p *ConfigData) SetUserDataRoot(f string) {
-	p.internal.UserDataRoot = f
+func (p *ConfigData) GetUserDataRoot(user string) string {
+	ud := p.GetUserData(user)
+	if ud == nil || ud.Home == "" {
+		return filepath.Join(p.GetServerDataRoot(), "guest")
+	}
+	return filepath.Join(p.GetServerDataRoot(), ud.Home)
+}
+
+func (p *ConfigData) GetServerDataRoot() string {
+	return p.internal.ServerDataRoot
+}
+
+func (p *ConfigData) SetServerDataRoot(f string) {
+	p.internal.ServerDataRoot = f
 }
 
 func (p *ConfigData) GetContentTypeCharset() string {
@@ -526,7 +511,10 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("user location not found")
 	}
-	return locData, nil
+	if strings.HasPrefix(locData, absFilePrefix) {
+		return locData, nil
+	}
+	return filepath.Join(userData.Home, strings.TrimPrefix(locData, "..")), nil
 }
 
 func (p *ConfigData) GetUserLocPathParams(parameters *Parameters) (path string, err error) {
@@ -575,6 +563,9 @@ func (p *ConfigData) SubstituteFromMap(cmd []rune, env map[string]string) string
 }
 
 func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]string) string {
+	if len(cmd) < 4 {
+		return string(cmd)
+	}
 	var buff bytes.Buffer
 	var name bytes.Buffer
 	havePC := 0

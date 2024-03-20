@@ -1,0 +1,13 @@
+{
+    "ServerName": "TestServer",
+    "Users": {
+        "stuart": {
+            "name": "Stuart",
+            "Locations": {
+                "home": "sHome",
+                "pics": "testdata"
+            }
+        }
+    },
+    "UserDataRoot": ".."
+}

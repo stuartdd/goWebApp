@@ -19,7 +19,7 @@
             "name": "Bob",
             "Locations": {
                 "home": "",
-                "usr": "logs"
+                "usr": "../logs"
             },
             "Exec": {
                 "ls": {
@@ -57,5 +57,5 @@
             }
         }
     },
-    "UserDataRoot": "../testdata"
+    "ServerDataRoot": "../testdata"
 }

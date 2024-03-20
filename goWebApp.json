@@ -17,13 +17,16 @@
     "Users": {
         "bob": {
             "name": "Bob",
+            "home": "bob",
             "Locations": {
-                "home": "testdata",
-                "usr": "testdata/testfolder"
+                "home": "",
+                "usr": "b-testfolder",
+                "pics": "b-pics"
             }
         },
         "stuart": {
             "name": "Stuart",
+            "home": "stuart",
             "Exec": {
                 "c1": {
                     "cmd": [
@@ -31,12 +34,13 @@
                         "%{lsargs}"
                     ],
                     "dir": "***/home/stuart/git",
-                    "log": "testdata/logs"
+                    "log": "logs"
                 }
             },
             "Locations": {
                 "home": "",
-                "pics": "testdata",
+                "usr": "s-testfolder",
+                "pics": "s-pics",
                 "testtree": "***/home/stuart/git"
             },
             "Env": {
@@ -44,5 +48,5 @@
             }
         }
     },
-    "UserDataRoot": "./"
+    "ServerDataRoot": "./testdata"
 }
