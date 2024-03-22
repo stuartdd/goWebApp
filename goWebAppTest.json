@@ -50,7 +50,7 @@
                 "home": "",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
-                "testtree": "***/opt",
+                "testtree": "",
                 "picsPlus": "s-pics/s-testfolder",
                 "picsMissing": "missingfolder"
             },

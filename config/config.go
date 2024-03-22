@@ -114,6 +114,16 @@ func (p *Parameters) HasParam(key string) bool {
 	return ok
 }
 
+func (p *Parameters) WriteParamAsJsonString(key string, buffer *bytes.Buffer) {
+	if p.HasParam(key) {
+		buffer.WriteString("\"")
+		buffer.WriteString(key)
+		buffer.WriteString("\":\"")
+		buffer.WriteString(p.GetParam(key))
+		buffer.WriteString("\"")
+	}
+}
+
 func (p *Parameters) UserExec() (exi *ExecInfo, err error) {
 	defer func() {
 		if r := recover(); r != nil {

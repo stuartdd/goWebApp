@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"stuartdd.com/config"
-	"stuartdd.com/controllers"
 	"stuartdd.com/tools"
 )
 
@@ -76,21 +75,21 @@ func TestTree(t *testing.T) {
 
 	url := "files/user/stuart/loc/testtree/tree"
 
-	resp, dirList := RunClientGet(t, configData, url, 200, "?", -1)
-	if resp.StatusCode != 200 {
-		t.Fatalf("did not get the icon!")
-	}
+	_, dirList := RunClientGet(t, configData, url, 200, "?", -1)
 
-	tn := &controllers.TreeDirNode{}
-	err := json.Unmarshal([]byte(dirList), tn)
+	tn := make(map[string]interface{})
+	err := json.Unmarshal([]byte(dirList), &tn)
 	if err != nil {
 		t.Fatalf("failed to understand the JSON. Error:%s", err.Error())
 	}
-
-	resp, _ = RunClientGet(t, configData, "favicon.ico", 200, "?", -1)
-	if resp.StatusCode != 200 {
-		t.Fatalf("did not get the icon!")
+	if tn["error"] != false {
+		t.Fatalf("response 'error' is true")
 	}
+	if tn["tree"] == nil {
+		t.Fatalf("response 'tree' is nil")
+	}
+
+	RunClientGet(t, configData, "favicon.ico", 200, "?", -1)
 
 }
 func TestGetFavicon(t *testing.T) {

@@ -353,17 +353,17 @@ func treeAsJson(root *TreeDirNode) []byte {
 	return buffer.Bytes()
 }
 
-func filesAsJson(ents []fs.DirEntry, filter []string, path string) []byte {
+func filesAsJson(user string, loc string, path string, ents []fs.DirEntry, filter []string) []byte {
 	var buffer bytes.Buffer
 	entLen := len(ents)
-	buffer.WriteString("{\"error\":false, ")
+	buffer.WriteString("{\"error\":false,")
 	buffer.WriteString("\"path\":")
-	pathToJson(path, &buffer)
+	writePathToJson(path, &buffer)
 	buffer.WriteString("\"files\":[")
 	for i := 0; i < entLen; i++ {
 		e := ents[i]
 		if filterDirNames(e, filter) {
-			singleFileToJson(e, &buffer)
+			writeSingleFileToJson(e, &buffer)
 			if i < (entLen - 1) {
 				buffer.WriteRune(',')
 			}
@@ -373,7 +373,7 @@ func filesAsJson(ents []fs.DirEntry, filter []string, path string) []byte {
 	return buffer.Bytes()
 }
 
-func pathToJson(path string, buffer *bytes.Buffer) {
+func writePathToJson(path string, buffer *bytes.Buffer) {
 	if path == "" {
 		buffer.WriteString("null,")
 	} else {
@@ -385,7 +385,7 @@ func pathToJson(path string, buffer *bytes.Buffer) {
 	}
 }
 
-func singleFileToJson(file fs.DirEntry, buffer *bytes.Buffer) {
+func writeSingleFileToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString("{\"size\": ")
 	buffer.WriteString(strconv.Itoa(0))
 	buffer.WriteString(",\"name\":{\"name\":\"")
@@ -395,12 +395,20 @@ func singleFileToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString("\"}}")
 }
 
+func writeJsonHeader(user string, loc string, buffer *bytes.Buffer) {
+	buffer.WriteString("\"error\":false,\"user\": \"")
+	buffer.WriteString(user)
+	buffer.WriteString("\", \"loc\":\"")
+	buffer.WriteString(loc)
+	buffer.WriteString("\"")
+}
+
 func listDirectoriesAsJson(dir string, filter []string) []byte {
 	list := &[]string{}
 	listDirectoriesRec(dir, dir+string(os.PathSeparator), filter, list)
 	listLen := len(*list)
 	var buffer bytes.Buffer
-	buffer.WriteString("{\"error\":false, \"paths\":[")
+	buffer.WriteString("{\"error\":false,\"paths\":[")
 	for i, s := range *list {
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(s)
