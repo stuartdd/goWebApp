@@ -201,10 +201,10 @@ func (p *DirHandler) Submit() *ResponseData {
 		if err != nil {
 			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 		}
-		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.parameters.FilterFiles(), path))
+		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.parameters))
 	} else {
 
-		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.parameters.FilterFiles()))
+		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.parameters))
 	}
 }
 
@@ -241,7 +241,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(treeAsJson(root)).WithMimeType("json")
+	return NewResponseData(http.StatusOK).WithContentBytesJson(treeAsJson(root, p.parameters)).WithMimeType("json")
 }
 
 func NewPostFileHandler(parameters map[string]string, configData *config.ConfigData, r *http.Request) Handler {
@@ -345,24 +345,27 @@ func statusAsJson(status int, reason string, error bool) []byte {
 	return b.Bytes()
 }
 
-func treeAsJson(root *TreeDirNode) []byte {
+func treeAsJson(root *TreeDirNode, params *config.Parameters) []byte {
 	var buffer bytes.Buffer
-	buffer.WriteString("{\"error\":false, \"tree\":")
+	buffer.WriteRune('{')
+	writeJsonHeader(params, &buffer)
+	buffer.WriteString(",\"tree\":")
 	buffer.WriteString(string(root.ToJson(false)))
 	buffer.WriteString("}")
 	return buffer.Bytes()
 }
 
-func filesAsJson(user string, loc string, path string, ents []fs.DirEntry, filter []string) []byte {
+func filesAsJson(ents []fs.DirEntry, params *config.Parameters) []byte {
 	var buffer bytes.Buffer
 	entLen := len(ents)
-	buffer.WriteString("{\"error\":false,")
-	buffer.WriteString("\"path\":")
-	writePathToJson(path, &buffer)
+	buffer.WriteRune('{')
+	writeJsonHeader(params, &buffer)
+	buffer.WriteRune(',')
+	writePathToJson(params, &buffer)
 	buffer.WriteString("\"files\":[")
 	for i := 0; i < entLen; i++ {
 		e := ents[i]
-		if filterDirNames(e, filter) {
+		if filterDirNames(e, params.FilterFiles()) {
 			writeSingleFileToJson(e, &buffer)
 			if i < (entLen - 1) {
 				buffer.WriteRune(',')
@@ -373,15 +376,17 @@ func filesAsJson(user string, loc string, path string, ents []fs.DirEntry, filte
 	return buffer.Bytes()
 }
 
-func writePathToJson(path string, buffer *bytes.Buffer) {
-	if path == "" {
-		buffer.WriteString("null,")
-	} else {
+func writePathToJson(params *config.Parameters, buffer *bytes.Buffer) {
+	buffer.WriteString("\"path\":")
+	if params.HasParam(config.PathParam) {
+		path := params.GetPath()
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(path)
 		buffer.WriteString("\", \"encName\":\"")
 		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(path)))
 		buffer.WriteString("\"},")
+	} else {
+		buffer.WriteString("null,")
 	}
 }
 
@@ -395,20 +400,20 @@ func writeSingleFileToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString("\"}}")
 }
 
-func writeJsonHeader(user string, loc string, buffer *bytes.Buffer) {
-	buffer.WriteString("\"error\":false,\"user\": \"")
-	buffer.WriteString(user)
-	buffer.WriteString("\", \"loc\":\"")
-	buffer.WriteString(loc)
-	buffer.WriteString("\"")
+func writeJsonHeader(param *config.Parameters, buffer *bytes.Buffer) {
+	param.WriteErrorAsJsonString(buffer)
+	param.WriteParamAsJsonString("user", true, false, buffer)
+	param.WriteParamAsJsonString("loc", true, false, buffer)
 }
 
-func listDirectoriesAsJson(dir string, filter []string) []byte {
+func listDirectoriesAsJson(dir string, param *config.Parameters) []byte {
 	list := &[]string{}
-	listDirectoriesRec(dir, dir+string(os.PathSeparator), filter, list)
+	listDirectoriesRec(dir, dir+string(os.PathSeparator), param.FilterFiles(), list)
 	listLen := len(*list)
 	var buffer bytes.Buffer
-	buffer.WriteString("{\"error\":false,\"paths\":[")
+	buffer.WriteRune('{')
+	writeJsonHeader(param, &buffer)
+	buffer.WriteString(",\"files\":[")
 	for i, s := range *list {
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(s)

@@ -2,12 +2,44 @@ package controllers
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"stuartdd.com/config"
 )
+
+func TestToJson(t *testing.T) {
+	conf, errlist := config.NewConfigData("../goWebAppTest.json")
+	if errlist.Len() != 1 {
+		t.Fatalf("Config failed\n%s", errlist.ToString())
+	}
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
+	}
+	path, _ := conf.GetUserLocPath("stuart", "home")
+	params := config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home"}, conf)
+
+	json := listDirectoriesAsJson(path, params)
+	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"files\":[{\"name\":") {
+		t.Fatalf("listDirectoriesAsJson Invalid header in json. [%s]", string(json))
+	}
+
+	params = config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home", config.PathParam: path}, conf)
+	files, _ := os.ReadDir(path)
+	json = filesAsJson(files, params)
+	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":{\"name\":\"") {
+		t.Fatalf("filesAsJson with path Invalid header in json. [%s]", string(json))
+	}
+
+	params = config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home"}, conf)
+	json = filesAsJson(files, params)
+	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":null,\"files\":[") {
+		t.Fatalf("filesAsJson without path Invalid header in json. [%s]", string(json))
+	}
+
+}
 
 func TestExec(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json")
@@ -31,7 +63,6 @@ func TestExec(t *testing.T) {
 	if !strings.Contains(string(res.Content()), "go.mod") {
 		t.Fatal("Exec of ls -lta should cintain go.mod")
 	}
-
 }
 
 func TestMarshal(t *testing.T) {
@@ -64,22 +95,23 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestTreeNode(t *testing.T) {
+	params := config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home"}, nil)
 	root := NewTreeNode("root")
-	AssertEquals(t, "root", treeAsJson(root), "{\"error\":false, \"tree\":{\"name\":\"root\"}}")
+	AssertEquals(t, "root", treeAsJson(root, params), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"tree\":{\"name\":\"root\"}}")
 	root.AddPath("sub1")
-	AssertEquals(t, "sub1", treeAsJson(root), "{\"error\":false, \"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\"}]}}")
+	AssertEquals(t, "sub1", treeAsJson(root, params), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\"}]}}")
 	root.AddPath("sub2")
-	AssertEquals(t, "sub2", treeAsJson(root), "{\"error\":false, \"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\"},{\"name\":\"sub2\"}]}}")
+	AssertEquals(t, "sub2", treeAsJson(root, params), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\"},{\"name\":\"sub2\"}]}}")
 	root.AddPath("sub2/sub21")
-	AssertEquals(t, "sub21", treeAsJson(root), "{\"error\":false, \"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\"},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]}]}}")
+	AssertEquals(t, "sub21", treeAsJson(root, params), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\"},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]}]}}")
 	root.AddPath("sub1/a1")
 	root.AddPath("sub1/a1")
 	root.AddPath("sub3/a1/a2")
-	AssertEquals(t, "added", treeAsJson(root), "{\"error\":false, \"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\",\"subs\":[{\"name\":\"a1\"}]},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]},{\"name\":\"sub3\",\"subs\":[{\"name\":\"a1\",\"subs\":[{\"name\":\"a2\"}]}]}]}}")
+	AssertEquals(t, "added", treeAsJson(root, params), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"tree\":{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\",\"subs\":[{\"name\":\"a1\"}]},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]},{\"name\":\"sub3\",\"subs\":[{\"name\":\"a1\",\"subs\":[{\"name\":\"a2\"}]}]}]}}")
 }
 
 func AssertEquals(t *testing.T, message string, actual []byte, expected string) {
 	if string(actual) != expected {
-		t.Fatalf("%s.\nExpected:%s\nActual:  %s:", message, expected, string(actual))
+		t.Fatalf("%s.\nExpected:%s\nActual:  %s", message, expected, string(actual))
 	}
 }

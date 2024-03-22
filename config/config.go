@@ -13,7 +13,13 @@ import (
 const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
-const guestUserPath = "guest"
+
+const UserParam = "user"
+const LocationParam = "loc"
+const PathParam = "path"
+const NameParam = "name"
+const ExecParam = "exec"
+const ErrorParam = "error"
 
 var emptyMap = map[string]string{}
 
@@ -92,12 +98,14 @@ typical values:
 type Parameters struct {
 	configData *ConfigData
 	params     map[string]string
+	error      bool
 }
 
 func NewParameters(p map[string]string, configData *ConfigData) *Parameters {
 	return &Parameters{
 		params:     p,
 		configData: configData,
+		error:      false,
 	}
 }
 
@@ -114,13 +122,30 @@ func (p *Parameters) HasParam(key string) bool {
 	return ok
 }
 
-func (p *Parameters) WriteParamAsJsonString(key string, buffer *bytes.Buffer) {
+func (p *Parameters) WriteParamAsJsonString(key string, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
 	if p.HasParam(key) {
-		buffer.WriteString("\"")
+		if commaAtStart {
+			buffer.WriteRune(',')
+		}
+		buffer.WriteRune('"')
 		buffer.WriteString(key)
 		buffer.WriteString("\":\"")
 		buffer.WriteString(p.GetParam(key))
-		buffer.WriteString("\"")
+		buffer.WriteRune('"')
+		if commaAtEnd {
+			buffer.WriteRune(',')
+		}
+	}
+}
+
+func (p *Parameters) WriteErrorAsJsonString(buffer *bytes.Buffer) {
+	buffer.WriteRune('"')
+	buffer.WriteString(ErrorParam)
+	buffer.WriteString("\":")
+	if p.error {
+		buffer.WriteString("true")
+	} else {
+		buffer.WriteString("false")
 	}
 }
 
@@ -131,7 +156,7 @@ func (p *Parameters) UserExec() (exi *ExecInfo, err error) {
 			exi = nil
 		}
 	}()
-	return p.configData.UserExec(p.GetUser(), p.GetCmdId())
+	return p.configData.UserExec(p.GetUser(), p.GetExecId())
 }
 
 /*
@@ -167,11 +192,11 @@ func (p *Parameters) Environment() map[string]string {
 }
 
 func (p *Parameters) GetUser() string {
-	return p.GetParam("user")
+	return p.GetParam(UserParam)
 }
 
 func (p *Parameters) GetPath() string {
-	return p.GetParam("path")
+	return p.GetParam(PathParam)
 }
 
 func (p *Parameters) GetUserData() *UserData {
@@ -179,15 +204,19 @@ func (p *Parameters) GetUserData() *UserData {
 }
 
 func (p *Parameters) GetLocation() string {
-	return p.GetParam("loc")
+	return p.GetParam(LocationParam)
 }
 
 func (p *Parameters) GetName() string {
-	return p.GetParam("name")
+	return p.GetParam(NameParam)
 }
 
-func (p *Parameters) GetCmdId() string {
-	return p.GetParam("exec")
+func (p *Parameters) GetExecId() string {
+	return p.GetParam(ExecParam)
+}
+
+func (p *Parameters) SetErrorParam(b bool) {
+
 }
 
 type ConfigDataInternal struct {
