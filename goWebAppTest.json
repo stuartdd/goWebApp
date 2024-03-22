@@ -4,7 +4,8 @@
     "ServerName": "TestServer",
     "filterFiles": [
         "Json",
-        "Data"
+        "Data",
+        "jpeg"
     ],
     "ContentTypeCharset": "utf-8",
     "FaviconIcoPath": "favicon.ico",

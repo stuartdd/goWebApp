@@ -22,8 +22,11 @@ var getFaviconMatch = tools.NewUrlRequestParts("/favicon.ico").WithReqType("GET"
 var getExitMatch = tools.NewUrlRequestParts("/exit").WithReqType("GET")
 var getPingMatch = tools.NewUrlRequestParts("/ping").WithReqType("GET")
 
-var getFileUserLocTreeMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/tree").WithReqType("GET")
+var getFileUserLocPathMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/path/*").WithReqType("GET")
 var getFileUserLocMatch = tools.NewUrlRequestParts("/files/user/*/loc/*").WithReqType("GET")
+var getPathsUserLocMatch = tools.NewUrlRequestParts("/paths/user/*/loc/*").WithReqType("GET")
+
+var getFileUserLocTreeMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/tree").WithReqType("GET")
 var getFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("GET")
 var postFileUserLocNameMatch = tools.NewUrlRequestParts("/files/user/*/loc/*/name/*").WithReqType("POST")
 var execUserCmdMatch = tools.NewUrlRequestParts("/exec/user/*/exec/*").WithReqType("GET")
@@ -58,30 +61,41 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
 		return
 	}
-	if urlParts.Match(getFileUserLocNameMatch) {
-		h.writeResponse(w, controllers.NewFileHandler(urlParts.UrlParamMap(getFileUserLocNameMatch), h.config).Submit())
+	if urlParts.Match(execUserCmdMatch) {
+		h.writeResponse(w, controllers.NewExecHandler(urlParts.UrlParamMap(execUserCmdMatch), h.config, nil).Submit())
 		return
 	}
-	if urlParts.Match(postFileUserLocNameMatch) {
-		h.writeResponse(w, controllers.NewFilePostHandler(urlParts.UrlParamMap(postFileUserLocNameMatch), h.config, r).Submit())
+
+	if urlParts.Match(getFileUserLocPathMatch) {
+		h.writeResponse(w, controllers.NewDirHandler(urlParts.UrlParamMap(getFileUserLocPathMatch), h.config, true).Submit())
 		return
 	}
 	if urlParts.Match(getFileUserLocMatch) {
-		h.writeResponse(w, controllers.NewDirHandler(urlParts.UrlParamMap(getFileUserLocMatch), h.config).Submit())
+		h.writeResponse(w, controllers.NewDirHandler(urlParts.UrlParamMap(getFileUserLocMatch), h.config, true).Submit())
+		return
+	}
+	if urlParts.Match(getPathsUserLocMatch) {
+		h.writeResponse(w, controllers.NewDirHandler(urlParts.UrlParamMap(getPathsUserLocMatch), h.config, false).Submit())
 		return
 	}
 	if urlParts.Match(getFileUserLocTreeMatch) {
 		h.writeResponse(w, controllers.NewTreeHandler(urlParts.UrlParamMap(getFileUserLocTreeMatch), h.config).Submit())
 		return
 	}
+
+	if urlParts.Match(getFileUserLocNameMatch) {
+		h.writeResponse(w, controllers.NewReadFileHandler(urlParts.UrlParamMap(getFileUserLocNameMatch), h.config).Submit())
+		return
+	}
+	if urlParts.Match(postFileUserLocNameMatch) {
+		h.writeResponse(w, controllers.NewPostFileHandler(urlParts.UrlParamMap(postFileUserLocNameMatch), h.config, r).Submit())
+		return
+	}
 	if urlParts.Match(getFaviconMatch) {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
 		return
 	}
-	if urlParts.Match(execUserCmdMatch) {
-		h.writeResponse(w, controllers.NewExecHandler(urlParts.UrlParamMap(execUserCmdMatch), h.config, nil).Submit())
-		return
-	}
+
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true))
 }
 
@@ -141,7 +155,7 @@ func (p *WebAppServer) Start() {
 	p.Log(fmt.Sprintf("Server Path (wd):%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("Server Data Root:%s.", p.Handler.config.GetServerDataRoot()))
 	for _, un := range p.Handler.config.GetUserNamesList() {
-		p.Log(fmt.Sprintf("Server User     :%s", un))
+		p.Log(fmt.Sprintf("Server User     :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}
 	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))
 }

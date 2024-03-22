@@ -87,14 +87,14 @@ func (p *ResponseData) GetShouldLog() bool {
 }
 
 func (p *ResponseData) WithContentReasonAsJson(reason string, error bool) *ResponseData {
-	p.content = StatusAsJson(p.Status, reason, error)
+	p.content = statusAsJson(p.Status, reason, error)
 	return p
 }
 
 func (p *ResponseData) WithContentMapJson(data map[string]interface{}) *ResponseData {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		p.content = StatusAsJson(http.StatusUnprocessableEntity, "data mapping to json failed", true)
+		p.content = statusAsJson(http.StatusUnprocessableEntity, "data mapping to json failed", true)
 	} else {
 		p.content = jsonData
 	}
@@ -110,7 +110,7 @@ type Handler interface {
 	Submit() *ResponseData
 }
 
-type FileHandler struct {
+type ReadFileHandler struct {
 	parameters *config.Parameters
 }
 
@@ -121,6 +121,7 @@ type PostFileHandler struct {
 
 type DirHandler struct {
 	parameters *config.Parameters
+	listFiles  bool
 }
 
 type TreeHandler struct {
@@ -132,13 +133,13 @@ type ExecHandler struct {
 	createMap  func([]byte, []byte, int) map[string]interface{}
 }
 
-func NewFileHandler(parameters map[string]string, configData *config.ConfigData) Handler {
-	return &FileHandler{
+func NewReadFileHandler(parameters map[string]string, configData *config.ConfigData) Handler {
+	return &ReadFileHandler{
 		parameters: config.NewParameters(parameters, configData),
 	}
 }
 
-func (p *FileHandler) Submit() *ResponseData {
+func (p *ReadFileHandler) Submit() *ResponseData {
 	file, err := p.parameters.UserLocFilePath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
@@ -161,16 +162,32 @@ func (p *FileHandler) Submit() *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.parameters.GetName())
 }
 
-func NewDirHandler(parameters map[string]string, configData *config.ConfigData) Handler {
+func NewDirHandler(parameters map[string]string, configData *config.ConfigData, listFiles bool) Handler {
 	return &DirHandler{
 		parameters: config.NewParameters(parameters, configData),
+		listFiles:  listFiles,
 	}
 }
 
 func (p *DirHandler) Submit() *ResponseData {
+	var path string
+	var err error
+
 	file, err := p.parameters.UserLocPath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
+	}
+
+	if p.parameters.HasParam("path") {
+		pathByte, err := base64.StdEncoding.DecodeString(p.parameters.GetParam("path"))
+		if err == nil {
+			path = string(pathByte)
+			file = filepath.Join(file, string(path))
+		} else {
+			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Invalid path encoding", true)
+		}
+	} else {
+		path = ""
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
@@ -179,11 +196,16 @@ func (p *DirHandler) Submit() *ResponseData {
 	if !stats.IsDir() {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
 	}
-	entries, err := os.ReadDir(file)
-	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
+	if p.listFiles {
+		entries, err := os.ReadDir(file)
+		if err != nil {
+			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
+		}
+		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.parameters.FilterFiles(), path))
+	} else {
+
+		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.parameters.FilterFiles()))
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(DirAsJson(entries, p.parameters.FilterFiles()))
 }
 
 func NewTreeHandler(parameters map[string]string, configData *config.ConfigData) Handler {
@@ -219,10 +241,10 @@ func (p *TreeHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(TreeAsJson(root)).WithMimeType("json")
+	return NewResponseData(http.StatusOK).WithContentBytesJson(treeAsJson(root)).WithMimeType("json")
 }
 
-func NewFilePostHandler(parameters map[string]string, configData *config.ConfigData, r *http.Request) Handler {
+func NewPostFileHandler(parameters map[string]string, configData *config.ConfigData, r *http.Request) Handler {
 	return &PostFileHandler{
 		parameters: config.NewParameters(parameters, configData),
 		request:    r,
@@ -309,7 +331,7 @@ func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType("ico")
 }
 
-func StatusAsJson(status int, reason string, error bool) []byte {
+func statusAsJson(status int, reason string, error bool) []byte {
 	var b bytes.Buffer
 	b.WriteString("{\"error\":")
 	b.WriteString(fmt.Sprintf("%t", error))
@@ -323,7 +345,7 @@ func StatusAsJson(status int, reason string, error bool) []byte {
 	return b.Bytes()
 }
 
-func TreeAsJson(root *TreeDirNode) []byte {
+func treeAsJson(root *TreeDirNode) []byte {
 	var buffer bytes.Buffer
 	buffer.WriteString("{\"error\":false, \"tree\":")
 	buffer.WriteString(string(root.ToJson(false)))
@@ -331,36 +353,106 @@ func TreeAsJson(root *TreeDirNode) []byte {
 	return buffer.Bytes()
 }
 
-func DirAsJson(ent []fs.DirEntry, filter []string) []byte {
+func filesAsJson(ents []fs.DirEntry, filter []string, path string) []byte {
 	var buffer bytes.Buffer
-	entLen := len(ent)
-	count := 0
+	entLen := len(ents)
 	buffer.WriteString("{\"error\":false, ")
+	buffer.WriteString("\"path\":")
+	pathToJson(path, &buffer)
+	buffer.WriteString("\"files\":[")
 	for i := 0; i < entLen; i++ {
-		e := ent[i]
+		e := ents[i]
 		if filterDirNames(e, filter) {
-			b64Name := base64.StdEncoding.EncodeToString([]byte(e.Name()))
-			buffer.WriteString("\"")
-			buffer.WriteString(b64Name)
-			buffer.WriteString("\":\"")
-			buffer.WriteString(e.Name())
-			buffer.WriteString("\"")
-			buffer.WriteRune(',')
-			count++
+			singleFileToJson(e, &buffer)
+			if i < (entLen - 1) {
+				buffer.WriteRune(',')
+			}
 		}
 	}
-	if count > 0 {
-		buffer.Truncate(buffer.Len() - 1)
-	}
-	buffer.WriteString("}")
+	buffer.WriteString("]}")
 	return buffer.Bytes()
+}
+
+func pathToJson(path string, buffer *bytes.Buffer) {
+	if path == "" {
+		buffer.WriteString("null,")
+	} else {
+		buffer.WriteString("{\"name\":\"")
+		buffer.WriteString(path)
+		buffer.WriteString("\", \"encName\":\"")
+		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(path)))
+		buffer.WriteString("\"},")
+	}
+}
+
+func singleFileToJson(file fs.DirEntry, buffer *bytes.Buffer) {
+	buffer.WriteString("{\"size\": ")
+	buffer.WriteString(strconv.Itoa(0))
+	buffer.WriteString(",\"name\":{\"name\":\"")
+	buffer.WriteString(file.Name())
+	buffer.WriteString("\", \"encName\":\"")
+	buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(file.Name())))
+	buffer.WriteString("\"}}")
+}
+
+func listDirectoriesAsJson(dir string, filter []string) []byte {
+	list := &[]string{}
+	listDirectoriesRec(dir, dir+string(os.PathSeparator), filter, list)
+	listLen := len(*list)
+	var buffer bytes.Buffer
+	buffer.WriteString("{\"error\":false, \"paths\":[")
+	for i, s := range *list {
+		buffer.WriteString("{\"name\":\"")
+		buffer.WriteString(s)
+		buffer.WriteString("\",")
+		buffer.WriteString("\"encName\":\"")
+		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(s)))
+		buffer.WriteString("\"}")
+		if i < (listLen - 1) {
+			buffer.WriteRune(',')
+		}
+	}
+	buffer.WriteString("]}")
+	return buffer.Bytes()
+}
+
+func listDirectoriesRec(path string, root string, filter []string, l *[]string) {
+	entries, _ := os.ReadDir(path)
+	dirCount := 0
+	fileCount := 0
+	for _, ent := range entries {
+		n := ent.Name()
+		if ent.IsDir() {
+			if !strings.HasPrefix(n, ".") && !strings.HasPrefix(n, "_") {
+				dirCount++
+			}
+		} else {
+			if filterFileNames(ent.Name(), filter) {
+				fileCount++
+			}
+		}
+	}
+	if (dirCount > 0 || fileCount > 0) && strings.HasPrefix(path, root) {
+		*l = append(*l, path[len(root):])
+	}
+
+	for _, ent := range entries {
+		if ent.IsDir() {
+			p := filepath.Join(path, ent.Name())
+			listDirectoriesRec(p, root, filter, l)
+		}
+	}
 }
 
 func filterDirNames(e fs.DirEntry, filter []string) bool {
 	if e.IsDir() {
 		return false
 	}
-	n := strings.ToLower(e.Name())
+	return filterFileNames(e.Name(), filter)
+}
+
+func filterFileNames(name string, filter []string) bool {
+	n := strings.ToLower(name)
 	if strings.HasPrefix(n, ".") || strings.HasPrefix(n, "_") {
 		return false
 	}

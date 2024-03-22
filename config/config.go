@@ -109,6 +109,11 @@ func (p *Parameters) GetParam(key string) string {
 	panic(fmt.Errorf("url parameter '%s' is missing", key))
 }
 
+func (p *Parameters) HasParam(key string) bool {
+	_, ok := p.params[key]
+	return ok
+}
+
 func (p *Parameters) UserExec() (exi *ExecInfo, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -153,6 +158,10 @@ func (p *Parameters) Environment() map[string]string {
 
 func (p *Parameters) GetUser() string {
 	return p.GetParam("user")
+}
+
+func (p *Parameters) GetPath() string {
+	return p.GetParam("path")
 }
 
 func (p *Parameters) GetUserData() *UserData {
@@ -402,6 +411,10 @@ func (p *ConfigData) GetUserData(user string) *UserData {
 		return &ud
 	}
 	return nil
+}
+
+func (p *ConfigData) GetUserRoot(user string) string {
+	return p.prefixRelativePaths("", p.GetUserData(user).Home)
 }
 
 func (p *ConfigData) GetUserNamesList() []string {

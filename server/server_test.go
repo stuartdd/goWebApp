@@ -41,7 +41,29 @@ const postDataFile2 = "{\"Data\":\"This is the data for 2\"}"
 const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
 
-func TestGetListDirFile(t *testing.T) {
+func TestFilePath(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 {
+		t.Fatal(errList.ToString())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	url := "paths/user/stuart/loc/home"
+	RunClientGet(t, configData, url, 200, "?", -1)
+
+	url = "files/user/stuart/loc/home/path/cy1waWNz"
+	RunClientGet(t, configData, url, 200, "?", -1)
+
+	url = "files/user/stuart/loc/home"
+	RunClientGet(t, configData, url, 200, "\"path\":null|\"error\":false", -1)
+
+}
+
+func TestTree(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
 		t.Fatal(errList.ToString())
@@ -232,9 +254,18 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 	if err != nil {
 		t.Fatalf("client: could not read response body: %s\n", err)
 	}
-	if expectedBody != "?" {
-		if trimString(string(resBody)) != trimString(expectedBody) {
-			t.Fatalf("Status for path http://localhost%s/%s.\nExpected '%s' \nActual   '%s'", config.GetPortString(), path, expectedBody, string(resBody))
+	expectedList := strings.Split(expectedBody, "|")
+	if len(expectedList) > 1 {
+		for _, ex := range expectedList {
+			if !strings.Contains(string(resBody), ex) {
+				t.Fatalf("Body \n%s\ndoes not contain '%s'", string(resBody), ex)
+			}
+		}
+	} else {
+		if expectedBody != "?" {
+			if trimString(string(resBody)) != trimString(expectedBody) {
+				t.Fatalf("Status for path http://localhost%s/%s.\nExpected '%s' \nActual   '%s'", config.GetPortString(), path, expectedBody, string(resBody))
+			}
 		}
 	}
 	if expectedLen >= 0 {
