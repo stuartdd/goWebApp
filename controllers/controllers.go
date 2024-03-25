@@ -375,8 +375,12 @@ func writeJsonHeader(param *UrlRequestParts, buffer *bytes.Buffer) {
 }
 
 func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
-	buffer.WriteString("{\"size\": ")
-	buffer.WriteString(strconv.Itoa(0))
+	inf, err := file.Info()
+	if err != nil {
+		return
+	}
+	buffer.WriteString("{\"size\":")
+	buffer.WriteString(strconv.Itoa(int(inf.Size())))
 	buffer.WriteString(",\"name\":{\"name\":\"")
 	buffer.WriteString(file.Name())
 	buffer.WriteString("\", \"encName\":\"")

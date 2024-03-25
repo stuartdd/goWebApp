@@ -7,6 +7,13 @@
                 "home": "sHome",
                 "pics": "testdata"
             }
+        },
+        "bob": {
+            "name": "Bobbie",
+            "Locations": {
+                "home": "bHome",
+                "pics": "testdata"
+            }
         }
     },
     "UserDataRoot": ".."
