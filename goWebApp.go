@@ -19,7 +19,7 @@ func main() {
 
 	cfg, errorList := config.NewConfigData(configFileName)
 	if errorList.Len() > 0 {
-		os.Stdout.WriteString(errorList.ToString())
+		os.Stdout.WriteString(errorList.String())
 		os.Exit(1)
 	}
 	if cfg == nil {

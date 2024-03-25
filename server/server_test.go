@@ -62,7 +62,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 func TestFilePath(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {
@@ -84,7 +84,7 @@ func TestFilePath(t *testing.T) {
 func TestTree(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {
@@ -114,7 +114,7 @@ func TestTree(t *testing.T) {
 func TestGetFavicon(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {
@@ -134,7 +134,7 @@ func TestGetFavicon(t *testing.T) {
 func TestPostFile(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {
@@ -168,7 +168,7 @@ func TestReadDir(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {
@@ -211,7 +211,7 @@ func TestReadFile(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {
@@ -236,7 +236,7 @@ func TestReadFile(t *testing.T) {
 func TestClient(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.Len() > 1 {
-		t.Fatal(errList.ToString())
+		t.Fatal(errList.String())
 	}
 
 	if serverState != "Running" {

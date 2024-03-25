@@ -13,10 +13,10 @@ import (
 func TestToJson(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 	path, _ := conf.GetUserLocPath("stuart", "home")
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
@@ -44,7 +44,7 @@ func TestToJson(t *testing.T) {
 func TestExec(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatal(errlist.ToString())
+		t.Fatal(errlist.String())
 	}
 	if conf == nil {
 		t.Fatal("Config is nil. Load failed")

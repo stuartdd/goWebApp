@@ -22,6 +22,8 @@ const (
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
 var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
+var getReloadConfigMatch = NewUrlRequestMatcher("/reload/config", "GET")
+var getServerStatusMatch = NewUrlRequestMatcher("/status", "GET")
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
@@ -51,6 +53,18 @@ func (h *ServerHandler) Log(s string) {
 }
 
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.config.IsTimeToReloadConfig() {
+		ts := time.Now().UnixMicro()
+		cfg, errorList := config.NewConfigData(h.config.ConfigName)
+		if errorList.Len() == 0 {
+			h.config = cfg
+			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d micro seconds)", h.config.ConfigName, (time.Now().UnixMicro() - ts)))
+		} else {
+			h.config.ResetTimeToReloadConfig()
+			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, errorList))
+		}
+	}
+
 	h.Log(fmt.Sprintf("Req:  %s", r.RequestURI))
 
 	urlParts := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
@@ -109,10 +123,29 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
 		return
 	}
+	_, ok = getServerStatusMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	if ok {
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson(fmt.Sprintf("Status (%v)", h.config.GetTimeToReloadConfig()), false))
+		return
+	}
 
 	_, ok = getFaviconMatch.Match(requestUriparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
+		return
+	}
+	_, ok = getReloadConfigMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	if ok {
+		cfg, errorList := config.NewConfigData(h.config.ConfigName)
+		if errorList.Len() == 0 {
+			h.config = cfg
+			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
+			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Config Reloaded", false))
+
+		} else {
+			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, errorList))
+			h.writeResponse(w, controllers.NewResponseData(http.StatusExpectationFailed).WithContentReasonAsJson("Config Reload Failed", true))
+		}
 		return
 	}
 
@@ -180,10 +213,10 @@ func (p *WebAppServer) Start() {
 	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))
 }
 
-func (p *WebAppServer) ToString() string {
-	cAsString, err := p.Handler.config.ToString()
+func (p *WebAppServer) String() string {
+	cAsString, err := p.Handler.config.String()
 	if err != nil {
-		return fmt.Sprintf("Server Error: In 'Handler.config.ToString()': %s", err.Error())
+		return fmt.Sprintf("Server Error: In 'Handler.config.String()': %s", err.Error())
 	}
 	return cAsString
 }

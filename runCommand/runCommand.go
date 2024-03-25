@@ -15,7 +15,7 @@ type execData struct {
 	StdErrLog string
 }
 
-func (p *execData) ToString() string {
+func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 

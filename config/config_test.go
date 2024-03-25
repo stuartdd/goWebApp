@@ -10,10 +10,10 @@ import (
 func TestJoinPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 	var f string
 	pre := conf.GetServerDataRoot()
@@ -88,18 +88,18 @@ func assertEquals(t *testing.T, message string, actual string, expected string) 
 func TestUserExec(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 	pre := conf.GetServerDataRoot()
 	exec, err := conf.GetUserExecInfo("bob", "c2")
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
-	if exec.ToString() != fmt.Sprintf("CMD:[cmd2], Dir:, LogOut:%s/bob/logs/logOut.txt, LogErr:", pre) {
-		t.Fatalf("Did not find the correct exec! Actual '%s'", exec.ToString())
+	if exec.String() != fmt.Sprintf("CMD:[cmd2], Dir:, LogOut:%s/bob/logs/logOut.txt, LogErr:", pre) {
+		t.Fatalf("Did not find the correct exec! Actual '%s'", exec.String())
 	}
 
 	_, err = conf.GetUserExecInfo("bob", "X2")
@@ -121,10 +121,10 @@ func TestUserExec(t *testing.T) {
 func TestGetUserExecInfo(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 	c1, err := conf.GetUserExecInfo("bob", "ls")
 	if err != nil {
@@ -148,10 +148,10 @@ func TestGetUserExecInfo(t *testing.T) {
 func TestGetUserLocPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.ToString())
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 
 	_, e := conf.GetUserLocPath("fred", "home")

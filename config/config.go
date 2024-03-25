@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
+const defaultConfigReloadTime = 3600
 
 var emptyMap = map[string]string{}
 
@@ -62,7 +65,7 @@ func (p *ExecInfo) GetErrLogFile() string {
 	return filepath.Join(p.Log, p.LogErr)
 }
 
-func (p *ExecInfo) ToString() string {
+func (p *ExecInfo) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.GetOutLogFile(), p.GetErrLogFile())
 }
 
@@ -78,18 +81,19 @@ type UserData struct {
 }
 
 type ConfigDataInternal struct {
-	Port               int
-	Users              map[string]UserData
-	ContentTypeCharset string
-	LogData            *LogData
-	ServerName         string
-	PanicResponseCode  int
-	FilterFiles        []string
-	ServerDataRoot     string
-	FaviconIcoPath     string
+	ReloadConfigSeconds int64
+	Port                int
+	Users               map[string]UserData
+	ContentTypeCharset  string
+	LogData             *LogData
+	ServerName          string
+	PanicResponseCode   int
+	FilterFiles         []string
+	ServerDataRoot      string
+	FaviconIcoPath      string
 }
 
-func (p *ConfigDataInternal) toString() (string, error) {
+func (p *ConfigDataInternal) String() (string, error) {
 	data, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
 		return "", err
@@ -98,12 +102,13 @@ func (p *ConfigDataInternal) toString() (string, error) {
 }
 
 type ConfigData struct {
-	internal    *ConfigDataInternal
-	CurrentPath string
-	ModuleName  string
-	ConfigName  string
-	Debugging   bool
-	Environment map[string]string
+	internal     *ConfigDataInternal
+	CurrentPath  string
+	ModuleName   string
+	ConfigName   string
+	Debugging    bool
+	Environment  map[string]string
+	NextLoadTime int64
 }
 
 /*
@@ -134,23 +139,25 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	wd, _ := os.Getwd()
 
 	configDataExtternal := &ConfigData{
-		Debugging:   debugging,
-		CurrentPath: wd,
-		ModuleName:  moduleName,
-		ConfigName:  configFileName + configFileExtension,
-		Environment: environ,
+		Debugging:    debugging,
+		CurrentPath:  wd,
+		ModuleName:   moduleName,
+		ConfigName:   configFileName + configFileExtension,
+		Environment:  environ,
+		NextLoadTime: 0,
 	}
 
 	configDataInternal := &ConfigDataInternal{
-		Port:               8080,
-		Users:              make(map[string]UserData),
-		LogData:            nil,
-		ContentTypeCharset: "utf-8",
-		ServerName:         moduleName,
-		FilterFiles:        []string{},
-		PanicResponseCode:  500,
-		ServerDataRoot:     "~/",
-		FaviconIcoPath:     "",
+		ReloadConfigSeconds: defaultConfigReloadTime,
+		Port:                8080,
+		Users:               make(map[string]UserData),
+		LogData:             nil,
+		ContentTypeCharset:  "utf-8",
+		ServerName:          moduleName,
+		FilterFiles:         []string{},
+		PanicResponseCode:   500,
+		ServerDataRoot:      "~/",
+		FaviconIcoPath:      "",
 	}
 
 	/*
@@ -173,6 +180,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	}
 
 	SetContentTypeCharset(configDataInternal.ContentTypeCharset)
+	configDataExtternal.NextLoadTime = configDataExtternal.getNextReloadConfigMillis()
 	return configDataExtternal.resolveLocations()
 }
 
@@ -285,11 +293,34 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 					execData.Dir = f
 				}
 			}
+
+			for i, v := range execData.Cmd {
+				execData.Cmd[i] = p.SubstituteFromMap([]rune(v), userConfigEnv)
+			}
 			execData.LogOut = p.SubstituteFromMap([]rune(execData.LogOut), userConfigEnv)
 			execData.LogErr = p.SubstituteFromMap([]rune(execData.LogErr), userConfigEnv)
+
 		}
 	}
 	return p, errorList
+}
+
+func (p *ConfigData) getNextReloadConfigMillis() int64 {
+	return time.Now().UnixMilli() + (p.internal.ReloadConfigSeconds * 1000)
+}
+
+func (p *ConfigData) IsTimeToReloadConfig() bool {
+	return p.NextLoadTime < time.Now().UnixMilli()
+}
+
+func (p *ConfigData) ResetTimeToReloadConfig() {
+	p.NextLoadTime = p.getNextReloadConfigMillis()
+}
+
+func (p *ConfigData) GetTimeToReloadConfig() float64 {
+	t := float64(p.NextLoadTime-time.Now().UnixMilli()) / float64(1000)
+	return math.Trunc(t*100) / 100
+
 }
 
 func (p *ConfigData) GetServerName() string {
@@ -405,8 +436,8 @@ func (p *ConfigData) GetUserExecInfo(user, execid string) (*ExecInfo, error) {
 	return exec, nil
 }
 
-func (p *ConfigData) ToString() (string, error) {
-	data, err := p.internal.toString()
+func (p *ConfigData) String() (string, error) {
+	data, err := p.internal.String()
 	if err != nil {
 		return "", fmt.Errorf("failed to present data as Json:%s. Error:%s", p.ConfigName, err.Error())
 	}
@@ -515,7 +546,7 @@ func (p *ConfigErrorData) Add(s string) {
 	p.errors = append(p.errors, s)
 }
 
-func (p *ConfigErrorData) ToString() string {
+func (p *ConfigErrorData) String() string {
 	var buffer bytes.Buffer
 	for _, err := range p.errors {
 		buffer.WriteString(err)

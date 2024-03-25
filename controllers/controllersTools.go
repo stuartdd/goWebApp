@@ -140,7 +140,7 @@ type ResponseData struct {
 	shouldLog bool
 }
 
-func (p *ResponseData) ToString() string {
+func (p *ResponseData) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("ResponseData, ")
 	buffer.WriteString(fmt.Sprintf("Status:%d", p.Status))
