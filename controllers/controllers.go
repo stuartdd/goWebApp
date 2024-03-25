@@ -3,7 +3,6 @@ package controllers
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,135 +16,27 @@ import (
 	"stuartdd.com/runCommand"
 )
 
-type ResponseData struct {
-	Status    int
-	content   []byte
-	Header    map[string][]string
-	MimeType  string
-	shouldLog bool
-}
-
-func (p *ResponseData) ToString() string {
-	var buffer bytes.Buffer
-	buffer.WriteString("ResponseData, ")
-	buffer.WriteString(fmt.Sprintf("Status:%d", p.Status))
-	buffer.WriteString(", ")
-	buffer.WriteString(fmt.Sprintf("Content-Length:%d", p.ContentLength()))
-	buffer.WriteString(", ")
-	buffer.WriteString(fmt.Sprintf("Content-Type:%s", config.LookupContentType(p.MimeType)))
-	return buffer.String()
-}
-
-func NewResponseData(status int) *ResponseData {
-	rd := &ResponseData{
-		Status:    status,
-		Header:    make(map[string][]string),
-		content:   make([]byte, 0),
-		shouldLog: false,
-		MimeType:  "json",
-	}
-	if rd.IsError() {
-		rd.SetShouldLog()
-	}
-	return rd
-}
-
-func (p *ResponseData) ContentLength() int {
-	return len(p.content)
-}
-
-func (p *ResponseData) Content() []byte {
-	return p.content
-}
-
-func (p *ResponseData) ContentLimit(n int) []byte {
-	if len(p.content) <= n {
-		return p.content
-	}
-	return p.content[0:n]
-}
-
-func (p *ResponseData) IsError() bool {
-	if p.Status >= 200 && p.Status < 300 {
-		return false
-	}
-	return true
-}
-
-func (p *ResponseData) WithContentBytesJson(content []byte) *ResponseData {
-	p.content = content
-	return p
-}
-
-func (p *ResponseData) SetShouldLog() *ResponseData {
-	p.shouldLog = true
-	return p
-}
-
-func (p *ResponseData) GetShouldLog() bool {
-	return p.shouldLog
-}
-
-func (p *ResponseData) WithContentReasonAsJson(reason string, error bool) *ResponseData {
-	p.content = statusAsJson(p.Status, reason, error)
-	return p
-}
-
-func (p *ResponseData) WithContentMapJson(data map[string]interface{}) *ResponseData {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		p.content = statusAsJson(http.StatusUnprocessableEntity, "data mapping to json failed", true)
-	} else {
-		p.content = jsonData
-	}
-	return p
-}
-
-func (p *ResponseData) WithMimeType(mimeType string) *ResponseData {
-	p.MimeType = mimeType
-	return p
-}
-
 type Handler interface {
 	Submit() *ResponseData
 }
 
 type ReadFileHandler struct {
-	parameters *config.Parameters
+	parameters *UrlRequestParts
+	configData *config.ConfigData
 }
 
-type PostFileHandler struct {
-	parameters *config.Parameters
-	request    *http.Request
-}
-
-type DirHandler struct {
-	parameters *config.Parameters
-	listFiles  bool
-}
-
-type TreeHandler struct {
-	parameters *config.Parameters
-}
-
-type ExecHandler struct {
-	parameters *config.Parameters
-	createMap  func([]byte, []byte, int) map[string]interface{}
-}
-
-func NewReadFileHandler(parameters map[string]string, configData *config.ConfigData) Handler {
+func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData) Handler {
 	return &ReadFileHandler{
-		parameters: config.NewParameters(parameters, configData),
+		parameters: urlParts,
+		configData: configData,
 	}
 }
 
 func (p *ReadFileHandler) Submit() *ResponseData {
-	file, err := p.parameters.UserLocFilePath()
+	file, err := p.parameters.GetUserLocNamePath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
-
-	// s, _ := filepath.Abs(file)
 	stats, err := os.Stat(file)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
@@ -162,10 +53,15 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.parameters.GetName())
 }
 
-func NewDirHandler(parameters map[string]string, configData *config.ConfigData, listFiles bool) Handler {
+type DirHandler struct {
+	requestData *UrlRequestParts
+	listFiles   bool
+}
+
+func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool) Handler {
 	return &DirHandler{
-		parameters: config.NewParameters(parameters, configData),
-		listFiles:  listFiles,
+		requestData: urlRequestData,
+		listFiles:   listFiles,
 	}
 }
 
@@ -173,16 +69,17 @@ func (p *DirHandler) Submit() *ResponseData {
 	var path string
 	var err error
 
-	file, err := p.parameters.UserLocPath()
+	file, err := p.requestData.GetUserLocPath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 
-	if p.parameters.HasParam("path") {
-		pathByte, err := base64.StdEncoding.DecodeString(p.parameters.GetParam("path"))
+	if p.requestData.HasParam(PathParam) {
+		pathByte, err := base64.StdEncoding.DecodeString(p.requestData.GetParam(PathParam))
 		if err == nil {
 			path = string(pathByte)
-			file = filepath.Join(file, string(path))
+			p.requestData.SetParam(PathParam, path)
+			file = filepath.Join(file, path)
 		} else {
 			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Invalid path encoding", true)
 		}
@@ -201,21 +98,25 @@ func (p *DirHandler) Submit() *ResponseData {
 		if err != nil {
 			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 		}
-		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.parameters))
+		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.requestData))
 	} else {
 
-		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.parameters))
+		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.requestData))
 	}
 }
 
-func NewTreeHandler(parameters map[string]string, configData *config.ConfigData) Handler {
+type TreeHandler struct {
+	parameters *UrlRequestParts
+}
+
+func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData) Handler {
 	return &TreeHandler{
-		parameters: config.NewParameters(parameters, configData),
+		parameters: urlParts,
 	}
 }
 
 func (p *TreeHandler) Submit() *ResponseData {
-	file, err := p.parameters.UserLocPath()
+	file, err := p.parameters.GetUserLocPath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -244,15 +145,20 @@ func (p *TreeHandler) Submit() *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytesJson(treeAsJson(root, p.parameters)).WithMimeType("json")
 }
 
-func NewPostFileHandler(parameters map[string]string, configData *config.ConfigData, r *http.Request) Handler {
+type PostFileHandler struct {
+	parameters *UrlRequestParts
+	request    *http.Request
+}
+
+func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request) Handler {
 	return &PostFileHandler{
-		parameters: config.NewParameters(parameters, configData),
+		parameters: urlParts,
 		request:    r,
 	}
 }
 
 func (p *PostFileHandler) Submit() *ResponseData {
-	dir, err := p.parameters.UserLocPath()
+	dir, err := p.parameters.GetUserLocPath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -267,7 +173,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to read input", true)
 	}
-	file, err := p.parameters.UserLocFilePath()
+	file, err := p.parameters.GetUserLocNamePath()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File name not found", true)
 	}
@@ -279,24 +185,25 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File saved", false)
 }
 
-func NewExecHandler(parameters map[string]string, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}) Handler {
+type ExecHandler struct {
+	parameters *UrlRequestParts
+	createMap  func([]byte, []byte, int) map[string]interface{}
+}
+
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}) Handler {
 	return &ExecHandler{
-		parameters: config.NewParameters(parameters, configData),
+		parameters: urlParts,
 		createMap:  createMapFunc,
 	}
 }
 
 func (p *ExecHandler) Submit() *ResponseData {
-	execInfo, err := p.parameters.UserExec()
+	execInfo, err := p.parameters.GetUserExecInfo()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), func(r []rune) string {
-		userData := p.parameters.GetUserData()
-		if userData == nil {
-			return p.parameters.SubstituteFromMap(r, map[string]string{})
-		}
-		return p.parameters.SubstituteFromMap(r, userData.Env)
+		return p.parameters.SubstituteFromMap(r, false)
 	})
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
@@ -345,7 +252,7 @@ func statusAsJson(status int, reason string, error bool) []byte {
 	return b.Bytes()
 }
 
-func treeAsJson(root *TreeDirNode, params *config.Parameters) []byte {
+func treeAsJson(root *TreeDirNode, params *UrlRequestParts) []byte {
 	var buffer bytes.Buffer
 	buffer.WriteRune('{')
 	writeJsonHeader(params, &buffer)
@@ -355,18 +262,18 @@ func treeAsJson(root *TreeDirNode, params *config.Parameters) []byte {
 	return buffer.Bytes()
 }
 
-func filesAsJson(ents []fs.DirEntry, params *config.Parameters) []byte {
+func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts) []byte {
 	var buffer bytes.Buffer
 	entLen := len(ents)
 	buffer.WriteRune('{')
 	writeJsonHeader(params, &buffer)
 	buffer.WriteRune(',')
-	writePathToJson(params, &buffer)
+	writePathToJson(params.GetOptionalParam(PathParam), PathParam, &buffer)
 	buffer.WriteString("\"files\":[")
 	for i := 0; i < entLen; i++ {
 		e := ents[i]
-		if filterDirNames(e, params.FilterFiles()) {
-			writeSingleFileToJson(e, &buffer)
+		if filterDirNames(e, params.GetConfigFileFilter()) {
+			writeSingleFileNameToJson(e, &buffer)
 			if i < (entLen - 1) {
 				buffer.WriteRune(',')
 			}
@@ -376,39 +283,9 @@ func filesAsJson(ents []fs.DirEntry, params *config.Parameters) []byte {
 	return buffer.Bytes()
 }
 
-func writePathToJson(params *config.Parameters, buffer *bytes.Buffer) {
-	buffer.WriteString("\"path\":")
-	if params.HasParam(config.PathParam) {
-		path := params.GetPath()
-		buffer.WriteString("{\"name\":\"")
-		buffer.WriteString(path)
-		buffer.WriteString("\", \"encName\":\"")
-		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(path)))
-		buffer.WriteString("\"},")
-	} else {
-		buffer.WriteString("null,")
-	}
-}
-
-func writeSingleFileToJson(file fs.DirEntry, buffer *bytes.Buffer) {
-	buffer.WriteString("{\"size\": ")
-	buffer.WriteString(strconv.Itoa(0))
-	buffer.WriteString(",\"name\":{\"name\":\"")
-	buffer.WriteString(file.Name())
-	buffer.WriteString("\", \"encName\":\"")
-	buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(file.Name())))
-	buffer.WriteString("\"}}")
-}
-
-func writeJsonHeader(param *config.Parameters, buffer *bytes.Buffer) {
-	param.WriteErrorAsJsonString(buffer)
-	param.WriteParamAsJsonString("user", true, false, buffer)
-	param.WriteParamAsJsonString("loc", true, false, buffer)
-}
-
-func listDirectoriesAsJson(dir string, param *config.Parameters) []byte {
+func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
 	list := &[]string{}
-	listDirectoriesRec(dir, dir+string(os.PathSeparator), param.FilterFiles(), list)
+	listDirectoriesRec(dir, dir+string(os.PathSeparator), param.GetConfigFileFilter(), list)
 	listLen := len(*list)
 	var buffer bytes.Buffer
 	buffer.WriteRune('{')
@@ -448,7 +325,6 @@ func listDirectoriesRec(path string, root string, filter []string, l *[]string) 
 	if (dirCount > 0 || fileCount > 0) && strings.HasPrefix(path, root) {
 		*l = append(*l, path[len(root):])
 	}
-
 	for _, ent := range entries {
 		if ent.IsDir() {
 			p := filepath.Join(path, ent.Name())
@@ -477,125 +353,60 @@ func filterFileNames(name string, filter []string) bool {
 	return false
 }
 
-type TreeDirNode struct {
-	Name string         `json:"name"`
-	Subs []*TreeDirNode `json:"subs,omitempty"`
-}
-
-func NewTreeNode(name string) *TreeDirNode {
-	return &TreeDirNode{
-		Name: name,
-		Subs: nil,
-	}
-}
-
-func (p *TreeDirNode) ToJson(indented bool) []byte {
-	return p.toJson(0, indented)
-}
-
-func (p *TreeDirNode) AddPath(path string) error {
-	return p.addPath(strings.Split(path, "/"))
-}
-
-func (p *TreeDirNode) Len() int {
-	if p.Subs == nil {
-		return 0
-	}
-	return len(p.Subs)
-}
-
-/*
-	  Could use json.Marshal(tn) to serialise but this is faster
-	    Marshal 5..8 microseconds
-		ToJson 0..1 microseconds
-		See controllers_test
-*/
-
-// --- 120 -- 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-const tabs = "                                                                                                                        "
-const namePrefix = "{\"name\":\""
-const subsPrefix = "\"subs\":["
-
-func (p *TreeDirNode) toJson(tab int, indented bool) []byte {
-	var buffer bytes.Buffer
-	tabStr := ""
-	pad := ""
-	if indented {
-		if (tab * 2) < len(tabs) {
-			tabStr = "\n" + tabs[0:tab*2]
-		} else {
-			tabStr = "\n" + tabs
-		}
-		pad = " "
-	}
-	if indented {
-		buffer.WriteString(tabStr)
-	}
-	buffer.WriteString(namePrefix)
-	buffer.WriteString(p.Name)
-
-	subC := p.Len()
-	if subC > 0 {
-		buffer.WriteString("\",")
-		if indented {
-			buffer.WriteString(tabStr)
-			buffer.WriteString(pad)
-		}
-		buffer.WriteString(subsPrefix)
-		for i := 0; i < subC; i++ {
-			buffer.Write(p.Subs[i].toJson(tab+1, indented))
-			if i <= subC-2 {
-				buffer.WriteString(",")
-			}
-		}
-		if indented {
-			buffer.WriteString(tabStr)
-			buffer.WriteString(pad)
-		}
-		buffer.WriteString("]")
-		if indented {
-			buffer.WriteString(tabStr)
-		}
-		buffer.WriteString("}")
+func writePathToJson(pathUnencoded string, key string, buffer *bytes.Buffer) {
+	buffer.WriteRune('"')
+	buffer.WriteString(key)
+	buffer.WriteString("\":")
+	if pathUnencoded != "" {
+		buffer.WriteString("{\"name\":\"")
+		buffer.WriteString(pathUnencoded)
+		buffer.WriteString("\", \"encName\":\"")
+		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(pathUnencoded)))
+		buffer.WriteString("\"},")
 	} else {
-		buffer.WriteString("\"}")
+		buffer.WriteString("null,")
 	}
-	return buffer.Bytes()
-
 }
 
-func findInSubs(subs []*TreeDirNode, name string) *TreeDirNode {
-	if subs == nil {
-		return nil
-	}
-	for i := 0; i < len(subs); i++ {
-		if subs[i].Name == name {
-			return subs[i]
-		}
-	}
-	return nil
+func writeJsonHeader(param *UrlRequestParts, buffer *bytes.Buffer) {
+	writeErrorAsJsonString(false, buffer)
+	writeParamAsJsonString(param.GetOptionalParam(UserParam), UserParam, true, false, buffer)
+	writeParamAsJsonString(param.GetOptionalParam(LocationParam), LocationParam, true, false, buffer)
 }
 
-func (p *TreeDirNode) addPath(names []string) error {
-	pp := p
-	for i := 0; i < len(names); i++ {
-		n := names[i]
-		if len(n) > 0 {
-			if strings.HasPrefix(n, ".") {
-				return fmt.Errorf("not added")
-			}
-			su := findInSubs(pp.Subs, n)
-			if su == nil {
-				su = NewTreeNode(n)
-				if pp.Subs == nil {
-					pp.Subs = make([]*TreeDirNode, 0)
-				}
-				pp.Subs = append(pp.Subs, su)
-				pp = su
-			} else {
-				pp = su
-			}
+func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
+	buffer.WriteString("{\"size\": ")
+	buffer.WriteString(strconv.Itoa(0))
+	buffer.WriteString(",\"name\":{\"name\":\"")
+	buffer.WriteString(file.Name())
+	buffer.WriteString("\", \"encName\":\"")
+	buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(file.Name())))
+	buffer.WriteString("\"}}")
+}
+
+func writeParamAsJsonString(value string, key string, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
+	if value != "" {
+		if commaAtStart {
+			buffer.WriteRune(',')
+		}
+		buffer.WriteRune('"')
+		buffer.WriteString(key)
+		buffer.WriteString("\":\"")
+		buffer.WriteString(value)
+		buffer.WriteRune('"')
+		if commaAtEnd {
+			buffer.WriteRune(',')
 		}
 	}
-	return nil
+}
+
+func writeErrorAsJsonString(error bool, buffer *bytes.Buffer) {
+	buffer.WriteRune('"')
+	buffer.WriteString(ErrorParam)
+	buffer.WriteString("\":")
+	if error {
+		buffer.WriteString("true")
+	} else {
+		buffer.WriteString("false")
+	}
 }

@@ -19,21 +19,21 @@ func TestToJson(t *testing.T) {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
 	path, _ := conf.GetUserLocPath("stuart", "home")
-	params := config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home"}, conf)
+	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 
 	json := listDirectoriesAsJson(path, params)
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"files\":[{\"name\":") {
 		t.Fatalf("listDirectoriesAsJson Invalid header in json. [%s]", string(json))
 	}
 
-	params = config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home", config.PathParam: path}, conf)
+	params = NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home", PathParam: path})
 	files, _ := os.ReadDir(path)
 	json = filesAsJson(files, params)
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":{\"name\":\"") {
 		t.Fatalf("filesAsJson with path Invalid header in json. [%s]", string(json))
 	}
 
-	params = config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home"}, conf)
+	params = NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 	json = filesAsJson(files, params)
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":null,\"files\":[") {
 		t.Fatalf("filesAsJson without path Invalid header in json. [%s]", string(json))
@@ -49,7 +49,7 @@ func TestExec(t *testing.T) {
 	if conf == nil {
 		t.Fatal("Config is nil. Load failed")
 	}
-	params := map[string]string{"user": "bob", "exec": "ls"}
+	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "bob", ExecParam: "ls"})
 
 	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
 		if ec == 0 {
@@ -95,7 +95,7 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestTreeNode(t *testing.T) {
-	params := config.NewParameters(map[string]string{config.UserParam: "stuart", config.LocationParam: "home"}, nil)
+	params := NewUrlRequestParts(nil).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 	root := NewTreeNode("root")
 	AssertEquals(t, "root", treeAsJson(root, params), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"tree\":{\"name\":\"root\"}}")
 	root.AddPath("sub1")

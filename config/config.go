@@ -14,13 +14,6 @@ const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 
-const UserParam = "user"
-const LocationParam = "loc"
-const PathParam = "path"
-const NameParam = "name"
-const ExecParam = "exec"
-const ErrorParam = "error"
-
 var emptyMap = map[string]string{}
 
 /*
@@ -82,141 +75,6 @@ type UserData struct {
 	Locations map[string]string
 	Exec      map[string]*ExecInfo
 	Env       map[string]string
-}
-
-/*
-Used to manage a set of request parameters.
-
-Parameters are used to locate data in the users data set.
-
-typical values:
-
-	user=fred - The name of the user
-	loc=pics - The location id within the user data identifies a location in the file system
-	exec=execId - Exec id identifies an exec within the user data
-*/
-type Parameters struct {
-	configData *ConfigData
-	params     map[string]string
-	error      bool
-}
-
-func NewParameters(p map[string]string, configData *ConfigData) *Parameters {
-	return &Parameters{
-		params:     p,
-		configData: configData,
-		error:      false,
-	}
-}
-
-func (p *Parameters) GetParam(key string) string {
-	v, ok := p.params[key]
-	if ok {
-		return v
-	}
-	panic(fmt.Errorf("url parameter '%s' is missing", key))
-}
-
-func (p *Parameters) HasParam(key string) bool {
-	_, ok := p.params[key]
-	return ok
-}
-
-func (p *Parameters) WriteParamAsJsonString(key string, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
-	if p.HasParam(key) {
-		if commaAtStart {
-			buffer.WriteRune(',')
-		}
-		buffer.WriteRune('"')
-		buffer.WriteString(key)
-		buffer.WriteString("\":\"")
-		buffer.WriteString(p.GetParam(key))
-		buffer.WriteRune('"')
-		if commaAtEnd {
-			buffer.WriteRune(',')
-		}
-	}
-}
-
-func (p *Parameters) WriteErrorAsJsonString(buffer *bytes.Buffer) {
-	buffer.WriteRune('"')
-	buffer.WriteString(ErrorParam)
-	buffer.WriteString("\":")
-	if p.error {
-		buffer.WriteString("true")
-	} else {
-		buffer.WriteString("false")
-	}
-}
-
-func (p *Parameters) UserExec() (exi *ExecInfo, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-			exi = nil
-		}
-	}()
-	return p.configData.UserExec(p.GetUser(), p.GetExecId())
-}
-
-/*
-get File Path (with file name) for 'user', loc' and 'name' parameters
-Fails is 'user' or 'loc' are not found.
-Does not check the file path exists
-*/
-func (p *Parameters) UserLocFilePath() (string, error) {
-	return p.configData.GetUserLocFilePathParams(p)
-}
-
-/*
-get Directory Path for 'user' and loc' parameters
-Fails is 'user' or 'loc' are not found.
-Does not check the directory path exists
-*/
-func (p *Parameters) UserLocPath() (string, error) {
-	return p.configData.GetUserLocPathParams(p)
-}
-
-/*
- */
-func (p *Parameters) FilterFiles() []string {
-	return p.configData.internal.FilterFiles
-}
-
-func (p *Parameters) SubstituteFromMap(cmd []rune, m map[string]string) string {
-	return SubstituteFromMap(cmd, p.configData.Environment, m)
-}
-
-func (p *Parameters) Environment() map[string]string {
-	return p.configData.Environment
-}
-
-func (p *Parameters) GetUser() string {
-	return p.GetParam(UserParam)
-}
-
-func (p *Parameters) GetPath() string {
-	return p.GetParam(PathParam)
-}
-
-func (p *Parameters) GetUserData() *UserData {
-	return p.configData.GetUserData(p.GetUser())
-}
-
-func (p *Parameters) GetLocation() string {
-	return p.GetParam(LocationParam)
-}
-
-func (p *Parameters) GetName() string {
-	return p.GetParam(NameParam)
-}
-
-func (p *Parameters) GetExecId() string {
-	return p.GetParam(ExecParam)
-}
-
-func (p *Parameters) SetErrorParam(b bool) {
-
 }
 
 type ConfigDataInternal struct {
@@ -407,13 +265,10 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 			userData.Locations[locName] = f
 		}
 
-		userConfigEnv := p.GetConfigEnv(userName, false)
+		userConfigEnv := p.GetUserEnv(userName, false)
 		for execName, execData := range userData.Exec {
 			if execData.Log != "" {
-				path, err := p.GetUseExecLogPath(userName, execName)
-				if err != nil {
-					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
-				}
+				path := execData.Log
 				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
 				if e != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
@@ -422,10 +277,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 				}
 			}
 			if execData.Dir != "" {
-				path, err := p.GetUseExecDirectory(userName, execName)
-				if err != nil {
-					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] Not found", userName, execName))
-				}
+				path := execData.Dir
 				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
 				if e != nil {
 					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
@@ -464,13 +316,9 @@ func (p *ConfigData) GetUserNamesList() []string {
 	return unl
 }
 
-// func (p *ConfigData) GetUserDataRoot(user string) string {
-// 	ud := p.GetUserData(user)
-// 	if ud == nil || ud.Home == "" {
-// 		return filepath.Join(p.GetServerDataRoot(), "guest")
-// 	}
-// 	return filepath.Join(p.GetServerDataRoot(), ud.Home)
-// }
+func (p *ConfigData) GetFilesFilter() []string {
+	return p.internal.FilterFiles
+}
 
 func (p *ConfigData) GetServerDataRoot() string {
 	return p.internal.ServerDataRoot
@@ -504,7 +352,7 @@ func (p *ConfigData) GetLogData() *LogData {
 	return p.internal.LogData
 }
 
-func (p *ConfigData) GetConfigEnv(user string, includeLocations bool) map[string]string {
+func (p *ConfigData) GetUserEnv(user string, includeLocations bool) map[string]string {
 	m := make(map[string]string)
 	userData, ok := p.internal.Users[user]
 	if ok {
@@ -525,30 +373,6 @@ func (p *ConfigData) GetPortString() string {
 	return fmt.Sprintf(":%d", p.internal.Port)
 }
 
-func (p *ConfigData) GetUseExecLogPath(user string, exec string) (string, error) {
-	userData, ok := p.internal.Users[user]
-	if !ok {
-		return "", fmt.Errorf("user not found")
-	}
-	execData, ok := userData.Exec[exec]
-	if !ok {
-		return "", fmt.Errorf("exec id not found")
-	}
-	return execData.Log, nil
-}
-
-func (p *ConfigData) GetUseExecDirectory(user string, exec string) (string, error) {
-	userData, ok := p.internal.Users[user]
-	if !ok {
-		return "", fmt.Errorf("user not found")
-	}
-	execData, ok := userData.Exec[exec]
-	if !ok {
-		return "", fmt.Errorf("exec id not found")
-	}
-	return execData.Dir, nil
-}
-
 func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	userData, ok := p.internal.Users[user]
 	if !ok {
@@ -561,28 +385,15 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	return locData, nil
 }
 
-func (p *ConfigData) GetUserLocPathParams(parameters *Parameters) (path string, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-			path = ""
-		}
-	}()
-	return p.GetUserLocPath(parameters.GetUser(), parameters.GetLocation())
+func (p *ConfigData) GetUserLocFilePath(user string, loc string, fileName string) (string, error) {
+	userData, err := p.GetUserLocPath(user, loc)
+	if err != nil {
+		return "", fmt.Errorf("user not found")
+	}
+	return filepath.Join(userData, fileName), nil
 }
 
-func (p *ConfigData) GetUserLocFilePathParams(parameters *Parameters) (file string, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-			file = ""
-		}
-	}()
-	pa, err := p.GetUserLocPath(parameters.GetUser(), parameters.GetLocation())
-	return filepath.Join(pa, parameters.GetName()), err
-}
-
-func (p *ConfigData) UserExec(user, execid string) (*ExecInfo, error) {
+func (p *ConfigData) GetUserExecInfo(user, execid string) (*ExecInfo, error) {
 	userData, ok := p.internal.Users[user]
 	if !ok {
 		return nil, fmt.Errorf("user not found")
@@ -602,8 +413,8 @@ func (p *ConfigData) ToString() (string, error) {
 	return string(data), nil
 }
 
-func (p *ConfigData) SubstituteFromMap(cmd []rune, env map[string]string) string {
-	return SubstituteFromMap(cmd, p.Environment, env)
+func (p *ConfigData) SubstituteFromMap(cmd []rune, userEnv map[string]string) string {
+	return SubstituteFromMap(cmd, p.Environment, userEnv)
 }
 
 func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]string) string {

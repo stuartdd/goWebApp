@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"stuartdd.com/config"
+	"stuartdd.com/logging"
 	"stuartdd.com/server"
-	"stuartdd.com/tools"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 
 	ld := cfg.GetLogData()
 
-	logger, err := tools.NewLogger(ld.Path, ld.FileNameMask, ld.MonitorSeconds, ld.LogLevel)
+	logger, err := logging.NewLogger(ld.Path, ld.FileNameMask, ld.MonitorSeconds, ld.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)

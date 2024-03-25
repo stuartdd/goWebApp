@@ -6,6 +6,7 @@ Existring PI API
 # Files
 
 http://192.168.1.243:8080/files/user/stuart/loc/mydb
+http://localhost:8082/files/user/stuart/loc/home
 ```json
 {
    "user":"stuart",
@@ -39,6 +40,7 @@ http://192.168.1.243:8080/files/user/stuart/loc/mydb
 # Files
 
 http://192.168.1.243:8080/files/user/stuart/loc/thumbs/path/UGl4ZWxQaG9uZVN5bmMvSU1HXzIwMTcwNjAyXzEyNDExMw==
+http://localhost:8082/files/user/stuart/loc/home/path/cy1waWNzL3MtdGVzdGZvbGRlcg==?a=b&x=y
 ```json
 {
    "user":"stuart",
@@ -76,6 +78,8 @@ http://192.168.1.243:8080/files/user/stuart/loc/thumbs/path/UGl4ZWxQaG9uZVN5bmMv
 # Paths
 
 http://192.168.1.243:8080/paths/user/stuart/loc/thumbs
+http://localhost:8082/paths/user/stuart/loc/home
+
 ```json
 {
    "loc":"thumbs",

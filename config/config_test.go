@@ -93,27 +93,23 @@ func TestUserExec(t *testing.T) {
 	if conf == nil {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
-	p := NewParameters(map[string]string{"user": "bob", "exec": "c2"}, conf)
 	pre := conf.GetServerDataRoot()
-
-	exec, err := p.UserExec()
+	exec, err := conf.GetUserExecInfo("bob", "c2")
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
-
 	if exec.ToString() != fmt.Sprintf("CMD:[cmd2], Dir:, LogOut:%s/bob/logs/logOut.txt, LogErr:", pre) {
 		t.Fatalf("Did not find the correct exec! Actual '%s'", exec.ToString())
 	}
-	p = NewParameters(map[string]string{"user": "bob", "exec": "X2"}, conf)
-	_, err = p.UserExec()
+
+	_, err = conf.GetUserExecInfo("bob", "X2")
 	if err == nil {
 		t.Fatal("Should NOT find exec X2")
 	}
 	if !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("Error should contain 'not found'. Actual:'%s'", err.Error())
 	}
-	p = NewParameters(map[string]string{"user": "notbob", "exec": "c2"}, conf)
-	_, err = p.UserExec()
+	_, err = conf.GetUserExecInfo("notbob", "x2")
 	if err == nil {
 		t.Fatal("Should NOT find notbob")
 	}
@@ -122,7 +118,7 @@ func TestUserExec(t *testing.T) {
 	}
 
 }
-func TestCommands(t *testing.T) {
+func TestGetUserExecInfo(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.ToString())
@@ -130,7 +126,7 @@ func TestCommands(t *testing.T) {
 	if conf == nil {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
-	c1, err := conf.UserExec("bob", "ls")
+	c1, err := conf.GetUserExecInfo("bob", "ls")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +145,7 @@ func TestCommands(t *testing.T) {
 
 }
 
-func TestUserDataPath(t *testing.T) {
+func TestGetUserLocPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.Len() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.ToString())
@@ -158,41 +154,17 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.ToString())
 	}
 
-	_, e := conf.GetUserLocPathParams(NewParameters(map[string]string{"xxxx": "fred", "loc": "home"}, conf))
-	if e == nil {
-		t.Fatalf("Should have returned User error")
-	}
-	if e.Error() != "url parameter 'user' is missing" {
-		t.Fatalf("Should have returned url parameter 'user' is missing")
-	}
-
-	_, e = conf.GetUserLocPathParams(NewParameters(map[string]string{"user": "fred", "xxx": "home"}, conf))
-	if e == nil {
-		t.Fatalf("Should have returned User error")
-	}
-	if e.Error() != "url parameter 'loc' is missing" {
-		t.Fatalf("Should have returned url parameter 'loc' is missing")
-	}
-
-	_, e = conf.GetUserLocFilePathParams(NewParameters(map[string]string{"user": "bob", "loc": "home"}, conf))
-	if e == nil {
-		t.Fatalf("Should have returned User error")
-	}
-	if e.Error() != "url parameter 'name' is missing" {
-		t.Fatalf("Should have returned url parameter 'name' is missing")
-	}
-
-	_, e = conf.GetUserLocPathParams(NewParameters(map[string]string{"user": "fred", "loc": "home"}, conf))
+	_, e := conf.GetUserLocPath("fred", "home")
 	if e == nil {
 		t.Fatalf("Should have returned User error")
 	}
 
-	_, e = conf.GetUserLocPathParams(NewParameters(map[string]string{"user": "stuart", "loc": "xxx"}, conf))
+	_, e = conf.GetUserLocPath("stuart", "xxxx")
 	if e == nil {
 		t.Fatalf("Should have returned Location error")
 	}
 
-	u, e := conf.GetUserLocPathParams(NewParameters(map[string]string{"user": "stuart", "loc": "home"}, conf))
+	u, e := conf.GetUserLocPath("stuart", "home")
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
@@ -201,7 +173,7 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf("Should return path to /testdata/stuart")
 	}
 
-	f, e := conf.GetUserLocFilePathParams(NewParameters(map[string]string{"user": "bob", "loc": "home", "name": "data.json"}, conf))
+	f, e := conf.GetUserLocFilePath("bob", "home", "data.json")
 	if e != nil {
 		t.Fatalf(e.Error())
 	}
@@ -209,7 +181,7 @@ func TestUserDataPath(t *testing.T) {
 		t.Fatalf("Should return path to /testdata/bob/data.json")
 	}
 
-	f, e = conf.GetUserLocFilePathParams(NewParameters(map[string]string{"user": "stuart", "loc": "picsPlus", "name": "pics.json"}, conf))
+	f, e = conf.GetUserLocFilePath("stuart", "picsPlus", "pics.json")
 	if e != nil {
 		t.Fatalf(e.Error())
 	}

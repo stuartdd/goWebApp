@@ -7,13 +7,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"stuartdd.com/config"
-	"stuartdd.com/tools"
+	"stuartdd.com/logging"
 )
 
 type TLog struct {
@@ -39,6 +40,24 @@ const postDataFile1 = "{\"Data\":\"This is the data for 1\"}"
 const postDataFile2 = "{\"Data\":\"This is the data for 2\"}"
 const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
+
+func TestUrlRequestParamsMap(t *testing.T) {
+	AssertMatch(t, "0", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/x/b/1/c/4", "GET", false, "")
+	AssertMatch(t, "1", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/a/b/1/x/4", "GET", false, "b=1")
+	AssertMatch(t, "2", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/a/b/1/c", "GET", false, "")
+	AssertMatch(t, "3", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/a/b/1/c/3", "GET", true, "b=1,c=3")
+	AssertMatch(t, "4", NewUrlRequestMatcher("a", "get"), "/a", "get", false, "")
+	AssertMatch(t, "5", NewUrlRequestMatcher("a", "get"), "a", "get", true, "")
+	AssertMatch(t, "5", NewUrlRequestMatcher("/a", "get"), "/a", "get", true, "")
+	AssertMatch(t, "6", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/c/3", "post", false, "")
+	AssertMatch(t, "7", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/C/3", "GET", false, "b=1")
+	AssertMatch(t, "8", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/c/3", "get", true, "b=1,c=3")
+	AssertMatch(t, "9", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/c/3", "GET", true, "b=1,c=3")
+	AssertMatch(t, "10", NewUrlRequestMatcher("/a/*/b/*/c/*", "get"), "/a/1/b/2/c/3", "GET", true, "a=1,b=2,c=3")
+	AssertMatch(t, "10", NewUrlRequestMatcher("", "get"), "/a/1/b/2/c/3", "GET", false, "")
+	AssertMatch(t, "11", NewUrlRequestMatcher("", "get"), "", "GET", true, "")
+	AssertMatch(t, "12", NewUrlRequestMatcher("", "post"), "", "GET", false, "")
+}
 
 func TestFilePath(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
@@ -157,20 +176,28 @@ func TestReadDir(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1)
-	if resBody != "{\"error\":false, \"dDEuSlNPTg==\":\"t1.JSON\",\"dDIuRGF0YQ==\":\"t2.Data\"}" {
-		t.Fatalf("Respons body does not equal..1")
-	}
+	//
+	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\":[
+	//	{\"size\": 0,\"name\":{\"name\":\"pic1.jpeg\", \"encName\":\"cGljMS5qcGVn\"}},
+	//  {\"size\": 0,\"name\":{\"name\":\"t1.JSON\", \"encName\":\"dDEuSlNPTg==\"}},
+	//  {\"size\": 0,\"name\":{\"name\":\"t2.Data\", \"encName\":\"dDIuRGF0YQ==\"}}]}"
+	//
+	AssertContains(t, resBody, []string{
+		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\"",
+		"{\"name\":\"t2.Data\", \"encName\":\"dDIuRGF0YQ==\"}",
+		"{\"name\":\"t1.JSON\", \"encName\":\"dDEuSlNPTg==\"}",
+		"{\"name\":\"pic1.jpeg\", \"encName\":\"cGljMS5qcGVn\"}",
+	})
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1)
-	if !strings.Contains(resBody, "\"dDUuanNvbg==\":\"t5.json\"") {
-		t.Fatalf("Respons body does contain \"fidDUuanNvbg==le\":\"t5.json\"")
-	}
-	if !strings.Contains(resBody, ":\"testdata.json\"") {
-		t.Fatalf("Respons body does contain :\"testdata.json\"")
-	}
-	if !strings.Contains(resBody, "\"error\":false") {
-		t.Fatalf("Respons body does contain \"error\":false")
-	}
+	//
+	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\":[{\"size\": 0,\"name\":{\"name\":\"t5.json\", \"encName\":\"dDUuanNvbg==\"}},{\"size\": 0,\"name\":{\"name\":\"testdata.json\", \"encName\":\"dGVzdGRhdGEuanNvbg==\"}}]}"
+	//
+	AssertContains(t, resBody, []string{
+		"\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\"",
+		"{\"name\":\"t5.json\", \"encName\":\"dDUuanNvbg==\"}",
+		"{\"name\":\"testdata.json\", \"encName\":\"dGVzdGRhdGEuanNvbg==\"}",
+	})
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1)
 	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
@@ -276,7 +303,7 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 	return res, string(resBody)
 }
 
-func RunServer(config *config.ConfigData, logger tools.Logger) {
+func RunServer(config *config.ConfigData, logger logging.Logger) {
 	actionQueue := make(chan ActionId, 10)
 	defer close(actionQueue)
 	go func() {
@@ -315,6 +342,14 @@ func AssertLogContains(t *testing.T, log *TLog, list []string) {
 		}
 	}
 }
+func AssertContains(t *testing.T, actual string, expectedList []string) {
+	for i := 0; i < len(expectedList); i++ {
+		expected := expectedList[i]
+		if !strings.Contains(actual, expected) {
+			t.Fatalf("Value \n%s\nDoes NOT contain '%s'", actual, expected)
+		}
+	}
+}
 
 func trimString(res string) string {
 	var buffer bytes.Buffer
@@ -333,4 +368,41 @@ func trimString(res string) string {
 		}
 	}
 	return strings.Trim(buffer.String(), " ")
+}
+
+func AssertMatch(t *testing.T, message string, matcher *UrlRequestMatcher, url string, reqType string, match bool, params string) {
+	requestUriparts := strings.Split(strings.TrimSpace(url), "/")
+	if requestUriparts[0] == "" {
+		requestUriparts = requestUriparts[1:]
+	}
+	isAbsolutePath := strings.HasPrefix(url, "/")
+
+	p, ok := matcher.Match(requestUriparts, isAbsolutePath, reqType)
+	keys := make([]string, 0, len(p))
+	for k := range p {
+		keys = append(keys, k)
+	}
+	// Sort keys
+	sort.Strings(keys)
+	// Print sorted map
+	var buffer bytes.Buffer
+	for i, k := range keys {
+		buffer.WriteString(k)
+		buffer.WriteRune('=')
+		buffer.WriteString(p[k])
+		if i < len(keys)-1 {
+			buffer.WriteRune(',')
+		}
+	}
+
+	if ok != match {
+		if match {
+			t.Fatalf("%s.\nExpected to match %s:%s. Actual %s, Params %s", message, reqType, url, matcher, buffer.String())
+		} else {
+			t.Fatalf("%s.\nExpected to NOT match %s:%s. Actual %s, Params %s", message, reqType, url, matcher, buffer.String())
+		}
+	}
+	if buffer.String() != params {
+		t.Fatalf("%s.\nExpected Params %s. Actual Params %s", message, params, buffer.String())
+	}
 }
