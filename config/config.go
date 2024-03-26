@@ -109,6 +109,7 @@ type ConfigData struct {
 	Debugging    bool
 	Environment  map[string]string
 	NextLoadTime int64
+	UpSince      time.Time
 }
 
 /*

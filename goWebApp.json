@@ -4,6 +4,7 @@
     "reloadConfigSeconds": 3600,
     "ContentTypeCharset": "utf-8",
     "ServerName": "MyServer",
+    "Base64Prefix": "XoX",
     "filterFiles": [
         "Json",
         "Data",

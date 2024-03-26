@@ -38,14 +38,20 @@ type ServerHandler struct {
 	config      *config.ConfigData
 	actionQueue chan ActionId
 	logger      logging.Logger
+	upSince     time.Time
 }
 
-func NewServerHandler(configData *config.ConfigData, actionQueue chan ActionId, logger logging.Logger) *ServerHandler {
+func NewServerHandler(configData *config.ConfigData, actionQueue chan ActionId, logger logging.Logger, upSince time.Time) *ServerHandler {
 	return &ServerHandler{
 		config:      configData,
 		actionQueue: actionQueue,
 		logger:      logger,
+		upSince:     upSince,
 	}
+}
+
+func (p *ServerHandler) GetUpSince() time.Time {
+	return p.upSince
 }
 
 func (h *ServerHandler) Log(s string) {
@@ -125,7 +131,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_, ok = getServerStatusMatch.Match(requestUriparts, isAbsolutePath, r.Method)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson(fmt.Sprintf("Status (%v)", h.config.GetTimeToReloadConfig()), false))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetServerStatusAsMap(h.config, h.GetUpSince())))
 		return
 	}
 
@@ -193,7 +199,7 @@ type WebAppServer struct {
 
 func NewWebAppServer(configData *config.ConfigData, actionQueue chan ActionId, logger logging.Logger) *WebAppServer {
 	return &WebAppServer{
-		Handler: NewServerHandler(configData, actionQueue, logger),
+		Handler: NewServerHandler(configData, actionQueue, logger, time.Now()),
 	}
 }
 
@@ -207,6 +213,8 @@ func (p *WebAppServer) Start() {
 	p.Log(fmt.Sprintf("Server Log      :%s.", p.Handler.config.GetLogDataPath()))
 	p.Log(fmt.Sprintf("Server Path (wd):%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("Server Data Root:%s.", p.Handler.config.GetServerDataRoot()))
+	p.Log(fmt.Sprintf("Server Started  :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
+
 	for _, un := range p.Handler.config.GetUserNamesList() {
 		p.Log(fmt.Sprintf("Server User     :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}

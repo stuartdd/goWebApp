@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"stuartdd.com/config"
+	"stuartdd.com/controllers"
 	"stuartdd.com/logging"
 )
 
@@ -73,7 +74,7 @@ func TestFilePath(t *testing.T) {
 	url := "paths/user/stuart/loc/home"
 	RunClientGet(t, configData, url, 200, "?", -1)
 
-	url = "files/user/stuart/loc/home/path/cy1waWNz"
+	url = "files/user/stuart/loc/home/path/" + controllers.EncodePath("s-pics")
 	RunClientGet(t, configData, url, 200, "?", -1)
 
 	url = "files/user/stuart/loc/home"
@@ -178,25 +179,25 @@ func TestReadDir(t *testing.T) {
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1)
 	//
 	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\":[
-	//	{\"size\": 0,\"name\":{\"name\":\"pic1.jpeg\", \"encName\":\"cGljMS5qcGVn\"}},
-	//  {\"size\": 0,\"name\":{\"name\":\"t1.JSON\", \"encName\":\"dDEuSlNPTg==\"}},
-	//  {\"size\": 0,\"name\":{\"name\":\"t2.Data\", \"encName\":\"dDIuRGF0YQ==\"}}]}"
+	//	{\"size\": 0,\"name\":{\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"}},
+	//  {\"size\": 0,\"name\":{\"name\":\"t1.JSON\", \"encName\":\"X0XdDEuSlNPTg==\"}},
+	//  {\"size\": 0,\"name\":{\"name\":\"t2.Data\", \"encName\":\"X0XdDIuRGF0YQ==\"}}]}"
 	//
 	AssertContains(t, resBody, []string{
 		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\"",
-		"{\"name\":\"t2.Data\", \"encName\":\"dDIuRGF0YQ==\"}",
-		"{\"name\":\"t1.JSON\", \"encName\":\"dDEuSlNPTg==\"}",
-		"{\"name\":\"pic1.jpeg\", \"encName\":\"cGljMS5qcGVn\"}",
+		"{\"name\":\"t2.Data\", \"encName\":\"X0XdDIuRGF0YQ==\"}",
+		"{\"name\":\"t1.JSON\", \"encName\":\"X0XdDEuSlNPTg==\"}",
+		"{\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"}",
 	})
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1)
 	//
-	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\":[{\"size\": 0,\"name\":{\"name\":\"t5.json\", \"encName\":\"dDUuanNvbg==\"}},{\"size\": 0,\"name\":{\"name\":\"testdata.json\", \"encName\":\"dGVzdGRhdGEuanNvbg==\"}}]}"
+	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\":[{\"size\": 0,\"name\":{\"name\":\"t5.json\", \"encName\":\"X0XdDUuanNvbg==\"}},{\"size\": 0,\"name\":{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}}]}"
 	//
 	AssertContains(t, resBody, []string{
 		"\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\"",
-		"{\"name\":\"t5.json\", \"encName\":\"dDUuanNvbg==\"}",
-		"{\"name\":\"testdata.json\", \"encName\":\"dGVzdGRhdGEuanNvbg==\"}",
+		"{\"name\":\"t5.json\", \"encName\":\"X0XdDUuanNvbg==\"}",
+		"{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}",
 	})
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1)

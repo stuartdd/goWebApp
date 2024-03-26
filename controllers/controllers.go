@@ -9,12 +9,16 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"stuartdd.com/config"
 	"stuartdd.com/runCommand"
 )
+
+const encodedPathPrefix = "X0X"
 
 type Handler interface {
 	Submit() *ResponseData
@@ -66,7 +70,6 @@ func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigDat
 }
 
 func (p *DirHandler) Submit() *ResponseData {
-	var path string
 	var err error
 
 	file, err := p.requestData.GetUserLocPath()
@@ -75,17 +78,11 @@ func (p *DirHandler) Submit() *ResponseData {
 	}
 
 	if p.requestData.HasParam(PathParam) {
-		pathByte, err := base64.StdEncoding.DecodeString(p.requestData.GetParam(PathParam))
-		if err == nil {
-			path = string(pathByte)
-			p.requestData.SetParam(PathParam, path)
-			file = filepath.Join(file, path)
-		} else {
-			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Invalid path encoding", true)
-		}
-	} else {
-		path = ""
+		path := DecodePath(p.requestData.GetParam(PathParam))
+		p.requestData.SetParam(PathParam, path)
+		file = filepath.Join(file, path)
 	}
+
 	stats, err := os.Stat(file)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
@@ -238,6 +235,33 @@ func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType("ico")
 }
 
+func GetServerStatusAsMap(configData *config.ConfigData, upSince time.Time) map[string]interface{} {
+	m := make(map[string]interface{}, 0)
+	m["error"] = false
+	m["reloadConfig"] = configData.GetTimeToReloadConfig()
+	m["configName"] = configData.ConfigName
+	m["upSince"] = upSince.Format(time.ANSIC)
+	m["upTime"] = fmtDuration(time.Since(upSince))
+	var st runtime.MemStats
+	runtime.ReadMemStats(&st)
+	m["Alloc"] = fmtAlloc(st.Alloc)
+	m["TotalAlloc"] = fmtAlloc(st.TotalAlloc)
+	m["Sys"] = fmtAlloc(st.Sys)
+	return m
+}
+
+func fmtAlloc(al uint64) string {
+	return fmt.Sprintf("%d MiB (%d B)", al/1024/1024, al)
+}
+func fmtDuration(d time.Duration) string {
+	secs := int64(d.Seconds())
+	h := secs / 3600
+	secs -= h * 3600
+	m := secs / 60
+	secs -= m * 60
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, secs)
+}
+
 func statusAsJson(status int, reason string, error bool) []byte {
 	var b bytes.Buffer
 	b.WriteString("{\"error\":")
@@ -296,7 +320,7 @@ func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
 		buffer.WriteString(s)
 		buffer.WriteString("\",")
 		buffer.WriteString("\"encName\":\"")
-		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(s)))
+		buffer.WriteString(EncodePath(s))
 		buffer.WriteString("\"}")
 		if i < (listLen - 1) {
 			buffer.WriteRune(',')
@@ -361,7 +385,7 @@ func writePathToJson(pathUnencoded string, key string, buffer *bytes.Buffer) {
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(pathUnencoded)
 		buffer.WriteString("\", \"encName\":\"")
-		buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(pathUnencoded)))
+		buffer.WriteString(EncodePath(pathUnencoded))
 		buffer.WriteString("\"},")
 	} else {
 		buffer.WriteString("null,")
@@ -384,7 +408,7 @@ func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString(",\"name\":{\"name\":\"")
 	buffer.WriteString(file.Name())
 	buffer.WriteString("\", \"encName\":\"")
-	buffer.WriteString(base64.StdEncoding.EncodeToString([]byte(file.Name())))
+	buffer.WriteString(EncodePath(file.Name()))
 	buffer.WriteString("\"}}")
 }
 
@@ -413,4 +437,25 @@ func writeErrorAsJsonString(error bool, buffer *bytes.Buffer) {
 	} else {
 		buffer.WriteString("false")
 	}
+}
+
+func DecodePath(encodedPath string) string {
+	if encodedPath == "" {
+		return ""
+	}
+	if strings.HasPrefix(encodedPath, encodedPathPrefix) {
+		decoded, err := base64.StdEncoding.DecodeString(encodedPath[len(encodedPathPrefix):])
+		if err != nil {
+			return encodedPath
+		}
+		return string(decoded)
+	}
+	return encodedPath
+}
+
+func EncodePath(unEncoded string) string {
+	if unEncoded == "" {
+		return ""
+	}
+	return encodedPathPrefix + base64.StdEncoding.EncodeToString([]byte(unEncoded))
 }
