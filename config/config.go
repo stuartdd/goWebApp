@@ -90,6 +90,7 @@ type ConfigDataInternal struct {
 	PanicResponseCode   int
 	FilterFiles         []string
 	ServerDataRoot      string
+	ServerStaticRoot    string
 	FaviconIcoPath      string
 }
 
@@ -185,19 +186,38 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	return configDataExtternal.resolveLocations()
 }
 
+func (p *ConfigData) checkRootPathExists(rootPath string) (string, error) {
+	if rootPath == "" {
+		return "", fmt.Errorf("path is empty")
+	}
+	absPathPath, err := filepath.Abs(rootPath)
+	if err != nil {
+		return absPathPath, fmt.Errorf("path [%s] is invalid", rootPath)
+	}
+	stats, err := os.Stat(absPathPath)
+	if err != nil {
+		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
+	} else {
+		if !stats.IsDir() {
+			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
+		}
+	}
+	return absPathPath, nil
+}
+
 func (p *ConfigData) checkPathExists(relPath string, userPath string, userEnv map[string]string) (string, error) {
 	absPath := p.prefixRelativePaths(relPath, userPath)
 	absPathSub := p.SubstituteFromMap([]rune(absPath), userEnv)
 	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
-		return "", fmt.Errorf("path [%s] is invalid", absPathSub)
+		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathSub)
 	}
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
-		return "", fmt.Errorf("path [%s] Not found", absPathPath)
+		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
 	} else {
 		if !stats.IsDir() {
-			return "", fmt.Errorf("path[%s] Not a Directory", absPathPath)
+			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
 		}
 	}
 	return absPathPath, nil
@@ -236,11 +256,18 @@ func (p *ConfigData) prefixRelativePaths(relPath string, userPath string) string
 }
 
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
-	f, e := p.checkPathExists("", "", emptyMap) // Will check GetServerDataRoot
+	f, e := p.checkRootPathExists(p.GetServerDataRoot()) // Will check GetServerDataRoot
 	if e != nil {
-		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s.", p.internal.ServerDataRoot))
+		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerDataRoot(f)
+	}
+
+	f, e = p.checkRootPathExists(p.GetServerStaticRoot()) // Will check GetServerDataRoot
+	if e != nil {
+		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
+	} else {
+		p.SetServerStaticRoot(f)
 	}
 
 	errorList := NewConfigErrorData("")
@@ -358,6 +385,14 @@ func (p *ConfigData) GetServerDataRoot() string {
 
 func (p *ConfigData) SetServerDataRoot(f string) {
 	p.internal.ServerDataRoot = f
+}
+
+func (p *ConfigData) GetServerStaticRoot() string {
+	return p.internal.ServerStaticRoot
+}
+
+func (p *ConfigData) SetServerStaticRoot(path string) {
+	p.internal.ServerStaticRoot = path
 }
 
 func (p *ConfigData) GetContentTypeCharset() string {

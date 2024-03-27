@@ -24,6 +24,39 @@ type Handler interface {
 	Submit() *ResponseData
 }
 
+type StaticFileHandler struct {
+	filePath   []string
+	configData *config.ConfigData
+}
+
+func NewStaticFileHandler(file []string, configData *config.ConfigData) *StaticFileHandler {
+	return &StaticFileHandler{
+		filePath:   file,
+		configData: configData,
+	}
+}
+
+func (p *StaticFileHandler) Submit() *ResponseData {
+	list := []string{p.configData.GetServerStaticRoot()}
+	list = append(list, p.filePath...)
+	fullFile := filepath.Join(list...)
+
+	stats, err := os.Stat(fullFile)
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
+	}
+
+	if stats.IsDir() {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a file", true)
+	}
+
+	fileContent, err := os.ReadFile(fullFile)
+	if err != nil {
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File could not be read", true)
+	}
+	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])
+}
+
 type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData

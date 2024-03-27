@@ -72,75 +72,83 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Log(fmt.Sprintf("Req:  %s", r.RequestURI))
+	urlPath := strings.TrimSpace(r.URL.Path)
 
-	urlParts := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
+	RequestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
+	var isAbsolutePath bool
+	requestUrlparts := strings.Split(urlPath, "/")
+	if requestUrlparts[0] == "" {
+		isAbsolutePath = true
+		requestUrlparts = requestUrlparts[1:]
+	} else {
+		isAbsolutePath = false
+	}
+	if len(requestUrlparts) > 1 {
+		if requestUrlparts[0] == "static" {
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config).Submit())
+			return
+		}
+		p, ok := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p), h.config, nil).Submit())
+			return
+		}
+		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true).Submit())
+			return
+		}
+		p, ok = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true).Submit())
+			return
+		}
+		p, ok = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, false).Submit())
+			return
+		}
+		p, ok = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewTreeHandler(RequestData.WithParameters(p), h.config).Submit())
+			return
+		}
 
-	requestUriparts := strings.Split(strings.TrimSpace(r.URL.Path), "/")
-	if requestUriparts[0] == "" {
-		requestUriparts = requestUriparts[1:]
+		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config).Submit())
+			return
+		}
+		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewPostFileHandler(RequestData.WithParameters(p), h.config, r).Submit())
+			return
+		}
 	}
-	isAbsolutePath := strings.HasPrefix(r.URL.Path, "/")
-
-	p, ok := execUserCmdMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewExecHandler(urlParts.WithParameters(p), h.config, nil).Submit())
-		return
-	}
-	p, ok = getFileUserLocPathMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewDirHandler(urlParts.WithParameters(p), h.config, true).Submit())
-		return
-	}
-	p, ok = getFileUserLocMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewDirHandler(urlParts.WithParameters(p), h.config, true).Submit())
-		return
-	}
-	p, ok = getPathsUserLocMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewDirHandler(urlParts.WithParameters(p), h.config, false).Submit())
-		return
-	}
-	p, ok = getFileUserLocTreeMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewTreeHandler(urlParts.WithParameters(p), h.config).Submit())
-		return
-	}
-
-	p, ok = getFileUserLocNameMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewReadFileHandler(urlParts.WithParameters(p), h.config).Submit())
-		return
-	}
-	p, ok = postFileUserLocNameMatch.Match(requestUriparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.NewPostFileHandler(urlParts.WithParameters(p), h.config, r).Submit())
-		return
-	}
-	_, ok = getExitMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	_, ok := getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.actionQueue <- Exit
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson("Server Stopped", false))
 		return
 	}
 
-	_, ok = getPingMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	_, ok = getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
 		return
 	}
-	_, ok = getServerStatusMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetServerStatusAsMap(h.config, h.GetUpSince())))
 		return
 	}
 
-	_, ok = getFaviconMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	_, ok = getFaviconMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
 		return
 	}
-	_, ok = getReloadConfigMatch.Match(requestUriparts, isAbsolutePath, r.Method)
+	_, ok = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		cfg, errorList := config.NewConfigData(h.config.ConfigName)
 		if errorList.Len() == 0 {
@@ -154,7 +162,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true))
 }
 

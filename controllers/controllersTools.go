@@ -52,6 +52,11 @@ func (p *UrlRequestParts) WithParameters(params map[string]string) *UrlRequestPa
 	return p
 }
 
+func (p *UrlRequestParts) WithFile(file string) *UrlRequestParts {
+	p.parameters["file"] = file
+	return p
+}
+
 func (p *UrlRequestParts) GetParam(key string) string {
 	v, ok := p.parameters[key]
 	if ok {

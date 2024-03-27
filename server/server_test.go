@@ -60,9 +60,49 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post"), "", "GET", false, "")
 }
 
+func TestStatic(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	if errList.Len() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	url := "static/images/pic.jpg"
+	resp, _ := RunClientGet(t, configData, url, 200, "?", 819502, 10)
+	if resp.Header["Content-Type"][0] != "image/jpeg" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+
+	url = "static/simple.html"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 149, 10)
+	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	url = "static/index.htm"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 88, 10)
+	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+
+	url = "static/images/favicon.ico"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
+	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+
+	url = "static/notfound.pic"
+	RunClientGet(t, configData, url, 404, "?", -1, 0)
+	url = "static"
+	RunClientGet(t, configData, url, 404, "?", -1, 0)
+
+}
 func TestFilePath(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -72,19 +112,19 @@ func TestFilePath(t *testing.T) {
 	}
 
 	url := "paths/user/stuart/loc/home"
-	RunClientGet(t, configData, url, 200, "?", -1)
+	RunClientGet(t, configData, url, 200, "?", -1, 0)
 
 	url = "files/user/stuart/loc/home/path/" + controllers.EncodePath("s-pics")
-	RunClientGet(t, configData, url, 200, "?", -1)
+	RunClientGet(t, configData, url, 200, "?", -1, 0)
 
 	url = "files/user/stuart/loc/home"
-	RunClientGet(t, configData, url, 200, "\"path\":null|\"error\":false", -1)
+	RunClientGet(t, configData, url, 200, "\"path\":null|\"error\":false", -1, 0)
 
 }
 
 func TestTree(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -95,7 +135,7 @@ func TestTree(t *testing.T) {
 
 	url := "files/user/stuart/loc/testtree/tree"
 
-	_, dirList := RunClientGet(t, configData, url, 200, "?", -1)
+	_, dirList := RunClientGet(t, configData, url, 200, "?", -1, 0)
 
 	tn := make(map[string]interface{})
 	err := json.Unmarshal([]byte(dirList), &tn)
@@ -109,12 +149,12 @@ func TestTree(t *testing.T) {
 		t.Fatalf("response 'tree' is nil")
 	}
 
-	RunClientGet(t, configData, "favicon.ico", 200, "?", -1)
+	RunClientGet(t, configData, "favicon.ico", 200, "?", -1, 0)
 
 }
 func TestGetFavicon(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -122,7 +162,7 @@ func TestGetFavicon(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	resp, _ := RunClientGet(t, configData, "favicon.ico", 200, "?", -1)
+	resp, _ := RunClientGet(t, configData, "favicon.ico", 200, "?", -1, 0)
 	if resp.StatusCode != 200 {
 		t.Fatalf("did not get the icon!")
 	}
@@ -134,7 +174,7 @@ func TestGetFavicon(t *testing.T) {
 
 func TestPostFile(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -152,12 +192,12 @@ func TestPostFile(t *testing.T) {
 	url := fmt.Sprintf("files/user/stuart/loc/picsPlus/name/%s", testdatafile)
 
 	RunClientPost(t, configData, url, 202, postDataFile1)
-	_, resBody := RunClientGet(t, configData, url, 200, "?", -1)
+	_, resBody := RunClientGet(t, configData, url, 200, "?", -1, 0)
 	if resBody != postDataFile1 {
 		t.Fatalf("Respons body does not equal postDataFile1")
 	}
 	RunClientPost(t, configData, url, 202, postDataFile2)
-	_, resBody = RunClientGet(t, configData, url, 200, "?", -1)
+	_, resBody = RunClientGet(t, configData, url, 200, "?", -1, 0)
 	if resBody != postDataFile2 {
 		t.Fatalf("Respons body does not equal postDataFile2")
 	}
@@ -168,7 +208,7 @@ func TestPostFile(t *testing.T) {
 func TestReadDir(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -176,7 +216,7 @@ func TestReadDir(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1)
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1, 0)
 	//
 	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\":[
 	//	{\"size\": 0,\"name\":{\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"}},
@@ -190,7 +230,7 @@ func TestReadDir(t *testing.T) {
 		"{\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"}",
 	})
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1)
+	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1, 0)
 	//
 	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\":[{\"size\": 0,\"name\":{\"name\":\"t5.json\", \"encName\":\"X0XdDUuanNvbg==\"}},{\"size\": 0,\"name\":{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}}]}"
 	//
@@ -200,7 +240,7 @@ func TestReadDir(t *testing.T) {
 		"{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}",
 	})
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1)
+	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1, 0)
 	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
 		t.Fatalf("Respons body does not equal..3")
 	}
@@ -211,7 +251,7 @@ func TestReadDir(t *testing.T) {
 func TestReadFile(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -220,12 +260,12 @@ func TestReadFile(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/t1.JSON", 200, "?", 251)
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/t1.JSON", 200, "?", 251, 0)
 	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
 		t.Fatalf("Respons body does not start with...")
 	}
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", 404, "?", 73)
+	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", 404, "?", 73, 0)
 	if !strings.Contains(trimString(resBody), "Is not a file") {
 		t.Fatalf("Respons body does not contain 'Is not a file'")
 	}
@@ -236,7 +276,7 @@ func TestReadFile(t *testing.T) {
 
 func TestClient(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 {
+	if errList.Len() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -245,11 +285,11 @@ func TestClient(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 78)
+	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 78, 0)
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
-	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58)
-	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 74)
+	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58, 0)
+	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 74, 0)
 	AssertLogContains(t, logger, []string{"Req:  /ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
@@ -268,7 +308,7 @@ func RunClientPost(t *testing.T, config *config.ConfigData, path string, expecte
 	return res, ""
 }
 
-func RunClientGet(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int) (*http.Response, string) {
+func RunClientGet(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int, plusMinus int) (*http.Response, string) {
 	requestURL := fmt.Sprintf("http://localhost%s/%s", config.GetPortString(), path)
 	res, err := http.Get(requestURL)
 	if err != nil {
@@ -295,10 +335,17 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 			}
 		}
 	}
+
 	if expectedLen >= 0 {
-		len := res.Header["Content-Length"]
-		if len[0] != strconv.Itoa(expectedLen) {
-			t.Fatalf("Status for path http://localhost%s/%s.\nExpected '%d' \nActual   '%s'", config.GetPortString(), path, expectedLen, len[0])
+		minLen := expectedLen - plusMinus
+		maxLen := expectedLen + plusMinus
+		len, err := strconv.Atoi(res.Header["Content-Length"][0])
+		if err != nil {
+			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' Content-Length conversion error:'%s'", config.GetPortString(), path, minLen, maxLen, err)
+
+		}
+		if len < minLen || len > maxLen {
+			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' \nActual   '%d'", config.GetPortString(), path, minLen, maxLen, len)
 		}
 	}
 	return res, string(resBody)

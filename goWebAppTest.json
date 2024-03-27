@@ -72,5 +72,6 @@
             }
         }
     },
-    "ServerDataRoot": "../testdata"
+    "ServerDataRoot": "../testdata",
+    "ServerStaticRoot": "../static"
 }
