@@ -24,6 +24,8 @@ var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
 var getReloadConfigMatch = NewUrlRequestMatcher("/reload/config", "GET")
 var getServerStatusMatch = NewUrlRequestMatcher("/status", "GET")
+var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
+var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
@@ -140,6 +142,16 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetServerStatusAsMap(h.config, h.GetUpSince())))
+		return
+	}
+	_, ok = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	if ok {
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetTimeAsMap()))
+		return
+	}
+	_, ok = getServerUsersMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	if ok {
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetUsersAsMap(h.config.GetUsers())))
 		return
 	}
 

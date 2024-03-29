@@ -21,6 +21,7 @@
             "home": "bob",
             "Locations": {
                 "home": "",
+                "data": "stateData",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
             },
@@ -48,6 +49,7 @@
             "home": "stuart",
             "Locations": {
                 "home": "",
+                "data": "stateData",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "",

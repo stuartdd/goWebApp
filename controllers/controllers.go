@@ -130,7 +130,6 @@ func (p *DirHandler) Submit() *ResponseData {
 		}
 		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.requestData))
 	} else {
-
 		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.requestData))
 	}
 }
@@ -256,6 +255,54 @@ func (p *ExecHandler) Submit() *ResponseData {
 }
 
 //-------------------------------------------------------------------
+/*
+return "{\"time\":{"
+                + "\"millis\":" + System.currentTimeMillis() + ", "
+                + "\"time2\":" + "\"" + time2(dt) + "\", "
+ *               + "\"time3\":" + "\"" + time3(dt) + "\", "
+ *               + "\"monthDay\":" + "\"" + monthDay(dt) + "\", "
+                + "\"year\":" + dt.year().get() + ", "
+                + "\"month\":" + dt.monthOfYear().get() + ", "
+                + "\"dom\":" + dt.dayOfMonth().get() + ", "
+                + "\"mon\":\"" + dt.monthOfYear().getAsText() + "\", "
+                + "\"timestamp\":\"" + ConfigDataManager.formattedTimeStamp() + "\"}}";
+
+ * {"time":{"millis":1554504586062, "time2":"23:49", "time3":"23:49:46", "monthDay":"April:05", "year":2019, "month":4, "dom":5, "mon":"April", "timestamp":"05-04-2019T23:49:46.0+0100"}}
+ * {"time":{"dom":29,"millis":1711671100876,"mon":"March","month":3,"monthDay":"March:29","time2":"00:11","time3":"00:11:40","timestamp":"2024-03-29T00:11:40Z","year":2024}}
+*/
+func GetTimeAsMap() map[string]interface{} {
+	t := time.Now()
+	day := t.Day()
+	mon := t.Month()
+	monName := mon.String()
+	t2 := fmt.Sprintf("%02d:%02d", t.Hour(), t.Minute())
+	m1 := make(map[string]interface{}, 0)
+	m2 := make(map[string]interface{}, 0)
+	m2["millis"] = t.UnixMilli()
+	m2["year"] = t.Year()
+	m2["monthDay"] = fmt.Sprintf("%s:%02d", monName, day)
+	m2["month"] = mon
+	m2["dom"] = day
+	m2["mon"] = monName
+	m2["time3"] = fmt.Sprintf("%s:%02d", t2, t.Second())
+	m2["time2"] = t2
+	m2["timestamp"] = t.Format(time.RFC3339)
+	m1["time"] = m2
+	return m1
+}
+
+/*
+{"users": [{"id":"stuart","name":"Stuart"},{"id":"shared"},{"id":"nonuser"},{"id":"test","src":"src"}]}
+*/
+func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
+	m1 := make(map[string]interface{}, 0)
+	l1 := make([]map[string]string, 0)
+	for id, ud := range *users {
+		l1 = append(l1, map[string]string{"id": id, "name": ud.Name})
+	}
+	m1["users"] = l1
+	return m1
+}
 
 func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 	if configData.GetFaviconIcoPath() == "" {
@@ -347,7 +394,7 @@ func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
 	var buffer bytes.Buffer
 	buffer.WriteRune('{')
 	writeJsonHeader(param, &buffer)
-	buffer.WriteString(",\"files\":[")
+	buffer.WriteString(",\"paths\":[")
 	for i, s := range *list {
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(s)

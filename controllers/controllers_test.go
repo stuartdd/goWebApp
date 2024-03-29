@@ -22,7 +22,7 @@ func TestToJson(t *testing.T) {
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 
 	json := listDirectoriesAsJson(path, params)
-	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"files\":[{\"name\":") {
+	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"paths\":[{\"name\":") {
 		t.Fatalf("listDirectoriesAsJson Invalid header in json. [%s]", string(json))
 	}
 

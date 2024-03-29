@@ -363,6 +363,10 @@ func (p *ConfigData) GetUserData(user string) *UserData {
 	return nil
 }
 
+func (p *ConfigData) GetUsers() *map[string]UserData {
+	return &p.internal.Users
+}
+
 func (p *ConfigData) GetUserRoot(user string) string {
 	return p.prefixRelativePaths("", p.GetUserData(user).Home)
 }

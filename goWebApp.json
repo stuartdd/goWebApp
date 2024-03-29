@@ -7,7 +7,9 @@
     "filterFiles": [
         "Json",
         "Data",
-        "jpeg"
+        "jpeg",
+        "jpg",
+        "png"
     ],
     "faviconIcoPath": "favicon1.ico",
     "LogData": {
@@ -22,6 +24,8 @@
             "home": "bob",
             "Locations": {
                 "home": "",
+                "data": "stateData",
+                "thumbs": "***../thumbs",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
             }
@@ -41,6 +45,8 @@
             },
             "Locations": {
                 "home": "",
+                "data": "stateData",
+                "thumbs": "***../thumbs",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "***/home/stuart/git"
@@ -51,6 +57,5 @@
         }
     },
     "ServerDataRoot": "./testdata",
-    "ServerStaticRoot": "./static"
-    
+    "ServerStaticRoot": "/home/stuart/git/PiServerWeb/web/static"
 }
