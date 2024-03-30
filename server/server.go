@@ -28,6 +28,7 @@ var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
+var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET")
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
 var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET")
 
@@ -85,6 +86,9 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		isAbsolutePath = false
 	}
+	if requestUrlparts[0] == "" {
+		requestUrlparts = requestUrlparts[1:]
+	}
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
 			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config).Submit())
@@ -116,6 +120,11 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config).Submit())
+			return
+		}
 		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
 			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config).Submit())
@@ -133,7 +142,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson("Server Stopped", false))
 		return
 	}
-
 	_, ok = getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
@@ -228,15 +236,20 @@ func (p *WebAppServer) Log(s string) {
 
 func (p *WebAppServer) Start() {
 	p.Log("Server running.")
-	p.Log(fmt.Sprintf("Server Port     %s.", p.Handler.config.GetPortString()))
-	p.Log(fmt.Sprintf("Server Log      :%s.", p.Handler.config.GetLogDataPath()))
-	p.Log(fmt.Sprintf("Server Path (wd):%s.", p.Handler.config.CurrentPath))
-	p.Log(fmt.Sprintf("Server Data Root:%s.", p.Handler.config.GetServerDataRoot()))
-	p.Log(fmt.Sprintf("Server Started  :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
+	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
+	p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
+	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.CurrentPath))
+	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetServerDataRoot()))
+	if p.Handler.config.IsTemplating() {
+		p.Log(fmt.Sprintf("Server Templating :%s.", p.Handler.config.GetTemplateData().FullFileName))
+	} else {
+		p.Log("Server Templating :OFF.")
+	}
 
 	for _, un := range p.Handler.config.GetUserNamesList() {
-		p.Log(fmt.Sprintf("Server User     :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
+		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}
+	p.Log(fmt.Sprintf("Server Started    :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
 	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))
 }
 

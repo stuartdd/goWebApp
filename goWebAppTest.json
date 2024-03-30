@@ -75,5 +75,9 @@
         }
     },
     "ServerDataRoot": "../testdata",
-    "ServerStaticRoot": "../static"
+    "ServerStaticRoot": "../static",
+    "TemplateStaticFiles":{
+        "Files":["dart.html", "dart.css"],
+        "DataFile":"../configDataPI.json"
+    }
 }

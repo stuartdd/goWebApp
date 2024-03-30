@@ -57,5 +57,10 @@
         }
     },
     "ServerDataRoot": "./testdata",
-    "ServerStaticRoot": "/home/stuart/git/PiServerWeb/web/static"
+    "ServerStaticRoot": "/home/stuart/git/PiServerWeb/web/static",
+    "TemplateStaticFiles":{
+        "Files":["dart.html", "dart.css"],
+        "DataFile":"configDataPI.json"
+    }
+
 }

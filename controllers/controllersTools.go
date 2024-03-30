@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,6 +18,7 @@ const PathParam = "path"
 const NameParam = "name"
 const ExecParam = "exec"
 const ErrorParam = "error"
+const encodedValuePrefix = "X0X"
 
 type UrlRequestParts struct {
 	parameters map[string]string
@@ -60,6 +62,9 @@ func (p *UrlRequestParts) WithFile(file string) *UrlRequestParts {
 func (p *UrlRequestParts) GetParam(key string) string {
 	v, ok := p.parameters[key]
 	if ok {
+		if strings.HasPrefix(v, encodedValuePrefix) {
+			return decodeValue(v)
+		}
 		return v
 	}
 	panic(fmt.Errorf("url parameter '%s' is missing", key))
@@ -102,29 +107,44 @@ func (p *UrlRequestParts) GetExecId() string {
 	return p.GetParam(ExecParam)
 }
 
-func (p *UrlRequestParts) SubstituteFromMap(cmd []rune, includeLocations bool) string {
+func (p *UrlRequestParts) SubstituteFromMap(cmd []byte, includeLocations bool) string {
 	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser(), includeLocations))
 }
 
-func (p *UrlRequestParts) GetUserLocNamePath() (file string, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-			file = ""
-		}
-	}()
-	pa, err := p.GetUserLocPath()
-	return filepath.Join(pa, p.GetName()), err
-}
+// func (p *UrlRequestParts) GetUserLocNamePath() (file string, err error) {
+// 	defer func() {
+// 		if r := recover(); r != nil {
+// 			err = r.(error)
+// 			file = ""
+// 		}
+// 	}()
+// 	pa, err := p.GetUserLocPath()
 
-func (p *UrlRequestParts) GetUserLocPath() (path string, err error) {
+// 	return filepath.Join(pa, p.GetName()), err
+// }
+
+func (p *UrlRequestParts) GetUserLocPath(withName bool) (path string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
 			path = ""
 		}
 	}()
-	return p.config.GetUserLocPath(p.GetUser(), p.GetLocation())
+	ulp, err := p.config.GetUserLocPath(p.GetUser(), p.GetLocation())
+	if err != nil {
+		return "", err
+	}
+	if p.HasParam(PathParam) {
+		pat := p.GetParam(PathParam)
+		ulp = filepath.Join(ulp, pat)
+	}
+	if withName {
+		if p.HasParam(NameParam) {
+			np := p.GetParam(NameParam)
+			ulp = filepath.Join(ulp, np)
+		}
+	}
+	return ulp, nil
 }
 
 func (p *UrlRequestParts) GetUserExecInfo() (path *config.ExecInfo, err error) {
@@ -347,4 +367,25 @@ func (p *TreeDirNode) addPath(names []string) error {
 		}
 	}
 	return nil
+}
+
+func decodeValue(encodedValue string) string {
+	if encodedValue == "" {
+		return ""
+	}
+	if strings.HasPrefix(encodedValue, encodedValuePrefix) {
+		decoded, err := base64.StdEncoding.DecodeString(encodedValue[len(encodedValuePrefix):])
+		if err != nil {
+			return encodedValue
+		}
+		return string(decoded)
+	}
+	return encodedValue
+}
+
+func encodeValue(unEncoded string) string {
+	if unEncoded == "" {
+		return ""
+	}
+	return encodedValuePrefix + base64.StdEncoding.EncodeToString([]byte(unEncoded))
 }

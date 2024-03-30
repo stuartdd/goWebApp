@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,8 +16,6 @@ import (
 	"stuartdd.com/config"
 	"stuartdd.com/runCommand"
 )
-
-const encodedPathPrefix = "X0X"
 
 type Handler interface {
 	Submit() *ResponseData
@@ -49,10 +46,15 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 	if stats.IsDir() {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a file", true)
 	}
-
 	fileContent, err := os.ReadFile(fullFile)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File could not be read", true)
+	}
+	if p.configData.IsTemplating() {
+		td := p.configData.GetTemplateData()
+		if td.ShouldTemplate(list[len(list)-1]) {
+			fileContent = []byte(p.configData.SubstituteFromMap([]byte(string(fileContent)), td.Data))
+		}
 	}
 	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])
 }
@@ -70,7 +72,7 @@ func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 }
 
 func (p *ReadFileHandler) Submit() *ResponseData {
-	file, err := p.parameters.GetUserLocNamePath()
+	file, err := p.parameters.GetUserLocPath(true)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
@@ -78,11 +80,9 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
-
 	if stats.IsDir() {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a file", true)
 	}
-
 	fileContent, err := os.ReadFile(file)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File could not be read", true)
@@ -91,31 +91,24 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 }
 
 type DirHandler struct {
-	requestData *UrlRequestParts
-	listFiles   bool
+	parameters *UrlRequestParts
+	listFiles  bool
 }
 
 func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool) Handler {
 	return &DirHandler{
-		requestData: urlRequestData,
-		listFiles:   listFiles,
+		parameters: urlRequestData,
+		listFiles:  listFiles,
 	}
 }
 
 func (p *DirHandler) Submit() *ResponseData {
 	var err error
 
-	file, err := p.requestData.GetUserLocPath()
+	file, err := p.parameters.GetUserLocPath(false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
-
-	if p.requestData.HasParam(PathParam) {
-		path := DecodePath(p.requestData.GetParam(PathParam))
-		p.requestData.SetParam(PathParam, path)
-		file = filepath.Join(file, path)
-	}
-
 	stats, err := os.Stat(file)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
@@ -128,9 +121,9 @@ func (p *DirHandler) Submit() *ResponseData {
 		if err != nil {
 			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 		}
-		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.requestData))
+		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.parameters))
 	} else {
-		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.requestData))
+		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.parameters))
 	}
 }
 
@@ -145,7 +138,7 @@ func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData) Ha
 }
 
 func (p *TreeHandler) Submit() *ResponseData {
-	file, err := p.parameters.GetUserLocPath()
+	file, err := p.parameters.GetUserLocPath(false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -187,7 +180,7 @@ func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 }
 
 func (p *PostFileHandler) Submit() *ResponseData {
-	dir, err := p.parameters.GetUserLocPath()
+	dir, err := p.parameters.GetUserLocPath(false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -202,7 +195,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to read input", true)
 	}
-	file, err := p.parameters.GetUserLocNamePath()
+	file, err := p.parameters.GetUserLocPath(true)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File name not found", true)
 	}
@@ -231,7 +224,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), func(r []rune) string {
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), func(r []byte) string {
 		return p.parameters.SubstituteFromMap(r, false)
 	})
 	stdOut, stdErr, code, err := execData.Run()
@@ -256,20 +249,9 @@ func (p *ExecHandler) Submit() *ResponseData {
 
 //-------------------------------------------------------------------
 /*
-return "{\"time\":{"
-                + "\"millis\":" + System.currentTimeMillis() + ", "
-                + "\"time2\":" + "\"" + time2(dt) + "\", "
- *               + "\"time3\":" + "\"" + time3(dt) + "\", "
- *               + "\"monthDay\":" + "\"" + monthDay(dt) + "\", "
-                + "\"year\":" + dt.year().get() + ", "
-                + "\"month\":" + dt.monthOfYear().get() + ", "
-                + "\"dom\":" + dt.dayOfMonth().get() + ", "
-                + "\"mon\":\"" + dt.monthOfYear().getAsText() + "\", "
-                + "\"timestamp\":\"" + ConfigDataManager.formattedTimeStamp() + "\"}}";
-
  * {"time":{"millis":1554504586062, "time2":"23:49", "time3":"23:49:46", "monthDay":"April:05", "year":2019, "month":4, "dom":5, "mon":"April", "timestamp":"05-04-2019T23:49:46.0+0100"}}
  * {"time":{"dom":29,"millis":1711671100876,"mon":"March","month":3,"monthDay":"March:29","time2":"00:11","time3":"00:11:40","timestamp":"2024-03-29T00:11:40Z","year":2024}}
-*/
+ */
 func GetTimeAsMap() map[string]interface{} {
 	t := time.Now()
 	day := t.Day()
@@ -400,7 +382,7 @@ func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
 		buffer.WriteString(s)
 		buffer.WriteString("\",")
 		buffer.WriteString("\"encName\":\"")
-		buffer.WriteString(EncodePath(s))
+		buffer.WriteString(encodeValue(s))
 		buffer.WriteString("\"}")
 		if i < (listLen - 1) {
 			buffer.WriteRune(',')
@@ -465,7 +447,7 @@ func writePathToJson(pathUnencoded string, key string, buffer *bytes.Buffer) {
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(pathUnencoded)
 		buffer.WriteString("\", \"encName\":\"")
-		buffer.WriteString(EncodePath(pathUnencoded))
+		buffer.WriteString(encodeValue(pathUnencoded))
 		buffer.WriteString("\"},")
 	} else {
 		buffer.WriteString("null,")
@@ -488,7 +470,7 @@ func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString(",\"name\":{\"name\":\"")
 	buffer.WriteString(file.Name())
 	buffer.WriteString("\", \"encName\":\"")
-	buffer.WriteString(EncodePath(file.Name()))
+	buffer.WriteString(encodeValue(file.Name()))
 	buffer.WriteString("\"}}")
 }
 
@@ -517,25 +499,4 @@ func writeErrorAsJsonString(error bool, buffer *bytes.Buffer) {
 	} else {
 		buffer.WriteString("false")
 	}
-}
-
-func DecodePath(encodedPath string) string {
-	if encodedPath == "" {
-		return ""
-	}
-	if strings.HasPrefix(encodedPath, encodedPathPrefix) {
-		decoded, err := base64.StdEncoding.DecodeString(encodedPath[len(encodedPathPrefix):])
-		if err != nil {
-			return encodedPath
-		}
-		return string(decoded)
-	}
-	return encodedPath
-}
-
-func EncodePath(unEncoded string) string {
-	if unEncoded == "" {
-		return ""
-	}
-	return encodedPathPrefix + base64.StdEncoding.EncodeToString([]byte(unEncoded))
 }

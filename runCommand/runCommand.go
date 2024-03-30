@@ -19,12 +19,12 @@ func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, substitute func([]rune) string) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, substitute func([]byte) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
 		for pos, cmd := range commands {
-			subCmd[pos] = substitute([]rune(cmd))
+			subCmd[pos] = substitute([]byte(cmd))
 		}
 	} else {
 		subCmd = commands

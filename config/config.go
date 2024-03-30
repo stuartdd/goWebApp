@@ -23,6 +23,39 @@ var emptyMap = map[string]string{}
 ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
 */
+type TemplateStaticFiles struct {
+	Files        []string
+	DataFile     string
+	Data         map[string]string
+	FullFileName string
+}
+
+func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
+	f, err := filepath.Abs(t.DataFile)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file name:%s. Error:%s", t.DataFile, err.Error())
+	}
+	content, err := os.ReadFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read template data file. Error:%s", err.Error())
+	}
+	m := make(map[string]string)
+	err = json.Unmarshal(content, &m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
+	}
+	t.Data = m
+	t.FullFileName = f
+	return t, nil
+}
+func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
+	for _, v := range t.Files {
+		if v == file {
+			return true
+		}
+	}
+	return false
+}
 
 type LogData struct {
 	FileNameMask   string
@@ -91,6 +124,7 @@ type ConfigDataInternal struct {
 	FilterFiles         []string
 	ServerDataRoot      string
 	ServerStaticRoot    string
+	TemplateStaticFiles *TemplateStaticFiles
 	FaviconIcoPath      string
 }
 
@@ -108,6 +142,7 @@ type ConfigData struct {
 	ModuleName   string
 	ConfigName   string
 	Debugging    bool
+	Templating   bool
 	Environment  map[string]string
 	NextLoadTime int64
 	UpSince      time.Time
@@ -159,6 +194,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 		FilterFiles:         []string{},
 		PanicResponseCode:   500,
 		ServerDataRoot:      "~/",
+		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
 	}
 
@@ -207,7 +243,7 @@ func (p *ConfigData) checkRootPathExists(rootPath string) (string, error) {
 
 func (p *ConfigData) checkPathExists(relPath string, userPath string, userEnv map[string]string) (string, error) {
 	absPath := p.prefixRelativePaths(relPath, userPath)
-	absPathSub := p.SubstituteFromMap([]rune(absPath), userEnv)
+	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
 	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathSub)
@@ -225,7 +261,7 @@ func (p *ConfigData) checkPathExists(relPath string, userPath string, userEnv ma
 
 func (p *ConfigData) checkFileExists(relPath string, userPath string, file string, userEnv map[string]string) (string, error) {
 	absPath := p.prefixRelativePaths(relPath, userPath)
-	absPathSub := p.SubstituteFromMap([]rune(absPath), userEnv)
+	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
 	absFilePath, err := filepath.Abs(absPathSub)
 	if err != nil {
 		return "", fmt.Errorf("path [%s] is invalid", absPathSub)
@@ -268,6 +304,14 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerStaticRoot(f)
+	}
+
+	if p.IsTemplating() {
+		templ := p.GetTemplateData()
+		_, err := templ.Init()
+		if err != nil {
+			return nil, NewConfigErrorData(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
+		}
 	}
 
 	errorList := NewConfigErrorData("")
@@ -323,10 +367,10 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 			}
 
 			for i, v := range execData.Cmd {
-				execData.Cmd[i] = p.SubstituteFromMap([]rune(v), userConfigEnv)
+				execData.Cmd[i] = p.SubstituteFromMap([]byte(v), userConfigEnv)
 			}
-			execData.LogOut = p.SubstituteFromMap([]rune(execData.LogOut), userConfigEnv)
-			execData.LogErr = p.SubstituteFromMap([]rune(execData.LogErr), userConfigEnv)
+			execData.LogOut = p.SubstituteFromMap([]byte(execData.LogOut), userConfigEnv)
+			execData.LogErr = p.SubstituteFromMap([]byte(execData.LogErr), userConfigEnv)
 
 		}
 	}
@@ -395,6 +439,14 @@ func (p *ConfigData) GetServerStaticRoot() string {
 	return p.internal.ServerStaticRoot
 }
 
+func (p *ConfigData) GetTemplateData() *TemplateStaticFiles {
+	return p.internal.TemplateStaticFiles
+}
+
+func (p *ConfigData) IsTemplating() bool {
+	return p.internal.TemplateStaticFiles != nil
+}
+
 func (p *ConfigData) SetServerStaticRoot(path string) {
 	p.internal.ServerStaticRoot = path
 }
@@ -456,13 +508,13 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	return locData, nil
 }
 
-func (p *ConfigData) GetUserLocFilePath(user string, loc string, fileName string) (string, error) {
-	userData, err := p.GetUserLocPath(user, loc)
-	if err != nil {
-		return "", fmt.Errorf("user not found")
-	}
-	return filepath.Join(userData, fileName), nil
-}
+// func (p *ConfigData) GetUserLocFilePath(user string, loc string, fileName string) (string, error) {
+// 	userData, err := p.GetUserLocPath(user, loc)
+// 	if err != nil {
+// 		return "", fmt.Errorf("user not found")
+// 	}
+// 	return filepath.Join(userData, fileName), nil
+// }
 
 func (p *ConfigData) GetUserExecInfo(user, execid string) (*ExecInfo, error) {
 	userData, ok := p.internal.Users[user]
@@ -484,11 +536,11 @@ func (p *ConfigData) String() (string, error) {
 	return string(data), nil
 }
 
-func (p *ConfigData) SubstituteFromMap(cmd []rune, userEnv map[string]string) string {
+func (p *ConfigData) SubstituteFromMap(cmd []byte, userEnv map[string]string) string {
 	return SubstituteFromMap(cmd, p.Environment, userEnv)
 }
 
-func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]string) string {
+func SubstituteFromMap(cmd []byte, env1 map[string]string, env2 map[string]string) string {
 	if len(cmd) < 4 {
 		return string(cmd)
 	}
@@ -503,19 +555,19 @@ func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]strin
 				havePC = 1
 				recoverFrom = i
 			} else {
-				buff.WriteRune(c)
+				buff.WriteByte(c)
 			}
 		case 1:
 			if c == '%' {
-				buff.WriteRune('%')
+				buff.WriteByte('%')
 				havePC = 1
 				recoverFrom = i
 			} else {
 				if c == '{' {
 					havePC++
 				} else {
-					buff.WriteRune('%')
-					buff.WriteRune(c)
+					buff.WriteByte('%')
+					buff.WriteByte(c)
 					havePC = 0
 					name.Reset()
 				}
@@ -530,10 +582,10 @@ func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]strin
 					if ok {
 						buff.WriteString(v)
 					} else {
-						buff.WriteRune('%')
-						buff.WriteRune('{')
+						buff.WriteByte('%')
+						buff.WriteByte('{')
 						buff.Write(name.Bytes())
-						buff.WriteRune('}')
+						buff.WriteByte('}')
 					}
 				}
 				havePC = 0
@@ -542,17 +594,17 @@ func SubstituteFromMap(cmd []rune, env1 map[string]string, env2 map[string]strin
 				if c == '%' && havePC == 2 {
 					havePC = 1
 					recoverFrom = i
-					buff.WriteRune('%')
-					buff.WriteRune('{')
+					buff.WriteByte('%')
+					buff.WriteByte('{')
 				} else {
-					name.WriteRune(c)
+					name.WriteByte(c)
 				}
 			}
 		}
 	}
 	if name.Len() > 0 {
 		for i := recoverFrom; i < len(cmd); i++ {
-			buff.WriteRune(cmd[i])
+			buff.WriteByte(cmd[i])
 		}
 	}
 	return buff.String()
