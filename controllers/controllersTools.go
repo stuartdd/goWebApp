@@ -70,6 +70,17 @@ func (p *UrlRequestParts) GetParam(key string) string {
 	panic(fmt.Errorf("url parameter '%s' is missing", key))
 }
 
+func (p *UrlRequestParts) GetOptionalParam(key string) string {
+	v, ok := p.parameters[key]
+	if ok {
+		if strings.HasPrefix(v, encodedValuePrefix) {
+			return decodeValue(v)
+		}
+		return v
+	}
+	return ""
+}
+
 func (p *UrlRequestParts) HasParam(key string) bool {
 	_, ok := p.parameters[key]
 	return ok
@@ -77,14 +88,6 @@ func (p *UrlRequestParts) HasParam(key string) bool {
 
 func (p *UrlRequestParts) SetParam(key string, value string) {
 	p.parameters[key] = value
-}
-
-func (p *UrlRequestParts) GetOptionalParam(key string) string {
-	v, ok := p.parameters[key]
-	if ok {
-		return v
-	}
-	return ""
 }
 
 func (p *UrlRequestParts) GetUser() string {
