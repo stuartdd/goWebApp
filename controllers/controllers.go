@@ -280,7 +280,9 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	m1 := make(map[string]interface{}, 0)
 	l1 := make([]map[string]string, 0)
 	for id, ud := range *users {
-		l1 = append(l1, map[string]string{"id": id, "name": ud.Name})
+		if !ud.IsHidden() {
+			l1 = append(l1, map[string]string{"id": id, "name": ud.Name})
+		}
 	}
 	m1["users"] = l1
 	return m1

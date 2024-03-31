@@ -54,6 +54,11 @@ func (p *UrlRequestParts) WithParameters(params map[string]string) *UrlRequestPa
 	return p
 }
 
+func (p *UrlRequestParts) WithParam(name string, value string) *UrlRequestParts {
+	p.parameters[name] = value
+	return p
+}
+
 func (p *UrlRequestParts) WithFile(file string) *UrlRequestParts {
 	p.parameters["file"] = file
 	return p
@@ -149,11 +154,12 @@ func (p *UrlRequestParts) GetUserExecInfo() (path *config.ExecInfo, err error) {
 }
 
 type ResponseData struct {
-	Status    int
-	content   []byte
-	Header    map[string][]string
-	MimeType  string
-	shouldLog bool
+	Status      int
+	content     []byte
+	Header      map[string][]string
+	MimeType    string
+	shouldLog   bool
+	suppressLog bool
 }
 
 func (p *ResponseData) String() string {
@@ -169,11 +175,12 @@ func (p *ResponseData) String() string {
 
 func NewResponseData(status int) *ResponseData {
 	rd := &ResponseData{
-		Status:    status,
-		Header:    make(map[string][]string),
-		content:   make([]byte, 0),
-		shouldLog: false,
-		MimeType:  "json",
+		Status:      status,
+		Header:      make(map[string][]string),
+		content:     make([]byte, 0),
+		shouldLog:   false,
+		suppressLog: false,
+		MimeType:    "json",
 	}
 	if rd.IsError() {
 		rd.SetShouldLog()
@@ -215,6 +222,15 @@ func (p *ResponseData) SetShouldLog() *ResponseData {
 
 func (p *ResponseData) GetShouldLog() bool {
 	return p.shouldLog
+}
+
+func (p *ResponseData) GetSuppressLog() bool {
+	return p.suppressLog
+}
+
+func (p *ResponseData) SuppressLog() *ResponseData {
+	p.suppressLog = true
+	return p
 }
 
 func (p *ResponseData) WithContentReasonAsJson(reason string, error bool) *ResponseData {

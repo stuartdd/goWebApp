@@ -22,12 +22,14 @@ const (
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
 var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
-var getReloadConfigMatch = NewUrlRequestMatcher("/reload/config", "GET")
+
 var getServerStatusMatch = NewUrlRequestMatcher("/status", "GET")
+var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
+var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET")
 var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET")
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
 var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET")
@@ -99,6 +101,11 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p), h.config, nil).Submit())
 			return
 		}
+		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p).WithParam("user", "admin"), h.config).Submit())
+			return
+		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
 			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true).Submit())
@@ -154,7 +161,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_, ok = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetTimeAsMap()))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetTimeAsMap()).SuppressLog())
 		return
 	}
 	_, ok = getServerUsersMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -190,7 +197,9 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 	if resp.GetShouldLog() {
 		p.Log(fmt.Sprintf("Error: Status:%d: '%s'", resp.Status, resp.ContentLimit(150)))
 	} else {
-		p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
+		if !resp.GetSuppressLog() {
+			p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
+		}
 	}
 	hj, ok := w.(http.Hijacker)
 	if !ok {

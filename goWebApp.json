@@ -19,6 +19,14 @@
         "LogLevel": "quiet"
     },
     "Users": {
+        "admin": {
+            "hidden":true,
+            "name": "Admin",
+            "home": "admin",
+            "Locations": {
+                "cache": "cache"
+            }
+        },
         "bob": {
             "name": "Bob",
             "home": "bob",
@@ -26,6 +34,7 @@
                 "home": "",
                 "data": "stateData",
                 "thumbs": "***%{WebServerHome}/thumbs",
+                "original": "***%{WebServerHome}/original",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
             }
@@ -47,6 +56,7 @@
                 "home": "",
                 "data": "stateData",
                 "thumbs": "***%{WebServerHome}/thumbs",
+                "original": "***%{WebServerHome}/original",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "***/home/stuart/git"
@@ -63,7 +73,6 @@
         "DataFile":"configDataPI.json"
     },
     "Env": {
-
     }
 
 }

@@ -106,11 +106,19 @@ func (p *ExecInfo) String() string {
 Users Data. Derived from JSON!
 */
 type UserData struct {
+	Hidden    *bool
 	Name      string
 	Home      string
 	Locations map[string]string
 	Exec      map[string]*ExecInfo
 	Env       map[string]string
+}
+
+func (p *UserData) IsHidden() bool {
+	if p.Hidden == nil {
+		return false
+	}
+	return *p.Hidden
 }
 
 type ConfigDataInternal struct {
@@ -427,8 +435,10 @@ func (p *ConfigData) GetUserRoot(user string) string {
 
 func (p *ConfigData) GetUserNamesList() []string {
 	unl := []string{}
-	for na, _ := range p.internal.Users {
-		unl = append(unl, na)
+	for na, u := range p.internal.Users {
+		if !u.IsHidden() {
+			unl = append(unl, na)
+		}
 	}
 	return unl
 }

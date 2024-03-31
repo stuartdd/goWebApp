@@ -1,4 +1,5 @@
 {
+    "title":"GoWebApp",
     "poleForTime": "5000",
     "historyMaxLen": "10",
     "css.body.background": "#b2f1b7",
