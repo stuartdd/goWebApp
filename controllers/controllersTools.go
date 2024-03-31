@@ -111,18 +111,6 @@ func (p *UrlRequestParts) SubstituteFromMap(cmd []byte, includeLocations bool) s
 	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser(), includeLocations))
 }
 
-// func (p *UrlRequestParts) GetUserLocNamePath() (file string, err error) {
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 			err = r.(error)
-// 			file = ""
-// 		}
-// 	}()
-// 	pa, err := p.GetUserLocPath()
-
-// 	return filepath.Join(pa, p.GetName()), err
-// }
-
 func (p *UrlRequestParts) GetUserLocPath(withName bool) (path string, err error) {
 	defer func() {
 		if r := recover(); r != nil {

@@ -25,7 +25,7 @@
             "Locations": {
                 "home": "",
                 "data": "stateData",
-                "thumbs": "***../thumbs",
+                "thumbs": "***%{WebServerHome}/thumbs",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
             }
@@ -46,7 +46,7 @@
             "Locations": {
                 "home": "",
                 "data": "stateData",
-                "thumbs": "***../thumbs",
+                "thumbs": "***%{WebServerHome}/thumbs",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "***/home/stuart/git"
@@ -57,10 +57,13 @@
         }
     },
     "ServerDataRoot": "./testdata",
-    "ServerStaticRoot": "/home/stuart/git/PiServerWeb/web/static",
+    "ServerStaticRoot": "%{WebServerHome}/static",
     "TemplateStaticFiles":{
         "Files":["dart.html", "dart.css"],
         "DataFile":"configDataPI.json"
+    },
+    "Env": {
+
     }
 
 }

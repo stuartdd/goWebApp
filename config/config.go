@@ -126,6 +126,7 @@ type ConfigDataInternal struct {
 	ServerStaticRoot    string
 	TemplateStaticFiles *TemplateStaticFiles
 	FaviconIcoPath      string
+	Env                 map[string]string
 }
 
 func (p *ConfigDataInternal) String() (string, error) {
@@ -196,6 +197,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 		ServerDataRoot:      "~/",
 		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
+		Env:                 map[string]string{},
 	}
 
 	/*
@@ -218,15 +220,23 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	}
 
 	SetContentTypeCharset(configDataInternal.ContentTypeCharset)
+	/*
+		Add config data Env to the Environment variables
+	*/
+	for n, v := range configDataInternal.Env {
+		configDataExtternal.Environment[n] = v
+	}
+
 	configDataExtternal.NextLoadTime = configDataExtternal.getNextReloadConfigMillis()
 	return configDataExtternal.resolveLocations()
 }
 
-func (p *ConfigData) checkRootPathExists(rootPath string) (string, error) {
+func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string) (string, error) {
 	if rootPath == "" {
 		return "", fmt.Errorf("path is empty")
 	}
-	absPathPath, err := filepath.Abs(rootPath)
+	absPathSub := p.SubstituteFromMap([]byte(rootPath), userEnv)
+	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] is invalid", rootPath)
 	}
@@ -292,14 +302,14 @@ func (p *ConfigData) prefixRelativePaths(relPath string, userPath string) string
 }
 
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
-	f, e := p.checkRootPathExists(p.GetServerDataRoot()) // Will check GetServerDataRoot
+	f, e := p.checkRootPathExists(p.GetServerDataRoot(), emptyMap) // Will check GetServerDataRoot
 	if e != nil {
 		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerDataRoot(f)
 	}
 
-	f, e = p.checkRootPathExists(p.GetServerStaticRoot()) // Will check GetServerDataRoot
+	f, e = p.checkRootPathExists(p.GetServerStaticRoot(), emptyMap) // Will check ServerStaticRoot
 	if e != nil {
 		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
 	} else {
@@ -345,7 +355,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 			userData.Locations[locName] = f
 		}
 
-		userConfigEnv := p.GetUserEnv(userName, false)
+		userConfigEnv := p.GetUserEnv(userName, true)
 		for execName, execData := range userData.Exec {
 			if execData.Log != "" {
 				path := execData.Log
@@ -479,16 +489,17 @@ func (p *ConfigData) GetUserEnv(user string, includeLocations bool) map[string]s
 	m := make(map[string]string)
 	userData, ok := p.internal.Users[user]
 	if ok {
-		for n, v := range userData.Env {
-			m["env."+n] = v
-		}
 		if includeLocations {
 			for n, v := range userData.Locations {
-				m["loc."+n] = v
+				m[n] = v
 			}
 		}
+		for n, v := range userData.Env {
+			m[n] = v
+		}
 	}
-	m["user.name"] = user
+	m["user.name"] = userData.Name
+	m["user.home"] = userData.Home
 	return m
 }
 

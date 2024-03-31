@@ -106,25 +106,20 @@ func TestStatic(t *testing.T) {
 	}
 
 	url := "static/images/pic.jpg"
-	resp, _ := RunClientGet(t, configData, url, 200, "?", 819502, 10)
+	resp, _ := RunClientGet(t, configData, url, 200, "?", 2221, 10)
 	if resp.Header["Content-Type"][0] != "image/jpeg" {
-		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
-	}
-
-	url = "static/simple.html"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 149, 10)
-	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
-		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
-	}
-	url = "static/index.htm"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 88, 10)
-	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
 
 	url = "static/images/favicon.ico"
 	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
 	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+
+	url = "static/simple.html"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 103, 10)
+	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
 
