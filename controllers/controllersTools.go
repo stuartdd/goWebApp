@@ -111,6 +111,16 @@ func (p *UrlRequestParts) GetName() string {
 	return p.GetParam(NameParam)
 }
 
+func (p *UrlRequestParts) UserAndNameAsExec() *config.ExecInfo {
+	if p.HasParam(NameParam) && p.HasParam(UserParam) {
+		exec, err := p.config.GetUserExecInfo(p.GetParam(UserParam), p.GetParam(NameParam))
+		if err == nil {
+			return exec
+		}
+	}
+	return nil
+}
+
 func (p *UrlRequestParts) GetExecId() string {
 	return p.GetParam(ExecParam)
 }

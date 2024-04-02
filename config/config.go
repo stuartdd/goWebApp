@@ -48,6 +48,10 @@ func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
 	t.FullFileName = f
 	return t, nil
 }
+func (t *TemplateStaticFiles) String() string {
+	return fmt.Sprintf("%s. Templates:%s", t.FullFileName, t.Files)
+}
+
 func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
 	for _, v := range t.Files {
 		if v == file {
@@ -213,12 +217,12 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	*/
 	content, err := os.ReadFile(configDataExtternal.ConfigName)
 	if err != nil {
-		return nil, NewConfigErrorData(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExtternal.ConfigName, err.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExtternal.ConfigName, err.Error()))
 	}
 
 	err = json.Unmarshal(content, &configDataInternal)
 	if err != nil {
-		return nil, NewConfigErrorData(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExtternal.ConfigName, err.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExtternal.ConfigName, err.Error()))
 	}
 
 	configDataExtternal.internal = configDataInternal
@@ -312,38 +316,38 @@ func (p *ConfigData) prefixRelativePaths(relPath string, userPath string) string
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 	f, e := p.checkRootPathExists(p.GetServerDataRoot(), emptyMap) // Will check GetServerDataRoot
 	if e != nil {
-		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find UserDataRoot:%s. Cause:%s", f, e.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find UserDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerDataRoot(f)
 	}
 
 	f, e = p.checkRootPathExists(p.GetServerStaticRoot(), emptyMap) // Will check ServerStaticRoot
 	if e != nil {
-		return nil, NewConfigErrorData(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerStaticRoot(f)
 	}
 
+	errorList := NewConfigErrorData()
 	if p.IsTemplating() {
 		templ := p.GetTemplateData()
 		_, err := templ.Init()
 		if err != nil {
-			return nil, NewConfigErrorData(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
+			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
 		}
+		errorList.AddLog(fmt.Sprintf("Config template   :%s", templ))
 	}
-
-	errorList := NewConfigErrorData("")
 
 	f, e = p.checkPathExists(p.GetLogDataPath(), "", emptyMap)
 	if e != nil {
-		errorList.Add(fmt.Sprintf("Config Error: LogData.Path %s", e))
+		errorList.AddError(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
 		p.SetLogDataPath(f)
 	}
 
 	f, e = p.checkFileExists("", "", p.GetFaviconIcoPath(), emptyMap)
 	if e != nil {
-		errorList.Add(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
+		errorList.AddError(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
 	} else {
 		p.SetFaviconIcoPath(f)
 	}
@@ -353,12 +357,12 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		for locName, _ := range userData.Locations {
 			path, err := p.GetUserLocPath(userName, locName)
 			if err != nil {
-				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
+				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
 			}
 
 			f, e := p.checkPathExists(path, userPathPrefix, emptyMap)
 			if e != nil {
-				errorList.Add(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
+				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
 			}
 			userData.Locations[locName] = f
 		}
@@ -369,19 +373,18 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 				path := execData.Log
 				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
 				if e != nil {
-					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
+					errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
 				} else {
 					execData.Log = f
 				}
 			}
-			if execData.Dir != "" {
-				path := execData.Dir
-				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
-				if e != nil {
-					errorList.Add(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
-				} else {
-					execData.Dir = f
-				}
+
+			path := execData.Dir
+			f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
+			if e != nil {
+				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
+			} else {
+				execData.Dir = f
 			}
 
 			for i, v := range execData.Cmd {
@@ -639,24 +642,37 @@ If returned with a ConfigData then it is warnings.
 */
 type ConfigErrorData struct {
 	errors []string
+	logs   []string
 }
 
-func NewConfigErrorData(m string) *ConfigErrorData {
+func NewConfigErrorData() *ConfigErrorData {
 	ed := &ConfigErrorData{
 		errors: make([]string, 0),
-	}
-	if m != "" {
-		ed.Add(m)
+		logs:   make([]string, 0),
 	}
 	return ed
 }
 
-func (p *ConfigErrorData) Len() int {
+func (p *ConfigErrorData) ErrorCount() int {
 	return len(p.errors)
 }
 
-func (p *ConfigErrorData) Add(s string) {
+func (p *ConfigErrorData) LogCount() int {
+	return len(p.logs)
+}
+
+func (p *ConfigErrorData) AddError(s string) *ConfigErrorData {
 	p.errors = append(p.errors, s)
+	return p
+}
+
+func (p *ConfigErrorData) AddLog(s string) *ConfigErrorData {
+	p.logs = append(p.logs, s)
+	return p
+}
+
+func (p *ConfigErrorData) Logs() []string {
+	return p.logs
 }
 
 func (p *ConfigErrorData) String() string {

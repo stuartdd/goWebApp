@@ -60,7 +60,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 }
 func TestServer(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -96,7 +96,7 @@ func TestServer(t *testing.T) {
 }
 func TestStatic(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -131,7 +131,7 @@ func TestStatic(t *testing.T) {
 }
 func TestFilePath(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -153,7 +153,7 @@ func TestFilePath(t *testing.T) {
 
 func TestTree(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -183,7 +183,7 @@ func TestTree(t *testing.T) {
 }
 func TestGetFavicon(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -203,7 +203,7 @@ func TestGetFavicon(t *testing.T) {
 
 func TestPostFile(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -237,7 +237,7 @@ func TestPostFile(t *testing.T) {
 func TestReadDir(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -273,14 +273,14 @@ func TestReadDir(t *testing.T) {
 	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
 		t.Fatalf("Respons body does not equal..3")
 	}
-	AssertLogContains(t, logger, []string{"Server running", ":8083.", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server Running", ":8083.", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 
 func TestReadFile(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 
@@ -299,13 +299,13 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("Respons body does not contain 'Is not a file'")
 	}
 
-	AssertLogContains(t, logger, []string{"Server running", ":8083.", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server Running", ":8083.", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 
 func TestClient(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
-	if errList.Len() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
 

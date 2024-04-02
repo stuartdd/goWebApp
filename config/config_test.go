@@ -9,7 +9,7 @@ import (
 
 func TestJoinPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
-	if errlist.Len() != 1 {
+	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
@@ -86,7 +86,7 @@ func assertEquals(t *testing.T, message string, actual string, expected string) 
 
 func TestUserExec(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
-	if errlist.Len() != 1 {
+	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
@@ -119,7 +119,7 @@ func TestUserExec(t *testing.T) {
 }
 func TestGetUserExecInfo(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
-	if errlist.Len() != 1 {
+	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
@@ -146,7 +146,7 @@ func TestGetUserExecInfo(t *testing.T) {
 
 func TestGetUserLocPath(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
-	if errlist.Len() != 1 {
+	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
@@ -171,21 +171,5 @@ func TestGetUserLocPath(t *testing.T) {
 	if !strings.HasSuffix(u, "/testdata/stuart") {
 		t.Fatalf("Should return path to /testdata/stuart")
 	}
-
-	// f, e := conf.GetUserLocFilePath("bob", "home", "data.json")
-	// if e != nil {
-	// 	t.Fatalf(e.Error())
-	// }
-	// if !strings.HasSuffix(f, "/testdata/bob/data.json") {
-	// 	t.Fatalf("Should return path to /testdata/bob/data.json")
-	// }
-
-	// f, e = conf.GetUserLocFilePath("stuart", "picsPlus", "pics.json")
-	// if e != nil {
-	// 	t.Fatalf(e.Error())
-	// }
-	// if !strings.HasSuffix(f, "/testdata/stuart/s-pics/s-testfolder/pics.json") {
-	// 	t.Fatalf("Should return path to /testdata/stuart/s-pics/s-testfolder/pics.json")
-	// }
 
 }

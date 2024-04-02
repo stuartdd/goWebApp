@@ -16,15 +16,27 @@
         "FileNameMask": "goWebServer-%y-%m-%d.log",
         "Path": "logs",
         "MonitorSeconds": 30,
-        "LogLevel": "quiet"
+        "LogLevel": "verbose"
     },
     "Users": {
         "admin": {
-            "hidden":true,
+            "hidden": true,
             "name": "Admin",
             "home": "admin",
             "Locations": {
                 "cache": "cache"
+            },
+            "Exec": {
+                "ufs": {
+                    "cmd": [
+                        "./ufs.sh"
+                    ],
+                    "dir":"",
+                    "log": "logs"
+                }
+            },
+            "Env": {
+                "lsargs": "-l"
             }
         },
         "bob": {
@@ -42,18 +54,9 @@
         "stuart": {
             "name": "Stuart",
             "home": "stuart",
-            "Exec": {
-                "c1": {
-                    "cmd": [
-                        "ls",
-                        "%{env.lsargs}"
-                    ],
-                    "dir": "***/home/stuart/git",
-                    "log": "logs"
-                }
-            },
             "Locations": {
                 "home": "",
+                "cache": "cache",
                 "data": "stateData",
                 "thumbs": "***%{WebServerHome}/thumbs",
                 "original": "***%{WebServerHome}/original",
@@ -68,11 +71,12 @@
     },
     "ServerDataRoot": "./testdata",
     "ServerStaticRoot": "%{WebServerHome}/static",
-    "TemplateStaticFiles":{
-        "Files":["dart.html", "dart.css"],
-        "DataFile":"configDataPI.json"
+    "TemplateStaticFiles": {
+        "Files": [
+            "dart.html",
+            "dart.css"
+        ],
+        "DataFile": "configDataPI.json"
     },
-    "Env": {
-    }
-
+    "Env": {}
 }

@@ -67,7 +67,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.config.IsTimeToReloadConfig() {
 		ts := time.Now().UnixMicro()
 		cfg, errorList := config.NewConfigData(h.config.ConfigName)
-		if errorList.Len() == 0 {
+		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d micro seconds)", h.config.ConfigName, (time.Now().UnixMicro() - ts)))
 		} else {
@@ -75,7 +75,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, errorList))
 		}
 	}
-
+	logFunc := h.logger.Log
 	h.Log(fmt.Sprintf("Req:  %s", r.RequestURI))
 	urlPath := strings.TrimSpace(r.URL.Path)
 
@@ -93,53 +93,53 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
-			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config).Submit())
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc).Submit())
 			return
 		}
 		p, ok := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p), h.config, nil).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p), h.config, nil, logFunc).Submit())
 			return
 		}
 		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p).WithParam("user", "admin"), h.config).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p).WithParam("user", "admin"), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true, logFunc).Submit())
 			return
 		}
 		p, ok = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, false).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, false, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(RequestData.WithParameters(p), h.config).Submit())
+			h.writeResponse(w, controllers.NewTreeHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
 
 		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(RequestData.WithParameters(p), h.config, r).Submit())
+			h.writeResponse(w, controllers.NewPostFileHandler(RequestData.WithParameters(p), h.config, r, logFunc).Submit())
 			return
 		}
 	}
@@ -169,7 +169,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetUsersAsMap(h.config.GetUsers())))
 		return
 	}
-
 	_, ok = getFaviconMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
@@ -178,7 +177,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		cfg, errorList := config.NewConfigData(h.config.ConfigName)
-		if errorList.Len() == 0 {
+		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
 			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Config Reloaded", false))
@@ -244,7 +243,7 @@ func (p *WebAppServer) Log(s string) {
 }
 
 func (p *WebAppServer) Start() {
-	p.Log("Server running.")
+	p.Log("Server Running    :")
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
 	p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
 	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.CurrentPath))

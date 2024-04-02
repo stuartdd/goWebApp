@@ -24,12 +24,14 @@ type Handler interface {
 type StaticFileHandler struct {
 	filePath   []string
 	configData *config.ConfigData
+	log        func(string)
 }
 
-func NewStaticFileHandler(file []string, configData *config.ConfigData) *StaticFileHandler {
+func NewStaticFileHandler(file []string, configData *config.ConfigData, logFunc func(string)) *StaticFileHandler {
 	return &StaticFileHandler{
 		filePath:   file,
 		configData: configData,
+		log:        logFunc,
 	}
 }
 
@@ -40,6 +42,9 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 
 	stats, err := os.Stat(fullFile)
 	if err != nil {
+		if p.log != nil {
+			p.log(fmt.Sprintf("StaticFileHandler:File Error:%s", err.Error()))
+		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
 
@@ -62,12 +67,14 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
+	log        func(string)
 }
 
-func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData) Handler {
+func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string)) Handler {
 	return &ReadFileHandler{
 		parameters: urlParts,
 		configData: configData,
+		log:        logFunc,
 	}
 }
 
@@ -78,6 +85,17 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
+		exec := p.parameters.UserAndNameAsExec()
+		if exec == nil {
+			if p.log != nil {
+				p.log(fmt.Sprintf("ReadFileHandler:File Error:%s", err.Error()))
+			}
+		} else {
+			if p.log != nil {
+				p.log(fmt.Sprintf("ReadFileHandler:Redirect as:%s", exec.String()))
+			}
+			return NewExecHandler(p.parameters.WithParam("exec", p.parameters.GetName()), p.configData, nil, p.log).Submit()
+		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
 	if stats.IsDir() {
@@ -93,12 +111,14 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 type DirHandler struct {
 	parameters *UrlRequestParts
 	listFiles  bool
+	log        func(string)
 }
 
-func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool) Handler {
+func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, logFunc func(string)) Handler {
 	return &DirHandler{
 		parameters: urlRequestData,
 		listFiles:  listFiles,
+		log:        logFunc,
 	}
 }
 
@@ -111,6 +131,9 @@ func (p *DirHandler) Submit() *ResponseData {
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
+		if p.log != nil {
+			p.log(fmt.Sprintf("DirHandler:Path Error:%s", err.Error()))
+		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	if !stats.IsDir() {
@@ -129,11 +152,13 @@ func (p *DirHandler) Submit() *ResponseData {
 
 type TreeHandler struct {
 	parameters *UrlRequestParts
+	log        func(string)
 }
 
-func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData) Handler {
+func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string)) Handler {
 	return &TreeHandler{
 		parameters: urlParts,
+		log:        logFunc,
 	}
 }
 
@@ -144,6 +169,9 @@ func (p *TreeHandler) Submit() *ResponseData {
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
+		if p.log != nil {
+			p.log(fmt.Sprintf("TreeHandler:Path Error:%s", err.Error()))
+		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	if !stats.IsDir() {
@@ -170,12 +198,14 @@ func (p *TreeHandler) Submit() *ResponseData {
 type PostFileHandler struct {
 	parameters *UrlRequestParts
 	request    *http.Request
+	log        func(string)
 }
 
-func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request) Handler {
+func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, logFunc func(string)) Handler {
 	return &PostFileHandler{
 		parameters: urlParts,
 		request:    r,
+		log:        logFunc,
 	}
 }
 
@@ -186,6 +216,9 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	}
 	stats, err := os.Stat(dir)
 	if err != nil {
+		if p.log != nil {
+			p.log(fmt.Sprintf("PostFileHandler:Path Error:%s", err.Error()))
+		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
 	if !stats.IsDir() {
@@ -210,12 +243,14 @@ func (p *PostFileHandler) Submit() *ResponseData {
 type ExecHandler struct {
 	parameters *UrlRequestParts
 	createMap  func([]byte, []byte, int) map[string]interface{}
+	log        func(string)
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string)) Handler {
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
+		log:        logFunc,
 	}
 }
 

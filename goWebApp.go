@@ -18,7 +18,7 @@ func main() {
 	}
 
 	cfg, errorList := config.NewConfigData(configFileName)
-	if errorList.Len() > 0 {
+	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
 		os.Exit(1)
 	}
@@ -37,12 +37,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger.Log("Application Start :-----------------------------------------------------------------")
+	for _, l := range errorList.Logs() {
+		logger.Log(l)
+	}
 	go func() {
 		for {
 			a := <-actionQueue
 			switch a {
 			case server.Exit:
-				logger.Log("Server: Exit after 1 second\n")
+				logger.Log("Server Terminated :-----------------------------------------------------------------")
 				time.Sleep(500 * time.Millisecond)
 				logger.Close()
 				time.Sleep(500 * time.Millisecond)
@@ -55,5 +59,4 @@ func main() {
 
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, logger)
 	webAppServer.Start()
-
 }

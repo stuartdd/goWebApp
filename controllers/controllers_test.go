@@ -12,7 +12,7 @@ import (
 
 func TestToJson(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json")
-	if errlist.Len() != 1 {
+	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
@@ -43,7 +43,7 @@ func TestToJson(t *testing.T) {
 
 func TestExec(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json")
-	if errlist.Len() != 1 {
+	if errlist.ErrorCount() != 1 {
 		t.Fatal(errlist.String())
 	}
 	if conf == nil {
@@ -56,6 +56,8 @@ func TestExec(t *testing.T) {
 			return map[string]interface{}{"error": false, "code": ec, "out": string(out), "err": string(err)}
 		}
 		return map[string]interface{}{"error": true, "code": ec, "out": string(out), "err": string(err)}
+	}, func(s string) {
+		// Log function
 	})
 
 	res := ex.Submit()
