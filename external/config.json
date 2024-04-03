@@ -1,0 +1,19 @@
+{
+    "Prefix":"[",
+    "PostFix":"]",
+    "Infix":",",
+    "SkipLines": 0,
+    "InputFile": "",
+    "MaxLines": 5,
+    "Lines": [
+        {
+            "Split": ", ",
+            "Skip": "\"",
+            "MaxTokens": 2,
+            "Tokens": [
+                {"name":"Size", "quoted":false},
+                {"name":"Name",  "quoted":true}
+            ]
+        }
+    ]
+}
