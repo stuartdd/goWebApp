@@ -102,11 +102,11 @@ LookupContentType for a given url return the content type based on the .ext
 		in config 'ContentTypeCharset'. If ContentTypeCharset is empty then no
 		charset is added.
 */
-func LookupContentType(url string) string {
-	ext := url
-	pos := strings.LastIndex(url, ".")
+func LookupContentType(cType string) string {
+	ext := cType
+	pos := strings.LastIndex(cType, ".")
 	if pos > 0 {
-		ext = url[pos+1:]
+		ext = cType[pos+1:]
 	}
 	mapping, found := contentTypesMap[ext]
 	if found {
@@ -119,4 +119,14 @@ func LookupContentType(url string) string {
 		return mapping
 	}
 	return DefaultContentType
+}
+
+func HasContentType(cType string) bool {
+	ext := cType
+	pos := strings.LastIndex(cType, ".")
+	if pos > 0 {
+		ext = cType[pos+1:]
+	}
+	_, found := contentTypesMap[ext]
+	return found
 }

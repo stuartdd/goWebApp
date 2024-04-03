@@ -61,7 +61,7 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 			fileContent = []byte(p.configData.SubstituteFromMap([]byte(string(fileContent)), td.Data))
 		}
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])
+	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])
 }
 
 type ReadFileHandler struct {
@@ -105,7 +105,7 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File could not be read", true)
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType(p.parameters.GetName())
+	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.parameters.GetName())
 }
 
 type DirHandler struct {
@@ -144,9 +144,9 @@ func (p *DirHandler) Submit() *ResponseData {
 		if err != nil {
 			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 		}
-		return NewResponseData(http.StatusOK).WithContentBytesJson(filesAsJson(entries, p.parameters))
+		return NewResponseData(http.StatusOK).WithContentBytes(filesAsJson(entries, p.parameters)).WithMimeType("json")
 	} else {
-		return NewResponseData(http.StatusOK).WithContentBytesJson(listDirectoriesAsJson(file, p.parameters))
+		return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters)).WithMimeType("json")
 	}
 }
 
@@ -192,7 +192,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir cannot be read", true)
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(treeAsJson(root, p.parameters)).WithMimeType("json")
+	return NewResponseData(http.StatusOK).WithContentBytes(treeAsJson(root, p.parameters)).WithMimeType("json")
 }
 
 type PostFileHandler struct {
@@ -266,20 +266,16 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
 	}
+	if execInfo.StdOutType != "" {
+		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(execInfo.StdOutType).SetShouldLog(code != 0)
+	}
 	var dataMap map[string]interface{}
 	if p.createMap != nil {
 		dataMap = p.createMap(stdOut, stdErr, code)
 	} else {
-		if code == 0 {
-			dataMap = map[string]interface{}{"error": false, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
-		} else {
-			dataMap = map[string]interface{}{"error": true, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
-		}
+		dataMap = map[string]interface{}{"error": code == 0, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
 	}
-	if code != 0 {
-		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetShouldLog()
-	}
-	return NewResponseData(http.StatusOK).WithContentMapJson(dataMap)
+	return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetShouldLog(code != 0)
 }
 
 //-------------------------------------------------------------------
@@ -331,7 +327,7 @@ func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("favicon.ico not found", true)
 	}
-	return NewResponseData(http.StatusOK).WithContentBytesJson(fileContent).WithMimeType("ico")
+	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType("ico")
 }
 
 func GetServerStatusAsMap(configData *config.ConfigData, upSince time.Time) map[string]interface{} {

@@ -81,11 +81,12 @@ func NewLogData() *LogData {
 Users can have Exex actions. Derived from JSON!
 */
 type ExecInfo struct {
-	Cmd    []string
-	Dir    string
-	Log    string
-	LogOut string
-	LogErr string
+	Cmd        []string
+	Dir        string
+	StdOutType string
+	Log        string
+	LogOut     string
+	LogErr     string
 }
 
 func (p *ExecInfo) GetOutLogFile() string {
@@ -392,7 +393,9 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 			}
 			execData.LogOut = p.SubstituteFromMap([]byte(execData.LogOut), userConfigEnv)
 			execData.LogErr = p.SubstituteFromMap([]byte(execData.LogErr), userConfigEnv)
-
+			if execData.StdOutType != "" && !HasContentType(execData.StdOutType) {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] StdOutType [%s] no recognised", execName, execData.StdOutType))
+			}
 		}
 	}
 	return p, errorList

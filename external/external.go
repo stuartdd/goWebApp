@@ -21,13 +21,14 @@ type Line struct {
 }
 
 type Properties struct {
-	InputFile string
-	Prefix    string
-	Postfix   string
-	Infix     string
-	SkipLines int
-	MaxLines  int
-	Lines     []*Line
+	InputFile  string
+	OutputFile string
+	Prefix     string
+	Postfix    string
+	Infix      string
+	SkipLines  int
+	MaxLines   int
+	Lines      []*Line
 }
 
 func (p *Properties) String() string {
@@ -46,12 +47,13 @@ func RunMain(configFileName string) {
 		os.Exit(1)
 	}
 	properties := &Properties{
-		SkipLines: 0,
-		MaxLines:  999,
-		InputFile: "",
-		Prefix:    "",
-		Postfix:   "",
-		Infix:     ",",
+		SkipLines:  0,
+		MaxLines:   999,
+		InputFile:  "",
+		OutputFile: "",
+		Prefix:     "",
+		Postfix:    "",
+		Infix:      ",",
 	}
 	err = json.Unmarshal(content, &properties)
 	if err != nil {
@@ -98,6 +100,13 @@ func RunMain(configFileName string) {
 	buff.Truncate(buffLen)
 	if properties.Postfix != "" {
 		buff.WriteString(properties.Postfix)
+	}
+	if properties.OutputFile != "" {
+		err = os.WriteFile(properties.OutputFile, buff.Bytes(), 0644)
+		if err != nil {
+			os.Stderr.WriteString(fmt.Sprintf("Failed to create output file: %s\n", properties.OutputFile))
+			os.Exit(1)
+		}
 	}
 	os.Stdout.WriteString(buff.String())
 }

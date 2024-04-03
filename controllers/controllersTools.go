@@ -193,7 +193,7 @@ func NewResponseData(status int) *ResponseData {
 		MimeType:    "json",
 	}
 	if rd.IsError() {
-		rd.SetShouldLog()
+		rd.SetShouldLog(true)
 	}
 	return rd
 }
@@ -220,13 +220,13 @@ func (p *ResponseData) IsError() bool {
 	return true
 }
 
-func (p *ResponseData) WithContentBytesJson(content []byte) *ResponseData {
+func (p *ResponseData) WithContentBytes(content []byte) *ResponseData {
 	p.content = content
 	return p
 }
 
-func (p *ResponseData) SetShouldLog() *ResponseData {
-	p.shouldLog = true
+func (p *ResponseData) SetShouldLog(should bool) *ResponseData {
+	p.shouldLog = should
 	return p
 }
 

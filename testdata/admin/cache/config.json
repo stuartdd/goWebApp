@@ -3,8 +3,8 @@
     "PostFix":"]",
     "Infix":",",
     "SkipLines": 0,
-    "InputFile": "ufs.raw",
-    "OutputFile": "ufs.json",
+    "InputFile": "cache/ufs.raw",
+    "OutputFile": "cache/ufs.json",
     "MaxLines": 5,
     "Lines": [
         {

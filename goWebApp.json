@@ -29,9 +29,11 @@
             "Exec": {
                 "ufs": {
                     "cmd": [
-                        "./ufs.sh"
+                        "./textToJson",
+                        "ufsConfig.json"
                     ],
                     "dir":"",
+                    "stdOutType" : "json",
                     "log": "logs"
                 }
             },
