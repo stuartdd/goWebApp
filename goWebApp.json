@@ -36,6 +36,15 @@
                     "nzCodeReturns": 200,
                     "stdOutType": "json",
                     "log": "logs"
+                },
+                "ds": {
+                    "cmd": [
+                        "./diskSize.sh"
+                    ],
+                    "dir": "",
+                    "nzCodeReturns": 200,
+                    "stdOutType": "json",
+                    "log": "logs"
                 }
             },
             "Env": {

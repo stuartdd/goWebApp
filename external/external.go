@@ -9,15 +9,16 @@ import (
 )
 
 type Token struct {
+	Pos    int
 	Name   string
 	Quoted bool
 }
 
 type Line struct {
-	Split     string
-	Skip      string
-	MaxTokens int
-	Tokens    []*Token
+	Split    string
+	Skip     string
+	TokenPos []int
+	Tokens   []*Token
 }
 
 type Properties struct {
@@ -121,21 +122,20 @@ func main() {
 
 func tokenise(lineNum int, lines []*Line, line []byte) string {
 	tokenLine := lines[lineNum%len(lines)]
+	if tokenLine.Tokens == nil || len(tokenLine.Tokens) == 0 {
+		os.Stderr.WriteString(fmt.Sprintf("No Tokens are defined for Line[%d]", lineNum%len(lines)))
+		os.Exit(1)
+	}
+	tokens := tokenLine.Tokens
 	resp := []string{}
 	var buff bytes.Buffer
 	split := []byte(tokenLine.Split)
 	skip := []byte(tokenLine.Skip)
 	tokenNum := 0
-	maxTokens := tokenLine.MaxTokens
-	if maxTokens < 1 {
-		return ""
-	}
 	for _, b := range line {
 		if isCharInString(b, split) {
 			if buff.Len() > 0 {
-				if tokenNum < maxTokens {
-					resp = append(resp, finalToken(tokenLine, tokenNum, buff.String()))
-				}
+				resp = append(resp, buff.String())
 				tokenNum++
 				buff.Reset()
 			}
@@ -146,35 +146,35 @@ func tokenise(lineNum int, lines []*Line, line []byte) string {
 		}
 	}
 	if buff.Len() > 0 {
-		if tokenNum < maxTokens {
-			resp = append(resp, finalToken(tokenLine, tokenNum, buff.String()))
-		}
+		resp = append(resp, buff.String())
 	}
 	buff.Reset()
 	buff.WriteRune('{')
-	for i, t := range resp {
-		buff.WriteString(t)
-		if i < (len(resp) - 1) {
-			buff.WriteRune(',')
+	for i, tok := range tokens {
+		p := tok.Pos
+		if p >= 0 && p < len(resp) {
+			buff.WriteString(finalToken(tok, resp[p]))
+			if i < (len(tokens) - 1) {
+				buff.WriteRune(',')
+			}
 		}
 	}
 	buff.WriteRune('}')
 	return buff.String()
 }
 
-func finalToken(line *Line, tn int, token string) string {
+func finalToken(tokDesc *Token, value string) string {
 	var buff bytes.Buffer
-	tokenDesc := line.Tokens[tn]
 	buff.WriteRune('"')
-	buff.WriteString(tokenDesc.Name)
+	buff.WriteString(tokDesc.Name)
 	buff.WriteRune('"')
 	buff.WriteRune(':')
-	if tokenDesc.Quoted {
+	if tokDesc.Quoted {
 		buff.WriteRune('"')
-		buff.WriteString(token)
+		buff.WriteString(value)
 		buff.WriteRune('"')
 	} else {
-		buff.WriteString(token)
+		buff.WriteString(value)
 	}
 
 	return buff.String()

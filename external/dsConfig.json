@@ -3,7 +3,7 @@
     "PostFix": "]",
     "Infix": ",",
     "SkipLines": 0,
-    "InputFile": "cache/ufs.raw",
+    "InputFile": "ds.raw",
     "MaxLines": 5,
     "Lines": [
         {
@@ -12,12 +12,17 @@
             "Tokens": [
                 {
                     "pos": 0,
-                    "name": "Size",
+                    "name": "name",
                     "quoted": false
                 },
                 {
-                    "pos": 1,
-                    "name": "Name",
+                    "pos": 3,
+                    "name": "state",
+                    "quoted": true
+                },
+                {
+                    "pos": 4,
+                    "name": "pc",
                     "quoted": true
                 }
             ]

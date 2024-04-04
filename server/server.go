@@ -24,6 +24,8 @@ var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
 
 var getServerStatusMatch = NewUrlRequestMatcher("/status", "GET")
+var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
+
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
@@ -103,7 +105,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p).WithParam("user", "admin"), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -126,7 +128,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewTreeHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
-
 		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
 			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
@@ -142,6 +143,12 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewPostFileHandler(RequestData.WithParameters(p), h.config, r, logFunc).Submit())
 			return
 		}
+		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
+			return
+		}
+
 	}
 	_, ok := getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
@@ -154,6 +161,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
 		return
 	}
+
 	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetServerStatusAsMap(h.config, h.GetUpSince())))

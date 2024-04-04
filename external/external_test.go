@@ -4,6 +4,9 @@ import (
 	"testing"
 )
 
-func TestLofFileData(t *testing.T) {
-	RunMain("config.json")
+func TestUfsFileData(t *testing.T) {
+	RunMain("ufsConfig.json")
+}
+func TestDsFileData(t *testing.T) {
+	RunMain("dsConfig.json")
 }

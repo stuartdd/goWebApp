@@ -17,7 +17,9 @@ const LocationParam = "loc"
 const PathParam = "path"
 const NameParam = "name"
 const ExecParam = "exec"
+const ScriptParam = "script"
 const ErrorParam = "error"
+const AdminName = "admin"
 const encodedValuePrefix = "X0X"
 
 type UrlRequestParts struct {
@@ -97,6 +99,10 @@ func (p *UrlRequestParts) SetParam(key string, value string) {
 
 func (p *UrlRequestParts) GetUser() string {
 	return p.GetParam(UserParam)
+}
+
+func (p *UrlRequestParts) GetScript() string {
+	return p.GetParam(ScriptParam)
 }
 
 func (p *UrlRequestParts) GetPath() string {
