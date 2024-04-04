@@ -6,7 +6,7 @@ import (
 )
 
 func TestNoCommands(t *testing.T) {
-	tc := NewExecData([]string{}, "..", "../testdata/logs/cmdout.txt", "../testdata/logs/cmderr.txt", nil)
+	tc := NewExecData([]string{}, "..", "../testdata/logs/cmdout.txt", "../testdata/logs/cmderr.txt", "info", nil, nil)
 	_, _, _, err := tc.Run()
 	if err == nil {
 		t.Fatalf("Should throw no commands error")
@@ -17,7 +17,7 @@ func TestNoCommands(t *testing.T) {
 }
 
 func TestEmptyCommands(t *testing.T) {
-	tc := NewExecData([]string{"", " "}, "..", "../testdata/logs/cmdout.txt", "../testdata/logs/cmderr.txt", nil)
+	tc := NewExecData([]string{"", " "}, "..", "../testdata/logs/cmdout.txt", "../testdata/logs/cmderr.txt", "info", nil, nil)
 	_, _, _, err := tc.Run()
 	if err == nil {
 		t.Fatalf("Should throw no commands error")
@@ -28,7 +28,7 @@ func TestEmptyCommands(t *testing.T) {
 }
 
 func TestLs(t *testing.T) {
-	tc := NewExecData([]string{"ls", "-lta"}, "..", "../testdata/logs/cmdout-ls.txt", "../testdata/logs/cmderr-ls.txt", nil)
+	tc := NewExecData([]string{"ls", "-lta"}, "..", "../testdata/logs/cmdout-ls.txt", "../testdata/logs/cmderr-ls.txt", "info", nil, nil)
 	stdOut, _, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)
@@ -39,7 +39,7 @@ func TestLs(t *testing.T) {
 }
 
 func TestLsErr(t *testing.T) {
-	tc := NewExecData([]string{"ls", "-lta", "x"}, "..", "../testdata/logs/cmdout-ls-x.txt", "../testdata/logs/cmderr-ls-x.txt", nil)
+	tc := NewExecData([]string{"ls", "-lta", "x"}, "..", "../testdata/logs/cmdout-ls-x.txt", "../testdata/logs/cmderr-ls-x.txt", "info", nil, nil)
 	stdOut, stdErr, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)
@@ -54,7 +54,7 @@ func TestLsErr(t *testing.T) {
 
 func TestPWD(t *testing.T) {
 
-	tc := NewExecData([]string{"pwd"}, "..", "../testdata/logs/cmdout-pwd.txt", "../testdata/logs/cmderr-pwd.txt", nil)
+	tc := NewExecData([]string{"pwd"}, "..", "../testdata/logs/cmdout-pwd.txt", "../testdata/logs/cmderr-pwd.txt", "info", nil, nil)
 	stdOut, _, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)
@@ -67,7 +67,7 @@ func TestPWD(t *testing.T) {
 }
 func TestGo(t *testing.T) {
 
-	tc := NewExecData([]string{"go", "version"}, "", "../testdata/logs/cmdout-go.txt", "../testdata/logs/cmderr-go.txt", nil)
+	tc := NewExecData([]string{"go", "version"}, "", "../testdata/logs/cmdout-go.txt", "../testdata/logs/cmderr-go.txt", "info", nil, nil)
 	stdOut, _, _, err := tc.Run()
 	if err != nil {
 		t.Fatalf("Error:%e", err)

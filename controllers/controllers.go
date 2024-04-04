@@ -259,23 +259,31 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), func(r []byte) string {
+	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromMap(r, false)
 	})
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
 		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
 	}
-	if execInfo.StdOutType != "" {
+	if code > 0 && execInfo.NzCodeReturns >= http.StatusMultipleChoices {
+		return NewResponseData(execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
+	}
+	if execInfo.StdOutType != "" && len(stdOut) > 0 {
 		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(execInfo.StdOutType).SetShouldLog(code != 0)
 	}
 	var dataMap map[string]interface{}
 	if p.createMap != nil {
 		dataMap = p.createMap(stdOut, stdErr, code)
 	} else {
-		dataMap = map[string]interface{}{"error": code == 0, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
+		dataMap = map[string]interface{}{"error": code > 0, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
 	}
-	return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetShouldLog(code != 0)
+	if code == 0 {
+		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetShouldLog(false)
+	} else {
+		return NewResponseData(execInfo.NzCodeReturns).WithContentMapJson(dataMap).SetShouldLog(true)
+	}
 }
 
 //-------------------------------------------------------------------

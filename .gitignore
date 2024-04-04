@@ -3,4 +3,4 @@ __*
 *.log
 *.jpg
 *.txt
-logs/
+textToJson

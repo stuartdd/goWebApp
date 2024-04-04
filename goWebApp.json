@@ -32,8 +32,9 @@
                         "./textToJson",
                         "ufsConfig.json"
                     ],
-                    "dir":"",
-                    "stdOutType" : "json",
+                    "dir": "",
+                    "nzCodeReturns": 200,
+                    "stdOutType": "json",
                     "log": "logs"
                 }
             },

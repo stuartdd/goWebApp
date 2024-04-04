@@ -13,13 +13,15 @@ type execData struct {
 	Dir       string
 	StdOutLog string
 	StdErrLog string
+	log       func(string)
+	info      string
 }
 
 func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, substitute func([]byte) string) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, logFunc func(string), substitute func([]byte) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -34,6 +36,8 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, su
 		Dir:       dir,
 		StdOutLog: stdOut,
 		StdErrLog: stdErr,
+		log:       logFunc,
+		info:      info,
 	}
 }
 
@@ -64,18 +68,17 @@ func (p *execData) Run() ([]byte, []byte, int, error) {
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
+		if p.log != nil {
+			p.log(fmt.Sprintf("Error Exec        :%s, %s", p.info, err.Error()))
+		}
 		_, ok := err.(*os.PathError)
 		if ok {
-			return nil, nil, -1, fmt.Errorf("exec failed: changing dir")
+			return nil, nil, -1, fmt.Errorf("exec failed: Invalid path to command")
 		}
 		ee, ok := err.(*exec.ExitError)
 		if ok {
 			code = ee.ExitCode()
 		} else {
-			ex, ok := err.(*exec.Error)
-			if ok {
-				return nil, nil, 1, fmt.Errorf("exec cmd %s not on Path", ex.Name)
-			}
 			return nil, nil, 1, fmt.Errorf("exec failed: %s", err.Error())
 		}
 	}
