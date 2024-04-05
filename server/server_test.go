@@ -68,9 +68,24 @@ func TestServer(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
+	url := "files/user/stuart/loc/logs"
+	_, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	AssertContains(t, respBody, []string{
+		"\"users\"",
+		"\"Bob\"",
+		"\"Stuart\"",
+	})
 
-	url := "files/user/stuart/loc/data/name/state.json"
-	_, respBody := RunClientGet(t, configData, url, 200, "?", 111, 10)
+	url = "server/status"
+	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	AssertContains(t, respBody, []string{
+		"\"users\"",
+		"\"Bob\"",
+		"\"Stuart\"",
+	})
+
+	url = "files/user/stuart/loc/data/name/state.json"
+	_, respBody = RunClientGet(t, configData, url, 200, "?", 111, 10)
 	AssertContains(t, respBody, []string{
 		"\"imagesPerRow\"",
 		"\"displayOptions\"",

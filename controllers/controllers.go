@@ -345,10 +345,13 @@ func GetServerStatusAsJson(configData *config.ConfigData, upSince time.Time) []b
 	var st runtime.MemStats
 	runtime.ReadMemStats(&st)
 	b.WriteRune('{')
-	writeParamAsJsonString("error", "false", false, false, true, &b)
+	// writeParamAsJsonString("error", "false", false, false, true, &b)
 	b.WriteString("\"status\": {")
-	writeParamAsJsonObject("Alloc", fmtAlloc(st.Alloc), true, false, true, &b)
-	writeParamAsJsonObject("TotalAlloc", fmtAlloc(st.TotalAlloc), true, false, false, &b)
+
+	writeParamAsJsonString("Alloc", fmtAlloc(st.Alloc), true, false, true, &b)
+	writeParamAsJsonString("TotalAlloc", fmtAlloc(st.TotalAlloc), true, false, true, &b)
+	writeParamAsJsonString("Sys", fmtAlloc(st.Sys), true, false, true, &b)
+	writeParamAsJsonString("configName", configData.ConfigName, true, false, false, &b)
 	b.WriteRune('}')
 	b.WriteRune('}')
 
@@ -410,15 +413,16 @@ func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts) []byte {
 	buffer.WriteRune(',')
 	writePathToJson(params.GetOptionalParam(PathParam), PathParam, &buffer)
 	buffer.WriteString("\"files\":[")
+	bufLen := buffer.Len()
 	for i := 0; i < entLen; i++ {
 		e := ents[i]
 		if filterDirNames(e, params.GetConfigFileFilter()) {
 			writeSingleFileNameToJson(e, &buffer)
-			if i < (entLen - 1) {
-				buffer.WriteRune(',')
-			}
+			bufLen = buffer.Len()
+			buffer.WriteRune(',')
 		}
 	}
+	buffer.Truncate(bufLen)
 	buffer.WriteString("]}")
 	return buffer.Bytes()
 }

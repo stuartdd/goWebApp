@@ -81,7 +81,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Log(fmt.Sprintf("Req:  %s", r.RequestURI))
 	urlPath := strings.TrimSpace(r.URL.Path)
 
-	RequestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
+	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
 	var isAbsolutePath bool
 	requestUrlparts := strings.Split(urlPath, "/")
 	if requestUrlparts[0] == "" {
@@ -100,52 +100,52 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p), h.config, nil, logFunc).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc).Submit())
 			return
 		}
 		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true, logFunc).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, true, logFunc).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc).Submit())
 			return
 		}
 		p, ok = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(RequestData.WithParameters(p), h.config, false, logFunc).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(RequestData.WithParameters(p), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(RequestData.WithParameters(p), h.config, r, logFunc).Submit())
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc).Submit())
 			return
 		}
 		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(RequestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
 			return
 		}
 

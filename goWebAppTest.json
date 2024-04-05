@@ -5,7 +5,8 @@
     "filterFiles": [
         "Json",
         "Data",
-        "jpeg"
+        "jpeg",
+        "log"
     ],
     "ContentTypeCharset": "utf-8",
     "FaviconIcoPath": "favicon.ico",
@@ -49,6 +50,7 @@
             "home": "stuart",
             "Locations": {
                 "home": "",
+                "logs": "logs",
                 "data": "stateData",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
