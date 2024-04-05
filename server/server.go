@@ -23,7 +23,7 @@ var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
 var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
 
-var getServerStatusMatch = NewUrlRequestMatcher("/status", "GET")
+var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
 var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
 
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
@@ -164,7 +164,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetServerStatusAsMap(h.config, h.GetUpSince())))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.GetUpSince())))
 		return
 	}
 	_, ok = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)

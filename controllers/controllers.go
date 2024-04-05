@@ -338,19 +338,32 @@ func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType("ico")
 }
 
-func GetServerStatusAsMap(configData *config.ConfigData, upSince time.Time) map[string]interface{} {
-	m := make(map[string]interface{}, 0)
-	m["error"] = false
-	m["reloadConfig"] = configData.GetTimeToReloadConfig()
-	m["configName"] = configData.ConfigName
-	m["upSince"] = upSince.Format(time.ANSIC)
-	m["upTime"] = fmtDuration(time.Since(upSince))
+// "{\"Alloc\":\"2 MiB (2309672 B)\",\"Sys\":\"12 MiB (12672016 B)\",\"TotalAlloc\":\"2 MiB (2309672 B)\",\"configName\":\"goWebApp.json\",\"error\":false,\"reloadConfig\":3080.27,\"upSince\":\"Fri Apr  5 12:48:19 2024\",\"upTime\":\"00:08:39\"}"
+// "[{\"error\":false,}{\"Alloc\":\"1 MiB (1368424 B)\"}]"
+func GetServerStatusAsJson(configData *config.ConfigData, upSince time.Time) []byte {
+	var b bytes.Buffer
 	var st runtime.MemStats
 	runtime.ReadMemStats(&st)
-	m["Alloc"] = fmtAlloc(st.Alloc)
-	m["TotalAlloc"] = fmtAlloc(st.TotalAlloc)
-	m["Sys"] = fmtAlloc(st.Sys)
-	return m
+	b.WriteRune('{')
+	writeParamAsJsonString("error", "false", false, false, true, &b)
+	b.WriteString("\"status\": {")
+	writeParamAsJsonObject("Alloc", fmtAlloc(st.Alloc), true, false, true, &b)
+	writeParamAsJsonObject("TotalAlloc", fmtAlloc(st.TotalAlloc), true, false, false, &b)
+	b.WriteRune('}')
+	b.WriteRune('}')
+
+	// m := make(map[string]interface{}, 0)
+	// m["error"] = false
+	// m["reloadConfig"] = configData.GetTimeToReloadConfig()
+	// m["configName"] = configData.ConfigName
+	// m["upSince"] = upSince.Format(time.ANSIC)
+	// m["upTime"] = fmtDuration(time.Since(upSince))
+	// var st runtime.MemStats
+	// runtime.ReadMemStats(&st)
+	// m["Alloc"] = fmtAlloc(st.Alloc)
+	// m["TotalAlloc"] = fmtAlloc(st.TotalAlloc)
+	// m["Sys"] = fmtAlloc(st.Sys)
+	return b.Bytes()
 }
 
 func fmtAlloc(al uint64) string {
@@ -497,8 +510,8 @@ func writePathToJson(pathUnencoded string, key string, buffer *bytes.Buffer) {
 
 func writeJsonHeader(param *UrlRequestParts, buffer *bytes.Buffer) {
 	writeErrorAsJsonString(false, buffer)
-	writeParamAsJsonString(param.GetOptionalParam(UserParam), UserParam, true, false, buffer)
-	writeParamAsJsonString(param.GetOptionalParam(LocationParam), LocationParam, true, false, buffer)
+	writeParamAsJsonString(UserParam, param.GetOptionalParam(UserParam), true, true, false, buffer)
+	writeParamAsJsonString(LocationParam, param.GetOptionalParam(LocationParam), true, true, false, buffer)
 }
 
 func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
@@ -515,16 +528,33 @@ func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString("\"}}")
 }
 
-func writeParamAsJsonString(value string, key string, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
+func writeParamAsJsonObject(key string, value string, quoted bool, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
+	if commaAtStart {
+		buffer.WriteRune(',')
+	}
+	buffer.WriteRune('{')
+	writeParamAsJsonString(key, value, quoted, false, false, buffer)
+	buffer.WriteRune('}')
+	if commaAtEnd {
+		buffer.WriteRune(',')
+	}
+}
+
+func writeParamAsJsonString(key string, value string, quoted bool, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
 	if value != "" {
 		if commaAtStart {
 			buffer.WriteRune(',')
 		}
 		buffer.WriteRune('"')
 		buffer.WriteString(key)
-		buffer.WriteString("\":\"")
+		buffer.WriteString("\":")
+		if quoted {
+			buffer.WriteRune('"')
+		}
 		buffer.WriteString(value)
-		buffer.WriteRune('"')
+		if quoted {
+			buffer.WriteRune('"')
+		}
 		if commaAtEnd {
 			buffer.WriteRune(',')
 		}
