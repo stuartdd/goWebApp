@@ -32,6 +32,9 @@ func (l *TLog) Get() string {
 func (l *TLog) IsOpen() bool {
 	return true
 }
+func (l *TLog) LogFileName() string {
+	return "DummyLogger.log"
+}
 
 var serverState string = ""
 var logger = &TLog{}

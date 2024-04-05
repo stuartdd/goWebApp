@@ -417,7 +417,6 @@ func (p *ConfigData) ResetTimeToReloadConfig() {
 func (p *ConfigData) GetTimeToReloadConfig() float64 {
 	t := float64(p.NextLoadTime-time.Now().UnixMilli()) / float64(1000)
 	return math.Trunc(t*100) / 100
-
 }
 
 func (p *ConfigData) GetServerName() string {

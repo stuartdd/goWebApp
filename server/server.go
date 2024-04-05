@@ -22,10 +22,9 @@ const (
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
 var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
-
-var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
 var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
 
+var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
@@ -34,11 +33,11 @@ var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*",
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET")
 var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET")
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
-var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET")
-
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET")
 var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET")
 var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST")
+
+var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET")
 var execUserCmdMatch = NewUrlRequestMatcher("/exec/user/*/exec/*", "GET")
 
 type ServerHandler struct {
@@ -164,7 +163,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.GetUpSince())))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.logger.LogFileName(), h.GetUpSince())))
 		return
 	}
 	_, ok = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)

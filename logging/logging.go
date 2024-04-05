@@ -15,6 +15,7 @@ type Logger interface {
 	Log(string)
 	IsOpen() bool
 	Close()
+	LogFileName() string
 }
 
 type logFileData struct {
@@ -83,7 +84,7 @@ type logger struct {
 	path           string
 	monitorSeconds int
 	level          string
-	file           *logFileData
+	logFileData    *logFileData
 	datePrefix     string
 	nextFileCheck  time.Time
 	queue          chan string
@@ -98,28 +99,32 @@ func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel s
 		path:           pPath,
 		monitorSeconds: pMonitorSeconds,
 		level:          pLevel,
-		file:           newLogFileData(pPath, pFileNameMask, time.Now()),
+		logFileData:    newLogFileData(pPath, pFileNameMask, time.Now()),
 		datePrefix:     newDatePrefix(time.Now()),
 		nextFileCheck:  getNextMonitorTime(pMonitorSeconds),
 		queue:          make(chan string, 20),
 	}
 	go l.deQueue()
-	return l, l.file.err
+	return l, l.logFileData.err
 }
 
 func (l *logger) Close() {
-	l.file.close()
+	l.logFileData.close()
 	close(l.queue)
 }
 
 func (l *logger) IsOpen() bool {
-	return l.file.isOpen()
+	return l.logFileData.isOpen()
 }
 
 func (l *logger) Log(msg string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.queue <- msg
+}
+
+func (l *logger) LogFileName() string {
+	return l.logFileData.fileName
 }
 
 func (l *logger) deQueue() {
@@ -145,10 +150,10 @@ func (l *logger) deQueue() {
 		if t.After(l.nextFileCheck) {
 			l.nextFileCheck = getNextMonitorTime(l.monitorSeconds)
 			l.datePrefix = newDatePrefix(t)
-			l.file = l.file.reOpen(l.path, l.fileNameMask, t)
+			l.logFileData = l.logFileData.reOpen(l.path, l.fileNameMask, t)
 		}
 		if l.IsOpen() {
-			l.file.logFile.WriteString(fmt.Sprintf("%s%s:%s:%s %s\n", l.datePrefix, hs, ms, ss, msg))
+			l.logFileData.logFile.WriteString(fmt.Sprintf("%s%s:%s:%s %s\n", l.datePrefix, hs, ms, ss, msg))
 		}
 		os.Stderr.WriteString(fmt.Sprintf("%s%s:%s:%s %s.\n", l.datePrefix, hs, ms, ss, msg))
 	}

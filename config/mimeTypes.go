@@ -84,6 +84,9 @@ func makeContentTypesMap() map[string]string {
 	mime["xul"] = "application/vnd.mozilla.xul+xml"
 	mime["zip"] = "application/zip"
 	mime["7z"] = "application/x-7z-compressed"
+
+	mime["log"] = "text/plain%0"
+
 	return mime
 }
 

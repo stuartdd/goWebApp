@@ -15,7 +15,7 @@
     "faviconIcoPath": "favicon1.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d.log",
-        "Path": "logs",
+        "Path": "stuart/logs",
         "MonitorSeconds": 30,
         "LogLevel": "verbose"
     },
