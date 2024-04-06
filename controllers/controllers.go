@@ -267,6 +267,20 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
 	}
+	if execInfo.LogOut != "" {
+		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser(), false))
+		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdOut, 0644)
+		if err != nil {
+			return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save stdOut to log", true)
+		}
+	}
+	if execInfo.LogErr != "" {
+		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser(), false))
+		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdErr, 0644)
+		if err != nil {
+			return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save stdErr to log", true)
+		}
+	}
 	if code > 0 && execInfo.NzCodeReturns >= http.StatusMultipleChoices {
 		return NewResponseData(execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
 	}
@@ -347,7 +361,6 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 	b.WriteRune('{')
 	writeParamAsJsonString("error", "false", false, false, true, &b)
 	b.WriteString("\"status\": {")
-
 	writeParamAsJsonString("UpSince", upSince.Format(time.ANSIC), true, false, true, &b)
 	writeParamAsJsonString("UpTime", fmtDuration(time.Since(upSince)), true, false, true, &b)
 	writeParamAsJsonString("Reload Config in", fmt.Sprintf("%.0f seconds", configData.GetTimeToReloadConfig()), true, false, true, &b)

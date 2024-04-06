@@ -33,19 +33,23 @@
                         "./textToJson",
                         "ufsConfig.json"
                     ],
-                    "dir": "",
                     "nzCodeReturns": 200,
-                    "stdOutType": "json",
-                    "log": "logs"
+                    "stdOutType": "json"
                 },
                 "ds": {
                     "cmd": [
                         "./diskSize.sh"
                     ],
-                    "dir": "",
                     "nzCodeReturns": 200,
-                    "stdOutType": "json",
-                    "log": "logs"
+                    "stdOutType": "json"
+                },
+                "restart": {
+                    "cmd": [
+                        "./restartServer.sh"
+                    ],
+                    "log":"cache",
+                    "LogOut": "restartOut_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
+                    "LogErr": "restartErr_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt"
                 }
             },
             "Env": {
@@ -77,9 +81,6 @@
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "***/home/stuart/git"
-            },
-            "Env": {
-                "lsargs": "-l"
             }
         }
     },

@@ -28,6 +28,7 @@ var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
+var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET")
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET")
@@ -147,6 +148,15 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
 			return
 		}
+		p, ok = getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, "restart"), h.config, func(b1, b2 []byte, i int) map[string]interface{} {
+				return map[string]interface{}{
+					"Status": strings.TrimSpace(string(b1)),
+				}
+			}, logFunc).Submit())
+			return
+		}
 
 	}
 	_, ok := getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -181,6 +191,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.GetFaveIcon(h.config))
 		return
 	}
+
 	_, ok = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		cfg, errorList := config.NewConfigData(h.config.ConfigName)

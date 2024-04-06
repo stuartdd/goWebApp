@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -516,7 +517,22 @@ func (p *ConfigData) GetUserEnv(user string, includeLocations bool) map[string]s
 	}
 	m["user.name"] = userData.Name
 	m["user.home"] = userData.Home
+	t := time.Now()
+	m["year"] = strconv.Itoa(t.Year())
+	m["month"] = padTimeDate(int(t.Month()))
+	m["day"] = padTimeDate(t.Day())
+	m["hour"] = padTimeDate(t.Hour())
+	m["min"] = padTimeDate(int(t.Minute()))
+	m["sec"] = padTimeDate(t.Second())
 	return m
+}
+
+func padTimeDate(v int) string {
+	s := strconv.Itoa(v)
+	if len(s) == 1 {
+		return "0" + s
+	}
+	return s
 }
 
 func (p *ConfigData) GetPortString() string {

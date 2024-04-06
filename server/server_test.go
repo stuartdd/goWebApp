@@ -61,6 +61,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "11", NewUrlRequestMatcher("", "get"), "", "GET", true, "")
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post"), "", "GET", false, "")
 }
+
 func TestServer(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json")
 	if errList.ErrorCount() > 1 || configData == nil {
@@ -71,27 +72,25 @@ func TestServer(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	url := "files/user/stuart/loc/logs"
+	url := "files/user/stuart/loc/pics"
 	_, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
 	AssertContains(t, respBody, []string{
-		"\"users\"",
-		"\"Bob\"",
-		"\"Stuart\"",
+		"\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"",
+		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,",
 	})
 
 	url = "server/status"
 	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
 	AssertContains(t, respBody, []string{
-		"\"users\"",
-		"\"Bob\"",
-		"\"Stuart\"",
+		"\"error\":false,\"status\": {\"UpSince\":",
+		"\"configName\":\"../goWebAppTest.json\"",
 	})
 
 	url = "files/user/stuart/loc/data/name/state.json"
-	_, respBody = RunClientGet(t, configData, url, 200, "?", 111, 10)
+	_, respBody = RunClientGet(t, configData, url, 200, "?", 96, 10)
 	AssertContains(t, respBody, []string{
-		"\"imagesPerRow\"",
 		"\"displayOptions\"",
+		"\"optionShowResponse\"",
 		"\"optionSuppressTime\"",
 	})
 

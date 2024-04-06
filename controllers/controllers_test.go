@@ -62,8 +62,8 @@ func TestExec(t *testing.T) {
 
 	res := ex.Submit()
 
-	if !strings.Contains(string(res.Content()), "go.mod") {
-		t.Fatal("Exec of ls -lta should cintain go.mod")
+	if !strings.Contains(string(res.Content()), "t1.JSON") {
+		t.Fatal("Exec of ls -lta should contain t1.JSON")
 	}
 }
 

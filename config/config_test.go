@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -84,6 +83,14 @@ func assertEquals(t *testing.T, message string, actual string, expected string) 
 	}
 }
 
+func assertContains(t *testing.T, message string, actual string, contains []string) {
+	for _, c := range contains {
+		if !strings.Contains(actual, c) {
+			t.Fatalf("%s.\nDoes Not Contain:%s\nActual:  %s", message, c, string(actual))
+		}
+	}
+}
+
 func TestUserExec(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json")
 	if errlist.ErrorCount() != 1 {
@@ -97,9 +104,7 @@ func TestUserExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
-	if exec.String() != fmt.Sprintf("CMD:[cmd2], Dir:, LogOut:%s/bob/logs/logOut.txt, LogErr:", pre) {
-		t.Fatalf("Did not find the correct exec! Actual '%s'", exec.String())
-	}
+	assertContains(t, "UserExec", exec.String(), []string{pre, "[cmd2]", "/bob/logs/logOut.txt"})
 
 	_, err = conf.GetUserExecInfo("bob", "X2")
 	if err == nil {
@@ -135,12 +140,9 @@ func TestGetUserExecInfo(t *testing.T) {
 	if c1.Cmd[1] != "-lta" {
 		t.Fatal("Command should be ls -lta")
 	}
-	if c1.Dir != "" {
-		t.Fatal("Command Dir should be empty")
-	}
-	if !strings.HasSuffix(c1.Log, "/testdata/bob/logs") {
-		t.Fatal("Command Log should end /testdata/bob/logs")
-	}
+	pre := conf.GetServerDataRoot()
+
+	assertEquals(t, "TestGetUserExecInfo", c1.Dir, pre+"/bob")
 
 }
 
