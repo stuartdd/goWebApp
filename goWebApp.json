@@ -1,5 +1,4 @@
 {
-    "configName": "goWebApp.json",
     "port": 8082,
     "reloadConfigSeconds": 3600,
     "ContentTypeCharset": "utf-8",

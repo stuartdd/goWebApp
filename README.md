@@ -1,110 +1,422 @@
 # goWebApp
 Web app written in go for raspberry pi home server
 
-Existring PI API
+## Configuration data
 
-# Files
+### Config file name
 
-http://192.168.1.243:8080/files/user/stuart/loc/mydb
-http://localhost:8082/files/user/stuart/loc/home
-```json
-{
-   "user":"stuart",
-   "loc":"mydb",
-   "path":null,
-   "files":[
-      {
-         "size":2515,
-         "name":{
-            "name":"testdata.data",
-            "encName":"dGVzdGRhdGEuZGF0YQ=="
-         }
-      },
-      {
-         "size":320,
-         "name":{
-            "name":"test.json",
-            "encName":"dGVzdC5qc29u"
-         }
-      },
-      {
-         "size":5812,
-         "name":{
-            "name":"stuff.json",
-            "encName":"c3R1ZmYuanNvbg=="
-         }
-      }
-   ]
-}
+The name of the configuration file is defined as follows:
+
+1 First argument
+
+2 The module name (goWebApp unless altered for a build)
+
+If it does not have '.json' on the end it will be added.
+
+The file must be valid JSON format
+
+Refer to the config.go module for the fine detail: 
+
+Once loaded the fields are parsed and file locations are fixed.
+
+Errors in the data will abort the application.
+
+The following high level values are defiend as:
+
+## **port**
+Defines the integer port number for the application to run on. For example port 8082 will require the following URL
+
 ```
-# Files
+http://localhost:8082/static/dart.html
+```
+Not ports below 100 require admin privilages to run.
 
-http://192.168.1.243:8080/files/user/stuart/loc/thumbs/path/UGl4ZWxQaG9uZVN5bmMvSU1HXzIwMTcwNjAyXzEyNDExMw==
-http://localhost:8082/files/user/stuart/loc/home/path/cy1waWNzL3MtdGVzdGZvbGRlcg==?a=b&x=y
-```json
-{
-   "user":"stuart",
-   "loc":"thumbs",
-   "path":{
-      "name":"PixelPhoneSync/IMG_20170602_124113",
-      "encName":"UGl4ZWxQaG9uZVN5bmMvSU1HXzIwMTcwNjAyXzEyNDExMw=="
-   },
-   "files":[
-      {
-         "size":5917,
-         "name":{
-            "name":"2017_06_02_12_41_15_00002IMG_00002_BURST20170602124113.jpg.jpg",
-            "encName":"MjAxN18wNl8wMl8xMl80MV8xNV8wMDAwMklNR18wMDAwMl9CVVJTVDIwMTcwNjAyMTI0MTEzLmpwZy5qcGc="
-         }
-      },
-      {
-         "size":5981,
-         "name":{
-            "name":"2017_06_02_12_41_15_00001IMG_00001_BURST20170602124113.jpg.jpg",
-            "encName":"MjAxN18wNl8wMl8xMl80MV8xNV8wMDAwMUlNR18wMDAwMV9CVVJTVDIwMTcwNjAyMTI0MTEzLmpwZy5qcGc="
-         }
-      },
-      {
-         "size":5919,
-         "name":{
-            "name":"2017_06_02_12_41_14_00000IMG_00000_BURST20170602124113_COVER.jpg.jpg",
-            "encName":"MjAxN18wNl8wMl8xMl80MV8xNF8wMDAwMElNR18wMDAwMF9CVVJTVDIwMTcwNjAyMTI0MTEzX0NPVkVSLmpwZy5qcGc="
-         }
-      }
-   ]
-}
+## **ServerDataRoot**
+
+This is the FIXED location of the users data. When users are defined (including the admin user) any 'Locations' defined for the user MUST exist when the server starts up.
+
+All locations defined in the config file, except **ServerDataRoot** and **ServerStaticRoot** are prefixed with 
+**ServerDataRoot**. Environment values are substituted (Ref Environment Substitution") when the server loads.
+
+## **ServerStaticRoot**
+
+This is the FIXED path to the web applications static files. Environment values are substituted (Ref Environment Substitution") when the server loads.
+
+Html, CSS, JavaScript and image files are usually stored here. They are accesed as fillows:
+
+```
+http://localhost:8082/static/dart.html
+
+http://localhost:8082/static/dart.css
+
+http://localhost:8082/static/stuart.png.
 ```
 
-# Paths
+If images are stored in a sub directory. For example 'images' the path will be followed. 
 
-http://192.168.1.243:8080/paths/user/stuart/loc/thumbs
-http://localhost:8082/paths/user/stuart/loc/home
+Keep the dir names simple (without spaces and special characters)
 
-```json
+```
+http://localhost:8082/static/images/stuart.png.
+```
+
+No Environment Substitution takes place on this value. It is fixed onvce the server is running.
+
+It can be anywhere in the file system.
+
+## **faviconIcoPath**
+
+Browsers always request the 'favicon' to give the browser tab an icon value. **faviconIcoPath** holds the path to the file and the file name.
+
+This is only valid for requests:
+
+```
+http://localhost:8082/favicon.ico
+```
+
+This value is prefixed with the value from **ServerDataRoot** and environment values are substituted (Ref Environment Substitution").
+
+## **reloadConfigSeconds**
+
+When a request received by the server, and before the request is submitted, the configuration file __MAY__ reload. 
+
+This allows changes in the config data while the server is running.
+
+The config file will only reload **reloadConfigSeconds** after the previous reload.
+
+## **Users**
+
+Users defines the resources fo a given user (including the admin user).
+
+``` json
+"Users": {
+        "admin": {
+        },
+        "bob": {
+        },
+        "stuart": {
+        }
+    }
+```
+
+When a request is received the data is mapped to a '**User**', a '**Location**' and optionally a file name or resource.
+
+Each '**User**' has a set of '**Location**'s as follows:
+
+``` json
+"stuart": {
+   "name": "Stuart",
+   "home": "stuartsData",
+   "Locations": {
+      "home": "",
+      "data": "stateData",
+      "pics": "pictures"
+   }
+}
+ 
+```
+
+Additional elements for User:
+
+**'Hidden'** If true the user is not returned in any lists. This is used for the admin user.
+
+**'Name'** The users proper name.
+
+**'Home'** The home path for the user. This is prefixed with **ServerDataRoot** on load.
+
+**'Locations'** See below
+
+**'Exec'** Used to define operating system (external) utilities. See below.
+
+**'Env'** Used to define user specific Environment Substitution values.
+
+### User and Location name resolution
+
+Request ```http://localhost:8082/files/user/stuart/loc/pics/name/stuart.jpeg```
+
+Would be resolved to a file path as follows:
+
+```
+**ServerDataRoot**/stuartsData/pictures/stuart.jpeg
+```
+
+The '/files/ indicates that this is a file operation.
+
+The '/user/stuart/' element finds stuart in the Users section. The value from 'stuart-->home' is used to build the file path. 
+
+The '/loc/pics/' element finds the 'pics' element in the users Location section. The value from 'stuart-->home-->Locations-->pics' is used to build the file path.
+
+If any of this fails a 404 error is returned.
+
+Note that if the '/user/stuart/' element is undefined then '/user/admin/' is substituted.
+
+This mapping is FIXED when the application loads and Location values are substituted (Ref Environment Substitution") at that time.
+
+The '/name/' section above indicates that a file is requested. In this case 'stuart.jpeg'. If found it is returned.
+
+An additional '/path/pathToFiles/' can be added to locate files in sub directories of **ServerDataRoot**/stuartsData/pictures. 
+
+Note that full paths and file names that are sent in url requests are normally encoded to stop invalic chracters being interpreted incorrectly. If this is the case then the path or file name is prefixed with "X0X". For example: 
+
+```
+ /files/user/stuart/loc/pics/path/X0Xcy10ZXN0Zm9sZGVy/name/X0XcGljMS5qcGVn.
+```
+
+The 'path/X0XVGh1bWJzMDAx/' indicates a additional base64 encoded path. The '/name/X0XcGljMS5qcGVn' gives the base64 encoded file name.
+
+X0Xcy10ZXN0Zm9sZGVy decodes to "s-testfolder" but may include multiple path elements.
+X0XcGljMS5qcGVn decoded to "pic1.jpeg"
+
+Note that responses from file and path requests will contain bothe the display name and the base64 encoded name. For example
+
+```
+http://localhost:8082/paths/user/stuart/loc/pics
+```
+
+Returned: 
+
+``` json
 {
-   "loc":"thumbs",
+   "error":false,
    "user":"stuart",
-   "paths":[
-      {
-         "name":"LGPhone",
-         "encName":"TEdQaG9uZQ=="
+   "loc":"pics",
+   "paths":[{
+      "name":"s-testfolder",
+      "encName":"X0Xcy10ZXN0Zm9sZGVy"
       },
       {
-         "name":"PixelPhoneSync",
-         "encName":"UGl4ZWxQaG9uZVN5bmM="
-      },
-      {
-         "name":"PixelPhoneSync/IMG_20170602_124113",
-         "encName":"UGl4ZWxQaG9uZVN5bmMvSU1HXzIwMTcwNjAyXzEyNDExMw=="
-      },
-      {
-         "name":"PixelPhoneSync/IMG_20170810_160825",
-         "encName":"UGl4ZWxQaG9uZVN5bmMvSU1HXzIwMTcwODEwXzE2MDgyNQ=="
-      },
-      {
-         "name":"PixelPhoneSync/IMG_20180127_143024",
-         "encName":"UGl4ZWxQaG9uZVN5bmMvSU1HXzIwMTgwMTI3XzE0MzAyNA=="
-      }
-   ]
+      "name":"s-testfolder/s-testdir1",
+      "encName":"X0Xcy10ZXN0Zm9sZGVyL3MtdGVzdGRpcjE="
+      }]
+   }
+```
+
+When building requests it is best to use the 'encName' values for paths and file names.
+
+## **Exec**
+
+Each user can have a set of Operating System commands that can be run on request. For example:
+
+```
+http://localhost:8082/exec/user/stuart/exec/ds
+```
+
+This will locate the user 'stuart' and within the Exec section will locate the 'ds' command. 
+
+It will template the command and all of the parameters before running the command.
+
+The sysOut stream from the command can be saved in a file using the **OutLog** element.
+
+The sysErr stream from the command can be saved in a file using the **ErrLog** element.
+
+The return code is checked and the response generated.
+
+### Exec Response
+
+```
+"nzCodeReturns": 200, TO BE FIXED!
+```
+
+If a non zero return code is a success the http status code will be 200. If this is not defined a non zero return code will return 
+
+## **filterFiles**
+
+This restricts the file types that file queries can return. 
+
+``` json
+"filterFiles": [
+        "Json",
+        "jpeg",
+        "jpg",
+        "png",
+        "log"
+    ]
+```
+
+So a request for files in a directory will be restricted to files with the extenstions listed above.
+
+Also excluded are file names that start with a '.' and an '_'. This applies to director listings as well.
+
+## **ContentTypeCharset**
+
+When a file is returned it's extension is used to look up the mime type. This 'mime type' is returned in the http header 'ContentType' to tell the browser what is being returned. Json, text a jpeg etc.
+
+In the code mimeTypes.go in the config module a map of mime types is embedded. Here is a small section:
+
+```golang
+	mime["jpeg"] = "image/jpeg"
+	mime["jpg"] = "image/jpeg"
+	mime["js"] = "text/javascript%0"
+	mime["json"] = "application/json%0"
+```
+
+So a file with an extension of .jpeg is returned with a 'image/jpeg' ContentType.
+
+For text based files it is also important to define the character set. For example utf-8.
+
+For the json extension shown above there is a '%0' marker at the end of the mime type. This is replaces with the character set encoding defined in **ContentTypeCharset**.
+
+If **ContentTypeCharset=utf-8**  a json file will be returned with the following ContentType:
+
+```
+application/json; charset=utf-8
+```
+
+If **ContentTypeCharset** is undefined a json file will be returned with the following ContentType:
+
+```
+application/json
+```
+
+## **Env**
+
+This adds Environment Substitution values at a Global level.
+
+When performing Substitution the presedence is as follows. 
+
+1 User 'Env'
+
+2 global 'Env'
+
+3 Operating system environment variables.
+
+``` json
+"Env": {
+   "lsargs": "-l"
 }
 ```
+
+Thia adds the Substitution name (or key) 'lsargs' with a value of '-l'. This will be included in any Run-Time Substitution.
+
+If the same name is defined at the user level and he global level the user level wins.
+
+## **LogData**
+
+This defines where the logging data is stored.
+
+``` json
+"LogData": {
+   "FileNameMask": "goWebServer-%y-%m-%d.log",
+   "Path": "somepath/logs",
+   "MonitorSeconds": 30,
+   "LogLevel": "verbose"
+},
+
+```
+
+The 'Path' element will be prefixed with **ServerDataRoot** and is FIXED when the application loads. Environment values are substituted (Ref Environment Substitution").
+
+The 'FileNameMask' has a separate substitution procedure defined in the 'logging' module.
+
+For example "goWebServer-%y-%m-%d-%H-%M-%S.log" will replece:
+
+%y with a 4 character year
+
+%m with a 2 character month
+
+%d with a 2 character day of month
+
+%H with a 2 character Hour (24 hour mode)
+
+%M with a 2 character Minute
+
+%S with a 2 character Second
+
+After **MonitorSeconds** seconds the file name is generated again. If this is different to the current name the existing log is closed and a new log is opened with the new name. 
+
+This process only occurs when the log is written to so it may be longer than the number of seconds defined in **MonitorSeconds**.
+
+The log is written to AFTER the rename process so the latest log line will be appended to the latest log.
+
+The 'LogLevel' element is not currently implemented.
+
+## **TemplateStaticFiles**
+
+``` json
+"TemplateStaticFiles": {
+   "Files": [
+      "dart.html",
+      "dart.css"
+   ],
+   "DataFile": "configDataPI.json"
+},
+```
+
+When a static file is read from the directory defined in **ServerStaticRoot** it is returned without further processing. 
+
+If the file name is included in the 'Files' list as above it is templated before it is returned.
+
+This process allows Environment values to be embedded in the files before it is returned to the browser. 
+
+Additional data is read from the global 'Env' element in the config document root and the file defined by the 'DataFile' element.
+
+The file in the 'DataFile' element can be anywhare in the file systen. Its location is checked when the application loads. After that it is fixed.
+
+# Environment Substitution
+
+When the application loads the Operating System environment variables are read in to a cache. All values in the global 'Env' element are added to the cache. This may override OS environment variables.
+
+When substitution takes place the environment variables ara always availiable.
+
+Environment Substitution takes place when the application loads and fixes the main paths in the configuration file.
+
+At the end of the load ALL paths should be absolute and fully defined. Where possible the files and paths are tested. If any fail the application aborts.
+
+Runtime Environment Substitution also takes place under certain conditions. When this happens additional values can be defined using the User Env and Global Env sections in the configuration file.
+
+There are also some dynamically generated values for date and time.
+
+## Substitution at load time
+
+The values **ServerDataRoot** and **ServerStaticRoot** are substituted with only the OS Environment variables. The resulting paths are checked.
+
+The value **LogData-->Path** is substituted with only the OS Environment variables. The resulting path are checked.
+
+The value **faviconIcoPath** is substituted with only the OS Environment variables. The resulting path are checked.
+
+### For Each User
+
+Each **Location** is substituted with only the OS Environment variables. The resulting path are checked. 
+
+The User Environment values are generated:
+
+This consists of each value defined in the User Env section.
+
+The 'user.name' and 'user.home' values are added.
+
+The 'year', 'month', 'day', 'hour', 'min', and 'sec' values are added for the time of substitution.
+
+Each **Exec-->Log** is substituted with the OS Environment variables And User Environment variables. The resulting path are checked. 
+
+Each **Exec-->Dir** is substituted with the OS Environment variables And User Environment variables. The resulting path are checked. 
+
+Each **Exec-->Cmd** is substituted with the OS Environment variables And User Environment variables. 
+
+Each **Exec-->LogOut** is substituted with the OS Environment variables And User Environment variables. 
+
+Each **Exec-->LogErr** is substituted with the OS Environment variables And User Environment variables. 
+
+## Substitution at run time
+
+### Static file Templating
+
+When a static file is read from **ServerStaticRoot** via: 
+
+```
+http://localhost:8082/static/dart.css
+```
+
+Or somthing similar. If templating has been defined and loaded correctly the specified file is Substituted before returning to the browser. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
+
+### Exec command Templating
+
+When a Exec definition is executed the command and all of its arguments are templated first. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
+
+When the result of the exec command is returned and the configuration defines a **Exec-->LogOut** or **Exec-->LogErr** these are both templated. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
+
+This allows to output to be stored using a time dependent file name.
+
+
+
+
+

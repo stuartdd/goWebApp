@@ -30,8 +30,8 @@ var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
 var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET")
 
-var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET")
+var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
 var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET")
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET")
@@ -103,11 +103,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc).Submit())
 			return
 		}
-		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
-		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName), h.config, logFunc).Submit())
-			return
-		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
 			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc).Submit())
@@ -141,6 +136,16 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
 			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc).Submit())
+			return
+		}
+		/*
+			Requests where user is not defined rediret to 'admin'
+			  /script/*
+			  /server/restart
+		*/
+		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName), h.config, logFunc).Submit())
 			return
 		}
 		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
