@@ -17,20 +17,30 @@ func TestJoinPath(t *testing.T) {
 	var f string
 	pre := conf.GetServerDataRoot()
 
-	f = conf.prefixRelativePaths("/dir", "")
+	f = conf.resolvePaths("", "/dir")
 	assertEquals(t, "file 3", f, filepath.Join(pre, "dir"))
-	f = conf.prefixRelativePaths("***/dir", "")
+
+	f = conf.resolvePaths("", "***/dir")
 	assertEquals(t, "file 4", f, "/dir")
-	f = conf.prefixRelativePaths("***/dir", "stuart")
+
+	f = conf.resolvePaths("stuart", "***/dir")
 	assertEquals(t, "file 5", f, "/dir")
-	f = conf.prefixRelativePaths("***dir", "bob")
+
+	f = conf.resolvePaths("bob", "***dir")
 	assertEquals(t, "file 6", f, "dir")
-	f = conf.prefixRelativePaths("dir", "stuart")
+
+	f = conf.resolvePaths("stuart", "dir")
 	assertEquals(t, "file 7", f, filepath.Join(pre, "stuart/dir"))
-	f = conf.prefixRelativePaths("", "john")
+
+	f = conf.resolvePaths("john", "")
 	assertEquals(t, "file 8", f, filepath.Join(pre, "john"))
-	f = conf.prefixRelativePaths("dir", "")
+
+	f = conf.resolvePaths("", "dir")
 	assertEquals(t, "file 9", f, filepath.Join(pre, "dir"))
+
+	f = conf.resolvePaths("", "")
+	assertEquals(t, "file 9", f, pre)
+
 }
 
 func TestSubstitute(t *testing.T) {

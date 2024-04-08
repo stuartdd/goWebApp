@@ -3,6 +3,7 @@
     "reloadConfigSeconds": 3600,
     "ContentTypeCharset": "utf-8",
     "ServerName": "MyServer",
+    "ThumbNailTrim": [20,4],
     "filterFiles": [
         "Json",
         "Data",
@@ -61,7 +62,7 @@
             "Locations": {
                 "home": "",
                 "data": "stateData",
-                "thumbs": "***%{WebServerHome}/thumbs",
+                "thumbs": "***/home/stuart/git/thumbnails/bob",
                 "original": "***%{WebServerHome}/original",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
@@ -75,8 +76,8 @@
                 "cache": "cache",
                 "logs": "logs",
                 "data": "stateData",
-                "thumbs": "***%{WebServerHome}/thumbs",
-                "original": "***%{WebServerHome}/original",
+                "thumbs": "***/home/stuart/git/thumbnails/stuart",
+                "original": "***/home/stuart/git/originals/stuart",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "***/home/stuart/git"

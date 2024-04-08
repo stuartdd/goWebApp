@@ -37,6 +37,7 @@ func NewUrlRequestParts(config *config.ConfigData) *UrlRequestParts {
 		config:     config,
 	}
 }
+
 func (p *UrlRequestParts) GetConfigFileFilter() []string {
 	return p.config.GetFilesFilter()
 }
@@ -64,6 +65,33 @@ func (p *UrlRequestParts) WithParam(name string, value string) *UrlRequestParts 
 func (p *UrlRequestParts) WithFile(file string) *UrlRequestParts {
 	p.parameters["file"] = file
 	return p
+}
+
+func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
+	var v string
+	if fallback {
+		v = p.GetQueryAsString(key, "true")
+	} else {
+		v = p.GetQueryAsString(key, "false")
+	}
+	s := strings.ToLower(v)
+	if s == "true" {
+		return true
+	}
+	if s == "false" {
+		return false
+	}
+	return fallback
+}
+
+func (p *UrlRequestParts) GetQueryAsString(key string, fallback string) string {
+	v, ok := p.Query[key]
+	if ok {
+		if len(v) > 0 {
+			return v[0]
+		}
+	}
+	return fallback
 }
 
 func (p *UrlRequestParts) GetParam(key string) string {
@@ -135,7 +163,12 @@ func (p *UrlRequestParts) SubstituteFromMap(cmd []byte, includeLocations bool) s
 	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser(), includeLocations))
 }
 
-func (p *UrlRequestParts) GetUserLocPath(withName bool) (path string, err error) {
+func (p *UrlRequestParts) ToThumbnail(filename string) string {
+	tnt := p.config.GetThumbnailTrim()
+	return filename[tnt[0] : len(filename)-tnt[1]]
+}
+
+func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool) (path string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
@@ -153,7 +186,11 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool) (path string, err error)
 	if withName {
 		if p.HasParam(NameParam) {
 			np := p.GetParam(NameParam)
-			ulp = filepath.Join(ulp, np)
+			if asThumbnail {
+				ulp = filepath.Join(ulp, p.ToThumbnail(np))
+			} else {
+				ulp = filepath.Join(ulp, np)
+			}
 		}
 	}
 	return ulp, nil

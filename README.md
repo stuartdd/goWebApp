@@ -35,6 +35,12 @@ Not ports below 100 require admin privilages to run.
 
 This is the FIXED location of the users data. When users are defined (including the admin user) any 'Locations' defined for the user MUST exist when the server starts up.
 
+A users home directory is defined as a concatenation of the following:
+
+**ServerDataRoot**
+
+**Usera-->username-->Home** 
+
 All locations defined in the config file, except **ServerDataRoot** and **ServerStaticRoot** are prefixed with 
 **ServerDataRoot**. Environment values are substituted (Ref Environment Substitution") when the server loads.
 
@@ -201,13 +207,15 @@ Each user can have a set of Operating System commands that can be run on request
 http://localhost:8082/exec/user/stuart/exec/ds
 ```
 
-This will locate the user 'stuart' and within the Exec section will locate the 'ds' command. 
+This will locate the user 'stuart' and within the **Exec** section will locate the **ds** command. 
 
-It will template the command and all of the parameters before running the command.
+It will template the command and all of the command parameters before running the command.
 
-The sysOut stream from the command can be saved in a file using the **OutLog** element.
+The working directory for the command can be defined by the **Dir** element, This will be the users home directory if undefined. Othwise it is a path within that directory .
 
-The sysErr stream from the command can be saved in a file using the **ErrLog** element.
+The sysOut stream from the command can be saved in a file using the **Log+OutLog** element as a path.
+
+The sysErr stream from the command can be saved in a file using the **Log+ErrLog** element as a path.
 
 The return code is checked and the response generated.
 

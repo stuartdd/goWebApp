@@ -131,6 +131,7 @@ func (p *UserData) IsHidden() bool {
 type ConfigDataInternal struct {
 	ReloadConfigSeconds int64
 	Port                int
+	ThumbnailTrim       []int
 	Users               map[string]UserData
 	ContentTypeCharset  string
 	LogData             *LogData
@@ -212,6 +213,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 		ServerDataRoot:      "~/",
 		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
+		ThumbnailTrim:       []int{0, 0},
 		Env:                 map[string]string{},
 	}
 
@@ -266,8 +268,8 @@ func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]str
 	return absPathPath, nil
 }
 
-func (p *ConfigData) checkPathExists(relPath string, userPath string, userEnv map[string]string) (string, error) {
-	absPath := p.prefixRelativePaths(relPath, userPath)
+func (p *ConfigData) checkPathExists(userPath string, relPath string, userEnv map[string]string) (string, error) {
+	absPath := p.resolvePaths(userPath, relPath)
 	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
 	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
@@ -284,8 +286,8 @@ func (p *ConfigData) checkPathExists(relPath string, userPath string, userEnv ma
 	return absPathPath, nil
 }
 
-func (p *ConfigData) checkFileExists(relPath string, userPath string, file string, userEnv map[string]string) (string, error) {
-	absPath := p.prefixRelativePaths(relPath, userPath)
+func (p *ConfigData) checkFileExists(userPath string, location string, file string, userEnv map[string]string) (string, error) {
+	absPath := p.resolvePaths(userPath, location)
 	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
 	absFilePath, err := filepath.Abs(absPathSub)
 	if err != nil {
@@ -306,14 +308,23 @@ func (p *ConfigData) checkFileExists(relPath string, userPath string, file strin
 	return absFilePath, nil
 }
 
-func (p *ConfigData) prefixRelativePaths(relPath string, userPath string) string {
-	if strings.HasPrefix(relPath, AbsolutePathPrefix) {
-		return relPath[len(AbsolutePathPrefix):]
+/*
+Construct a path from a relative path and user path.
+
+If the 'relative path' is prefixed with an AbsolutePathPrefix, this is removed and the resultant path returned.
+
+If it is just the 'ueser path', It is joined to the ServerDataRoot.
+
+ServerDataRoot + userHome + path
+*/
+func (p *ConfigData) resolvePaths(userHome string, location string) string {
+	if strings.HasPrefix(location, AbsolutePathPrefix) {
+		return location[len(AbsolutePathPrefix):]
 	}
-	if relPath == "" {
-		return filepath.Join(p.GetServerDataRoot(), userPath)
+	if location == "" {
+		return filepath.Join(p.GetServerDataRoot(), userHome)
 	}
-	return filepath.Join(filepath.Join(p.GetServerDataRoot(), userPath), strings.TrimPrefix(relPath, ".."))
+	return filepath.Join(filepath.Join(p.GetServerDataRoot(), userHome), strings.TrimPrefix(location, ".."))
 }
 
 func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
@@ -341,7 +352,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		errorList.AddLog(fmt.Sprintf("Config template   :%s", templ))
 	}
 
-	f, e = p.checkPathExists(p.GetLogDataPath(), "", emptyMap)
+	f, e = p.checkPathExists("", p.GetLogDataPath(), emptyMap)
 	if e != nil {
 		errorList.AddError(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
@@ -355,15 +366,22 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		p.SetFaviconIcoPath(f)
 	}
 
+	switch len(p.internal.ThumbnailTrim) {
+	case 0:
+		p.internal.ThumbnailTrim = []int{0, 0}
+	case 1:
+		p.internal.ThumbnailTrim = append(p.internal.ThumbnailTrim, 0)
+	}
+
 	for userName, userData := range p.internal.Users {
-		userPathPrefix := userData.Home
+		userHome := userData.Home
 		for locName, _ := range userData.Locations {
-			path, err := p.GetUserLocPath(userName, locName)
+			location, err := p.GetUserLocPath(userName, locName)
 			if err != nil {
 				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
 			}
 
-			f, e := p.checkPathExists(path, userPathPrefix, emptyMap)
+			f, e := p.checkPathExists(userHome, location, emptyMap)
 			if e != nil {
 				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
 			}
@@ -374,7 +392,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		for execName, execData := range userData.Exec {
 			if execData.Log != "" {
 				path := execData.Log
-				f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
+				f, e := p.checkPathExists(userHome, path, userConfigEnv)
 				if e != nil {
 					errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
 				} else {
@@ -383,7 +401,7 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 			}
 
 			path := execData.Dir
-			f, e := p.checkPathExists(path, userPathPrefix, userConfigEnv)
+			f, e := p.checkPathExists(userHome, path, userConfigEnv)
 			if e != nil {
 				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
 			} else {
@@ -437,7 +455,7 @@ func (p *ConfigData) GetUsers() *map[string]UserData {
 }
 
 func (p *ConfigData) GetUserRoot(user string) string {
-	return p.prefixRelativePaths("", p.GetUserData(user).Home)
+	return p.resolvePaths(p.GetUserData(user).Home, "")
 }
 
 func (p *ConfigData) GetUserNamesList() []string {
@@ -452,6 +470,10 @@ func (p *ConfigData) GetUserNamesList() []string {
 
 func (p *ConfigData) GetFilesFilter() []string {
 	return p.internal.FilterFiles
+}
+
+func (p *ConfigData) GetThumbnailTrim() []int {
+	return p.internal.ThumbnailTrim
 }
 
 func (p *ConfigData) GetServerDataRoot() string {

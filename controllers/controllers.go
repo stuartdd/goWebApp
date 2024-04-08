@@ -79,7 +79,7 @@ func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 }
 
 func (p *ReadFileHandler) Submit() *ResponseData {
-	file, err := p.parameters.GetUserLocPath(true)
+	file, err := p.parameters.GetUserLocPath(true, p.parameters.GetQueryAsBool("thumbnail", false))
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
@@ -125,7 +125,7 @@ func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigDat
 func (p *DirHandler) Submit() *ResponseData {
 	var err error
 
-	file, err := p.parameters.GetUserLocPath(false)
+	file, err := p.parameters.GetUserLocPath(false, false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -163,7 +163,7 @@ func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, lo
 }
 
 func (p *TreeHandler) Submit() *ResponseData {
-	file, err := p.parameters.GetUserLocPath(false)
+	file, err := p.parameters.GetUserLocPath(false, false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -210,7 +210,7 @@ func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 }
 
 func (p *PostFileHandler) Submit() *ResponseData {
-	dir, err := p.parameters.GetUserLocPath(false)
+	dir, err := p.parameters.GetUserLocPath(false, false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -228,7 +228,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to read input", true)
 	}
-	file, err := p.parameters.GetUserLocPath(true)
+	file, err := p.parameters.GetUserLocPath(true, false)
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File name not found", true)
 	}
@@ -472,7 +472,7 @@ func listDirectoriesRec(path string, root string, filter []string, l *[]string) 
 			}
 		}
 	}
-	if (dirCount > 0 || fileCount > 0) && strings.HasPrefix(path, root) {
+	if (fileCount > 0) && strings.HasPrefix(path, root) {
 		*l = append(*l, path[len(root):])
 	}
 	for _, ent := range entries {
@@ -536,18 +536,6 @@ func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {
 	buffer.WriteString("\", \"encName\":\"")
 	buffer.WriteString(encodeValue(file.Name()))
 	buffer.WriteString("\"}}")
-}
-
-func writeParamAsJsonObject(key string, value string, quoted bool, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
-	if commaAtStart {
-		buffer.WriteRune(',')
-	}
-	buffer.WriteRune('{')
-	writeParamAsJsonString(key, value, quoted, false, false, buffer)
-	buffer.WriteRune('}')
-	if commaAtEnd {
-		buffer.WriteRune(',')
-	}
 }
 
 func writeParamAsJsonString(key string, value string, quoted bool, commaAtStart, commaAtEnd bool, buffer *bytes.Buffer) {
