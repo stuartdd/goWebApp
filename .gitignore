@@ -5,4 +5,4 @@ __*
 *.txt
 textToJson
 goWebApp
-state.json
+stateData/state.json
