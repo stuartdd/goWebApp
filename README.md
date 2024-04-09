@@ -1,4 +1,5 @@
 # goWebApp
+
 Web app written in go for raspberry pi home server
 
 ## Configuration data
@@ -7,7 +8,7 @@ Web app written in go for raspberry pi home server
 
 The name of the configuration file is defined as follows:
 
-1 First argument
+1 First program argument
 
 2 The module name (goWebApp unless altered for a build)
 
@@ -23,12 +24,16 @@ Errors in the data will abort the application.
 
 The following high level values are defiend as:
 
+Note that GO's json Unmarshal (The process that reads the JSON) is not case sensitive for the FIRST character of the name value so **ServerDataRoot** and **serverDataRoot** are equivilant. 
+
 ## **port**
+
 Defines the integer port number for the application to run on. For example port 8082 will require the following URL
 
 ```
 http://localhost:8082/static/dart.html
 ```
+
 Not ports below 100 require admin privilages to run.
 
 ## **ServerDataRoot**
@@ -70,6 +75,42 @@ No Environment Substitution takes place on this value. It is fixed onvce the ser
 
 It can be anywhere in the file system.
 
+## **ThumbNailTrim**
+
+Thumbnails and the pitures the Thumbnails are derived from have different name formats. 
+
+A picture called MyPic.jpg will have a thumbnail YYYY_MM_DD_HH_MM_SS_MyPic.jpg.jpg. This is so the thumnails are sorted correctly when displayed and they are always jpg files (The picture may not be a jpg).
+
+When a call is made to:
+
+```
+/files/user/*/loc/*/path/*/name/*
+
+or 
+
+/files/user/*/loc/*/name/*
+```
+
+An additional Query parameter should be added if teh request name was a thumbnail and the response name is a picture. For example:
+
+```
+/files/user/*/loc/*/path/*/name/*?thumbnail=true
+
+or 
+
+/files/user/*/loc/*/name/*?thumbnail=true
+```
+
+This will then use the first value of **ThumbNailTrim** to remove the first n chars and the second value to remove the last n chars.
+
+If **ThumbNailTrim** is undefined the default will be [0,0]. The file name will not change.
+
+If **ThumbNailTrim** has a single value [20] then the first 20 chars are removed from the thumbnail name.
+
+If **ThumbNailTrim** has two values [20, 4] then the first 20 and the last 4 chars are removed thumbnail name.
+
+So 'YYYY_MM_DD_HH_MM_SS_MyPic.jpg.jpg' would look for file 'MyPic.jpg'
+
 ## **faviconIcoPath**
 
 Browsers always request the 'favicon' to give the browser tab an icon value. **faviconIcoPath** holds the path to the file and the file name.
@@ -94,7 +135,7 @@ The config file will only reload **reloadConfigSeconds** after the previous relo
 
 Users defines the resources fo a given user (including the admin user).
 
-``` json
+```json
 "Users": {
         "admin": {
         },
@@ -109,7 +150,7 @@ When a request is received the data is mapped to a '**User**', a '**Location**' 
 
 Each '**User**' has a set of '**Location**'s as follows:
 
-``` json
+```json
 "stuart": {
    "name": "Stuart",
    "home": "stuartsData",
@@ -119,7 +160,6 @@ Each '**User**' has a set of '**Location**'s as follows:
       "pics": "pictures"
    }
 }
- 
 ```
 
 Additional elements for User:
@@ -146,11 +186,11 @@ Would be resolved to a file path as follows:
 **ServerDataRoot**/stuartsData/pictures/stuart.jpeg
 ```
 
-The '/files/ indicates that this is a file operation.
+The '/files/' indicates that this is a file operation.
 
 The '/user/stuart/' element finds stuart in the Users section. The value from 'stuart-->home' is used to build the file path. 
 
-The '/loc/pics/' element finds the 'pics' element in the users Location section. The value from 'stuart-->home-->Locations-->pics' is used to build the file path.
+The '/loc/pics/' element finds the 'pics' element in the users Location section. The value from 'stuart-->Locations-->pics' is used to build the file path.
 
 If any of this fails a 404 error is returned.
 
@@ -162,18 +202,18 @@ The '/name/' section above indicates that a file is requested. In this case 'stu
 
 An additional '/path/pathToFiles/' can be added to locate files in sub directories of **ServerDataRoot**/stuartsData/pictures. 
 
-Note that full paths and file names that are sent in url requests are normally encoded to stop invalic chracters being interpreted incorrectly. If this is the case then the path or file name is prefixed with "X0X". For example: 
+Note that full paths and file names that are sent in url requests are normally encoded to stop invalid chracters being interpreted incorrectly. If this is the case the path or file name is prefixed with "X0X". For example: 
 
 ```
  /files/user/stuart/loc/pics/path/X0Xcy10ZXN0Zm9sZGVy/name/X0XcGljMS5qcGVn.
 ```
 
-The 'path/X0XVGh1bWJzMDAx/' indicates a additional base64 encoded path. The '/name/X0XcGljMS5qcGVn' gives the base64 encoded file name.
+The 'path/X0XVGh1bWJzMDAx/' requests a base64 encoded path. The '/name/X0XcGljMS5qcGVn' requests a base64 encoded file name.
 
 X0Xcy10ZXN0Zm9sZGVy decodes to "s-testfolder" but may include multiple path elements.
 X0XcGljMS5qcGVn decoded to "pic1.jpeg"
 
-Note that responses from file and path requests will contain bothe the display name and the base64 encoded name. For example
+Note that responses from file lists and path list requests will contain both the display name and the base64 encoded name. For example
 
 ```
 http://localhost:8082/paths/user/stuart/loc/pics
@@ -181,7 +221,7 @@ http://localhost:8082/paths/user/stuart/loc/pics
 
 Returned: 
 
-``` json
+```json
 {
    "error":false,
    "user":"stuart",
@@ -231,7 +271,7 @@ If a non zero return code is a success the http status code will be 200. If this
 
 This restricts the file types that file queries can return. 
 
-``` json
+```json
 "filterFiles": [
         "Json",
         "jpeg",
@@ -241,9 +281,9 @@ This restricts the file types that file queries can return.
     ]
 ```
 
-So a request for files in a directory will be restricted to files with the extenstions listed above.
+So a request to list files in a directory will be restricted to files with the extenstions listed above.
 
-Also excluded are file names that start with a '.' and an '_'. This applies to director listings as well.
+Also excluded are file names that start with a '.' and an '_'. This applies to directory listings as well.
 
 ## **ContentTypeCharset**
 
@@ -252,10 +292,10 @@ When a file is returned it's extension is used to look up the mime type. This 'm
 In the code mimeTypes.go in the config module a map of mime types is embedded. Here is a small section:
 
 ```golang
-	mime["jpeg"] = "image/jpeg"
-	mime["jpg"] = "image/jpeg"
-	mime["js"] = "text/javascript%0"
-	mime["json"] = "application/json%0"
+    mime["jpeg"] = "image/jpeg"
+    mime["jpg"] = "image/jpeg"
+    mime["js"] = "text/javascript%0"
+    mime["json"] = "application/json%0"
 ```
 
 So a file with an extension of .jpeg is returned with a 'image/jpeg' ContentType.
@@ -288,7 +328,7 @@ When performing Substitution the presedence is as follows.
 
 3 Operating system environment variables.
 
-``` json
+```json
 "Env": {
    "lsargs": "-l"
 }
@@ -296,27 +336,26 @@ When performing Substitution the presedence is as follows.
 
 Thia adds the Substitution name (or key) 'lsargs' with a value of '-l'. This will be included in any Run-Time Substitution.
 
-If the same name is defined at the user level and he global level the user level wins.
+If the same name is defined at the user level and the global level the **user** level wins.
 
 ## **LogData**
 
-This defines where the logging data is stored.
+This defines how the logging data is stored.
 
-``` json
+```json
 "LogData": {
    "FileNameMask": "goWebServer-%y-%m-%d.log",
    "Path": "somepath/logs",
    "MonitorSeconds": 30,
    "LogLevel": "verbose"
 },
-
 ```
 
 The 'Path' element will be prefixed with **ServerDataRoot** and is FIXED when the application loads. Environment values are substituted (Ref Environment Substitution").
 
-The 'FileNameMask' has a separate substitution procedure defined in the 'logging' module.
+The 'FileNameMask' has a separate substitution procedure implemented for the 'logging' module.
 
-For example "goWebServer-%y-%m-%d-%H-%M-%S.log" will replece:
+For example "goWebServer-%y-%m-%d-%H-%M-%S.log" will replace:
 
 %y with a 4 character year
 
@@ -332,7 +371,7 @@ For example "goWebServer-%y-%m-%d-%H-%M-%S.log" will replece:
 
 After **MonitorSeconds** seconds the file name is generated again. If this is different to the current name the existing log is closed and a new log is opened with the new name. 
 
-This process only occurs when the log is written to so it may be longer than the number of seconds defined in **MonitorSeconds**.
+This process only occurs when the log is written to so it may be longer than the number of seconds defined in **MonitorSeconds** but it should never be less.
 
 The log is written to AFTER the rename process so the latest log line will be appended to the latest log.
 
@@ -340,7 +379,7 @@ The 'LogLevel' element is not currently implemented.
 
 ## **TemplateStaticFiles**
 
-``` json
+```json
 "TemplateStaticFiles": {
    "Files": [
       "dart.html",
@@ -350,7 +389,7 @@ The 'LogLevel' element is not currently implemented.
 },
 ```
 
-When a static file is read from the directory defined in **ServerStaticRoot** it is returned without further processing. 
+When a static file is read from the directory defined by **ServerStaticRoot** it is by default, returned without further processing. 
 
 If the file name is included in the 'Files' list as above it is templated before it is returned.
 
@@ -370,7 +409,7 @@ Environment Substitution takes place when the application loads and fixes the ma
 
 At the end of the load ALL paths should be absolute and fully defined. Where possible the files and paths are tested. If any fail the application aborts.
 
-Runtime Environment Substitution also takes place under certain conditions. When this happens additional values can be defined using the User Env and Global Env sections in the configuration file.
+Runtime Environment Substitution also takes place under certain conditions. When this happens additional values can be defined using the User Env sections in the configuration file.
 
 There are also some dynamically generated values for date and time.
 
@@ -380,7 +419,9 @@ The values **ServerDataRoot** and **ServerStaticRoot** are substituted with only
 
 The value **LogData-->Path** is substituted with only the OS Environment variables. The resulting path are checked.
 
-The value **faviconIcoPath** is substituted with only the OS Environment variables. The resulting path are checked.
+The value **faviconIcoPath** is substituted with only the OS Environment variables. The resulting file is checked.
+
+## Substitution at run time
 
 ### For Each User
 
@@ -388,7 +429,9 @@ Each **Location** is substituted with only the OS Environment variables. The res
 
 The User Environment values are generated:
 
-This consists of each value defined in the User Env section.
+This consists of each value defined in the User Env section. 
+
+Additional values are generated as follows:
 
 The 'user.name' and 'user.home' values are added.
 
@@ -404,25 +447,47 @@ Each **Exec-->LogOut** is substituted with the OS Environment variables And User
 
 Each **Exec-->LogErr** is substituted with the OS Environment variables And User Environment variables. 
 
-## Substitution at run time
-
 ### Static file Templating
 
-When a static file is read from **ServerStaticRoot** via: 
+When a static file is read from **ServerStaticRoot. For example via: 
 
 ```
 http://localhost:8082/static/dart.css
 ```
 
-Or somthing similar. If templating has been defined and loaded correctly the specified file is Substituted before returning to the browser. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
+If templating has been defined and loaded correctly the specified file is Substituted before returning to the browser. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
 
 ### Exec command Templating
 
-When a Exec definition is executed the command and all of its arguments are templated first. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
+When an Exec definition is executed the command and all of its arguments are substituted first. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
 
-When the result of the exec command is returned and the configuration defines a **Exec-->LogOut** or **Exec-->LogErr** these are both templated. The OS Environment variables And the data from the **TemplateStaticFiles-->DataFile** are used.
+When the result of the exec command is returned and the configuration defines a **Exec-->LogOut** or **Exec-->LogErr** these are both templated. The OS Environment variables plus the additional time variables are used.
 
 This allows to output to be stored using a time dependent file name.
+
+## Substitution syntax
+
+For ALL substitution except the log file names a simple markup is used.
+
+```
+%{name}
+```
+
+If the value for 'name' is not found then the markup remains unchanged.
+
+Given that name='Stuart' the following substitutions will result:
+
+```
+My name is %{name}
+My Name is Stuart
+
+My name is %%{name}%
+My Name is %Stuart%
+
+My name is %%{Name}%
+My Name is %%{Name}%
+```
+
 
 
 
