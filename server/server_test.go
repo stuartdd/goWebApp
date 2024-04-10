@@ -122,8 +122,8 @@ func TestStatic(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	url := "static/images/pic.jpg"
-	resp, _ := RunClientGet(t, configData, url, 200, "?", 2221, 10)
+	url := "static/images/pic.jpeg"
+	resp, _ := RunClientGet(t, configData, url, 200, "?", 4821, 10)
 	if resp.Header["Content-Type"][0] != "image/jpeg" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
