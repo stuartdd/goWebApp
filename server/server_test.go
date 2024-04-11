@@ -63,7 +63,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -112,7 +112,7 @@ func TestServer(t *testing.T) {
 
 }
 func TestStatic(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -147,7 +147,7 @@ func TestStatic(t *testing.T) {
 
 }
 func TestFilePath(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -169,7 +169,7 @@ func TestFilePath(t *testing.T) {
 }
 
 func TestTree(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -199,7 +199,7 @@ func TestTree(t *testing.T) {
 
 }
 func TestGetFavicon(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -219,7 +219,7 @@ func TestGetFavicon(t *testing.T) {
 }
 
 func TestPostFile(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -253,7 +253,7 @@ func TestPostFile(t *testing.T) {
 }
 func TestReadDir(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -296,7 +296,7 @@ func TestReadDir(t *testing.T) {
 
 func TestReadFile(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -321,7 +321,7 @@ func TestReadFile(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json")
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}

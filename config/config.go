@@ -169,7 +169,7 @@ type ConfigData struct {
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
+func NewConfigData(configFileName string, createDir bool) (*ConfigData, *ConfigErrorData) {
 	environ := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
@@ -245,7 +245,7 @@ func NewConfigData(configFileName string) (*ConfigData, *ConfigErrorData) {
 	}
 
 	configDataExtternal.NextLoadTime = configDataExtternal.getNextReloadConfigMillis()
-	return configDataExtternal.resolveLocations()
+	return configDataExtternal.resolveLocations(createDir)
 }
 
 func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string) (string, error) {
@@ -268,7 +268,19 @@ func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]str
 	return absPathPath, nil
 }
 
-func (p *ConfigData) checkPathExists(userPath string, relPath string, userEnv map[string]string) (string, error) {
+func (p *ConfigData) createFullDirectory(path, userName string) error {
+	if !strings.HasPrefix(path, p.GetUserRoot(userName)) {
+		return fmt.Errorf("[%s] could NOT be created. It is not in %s", path, p.GetUserRoot(userName))
+	}
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("[%s] could NOT be created. %s", path, err.Error())
+	}
+	fmt.Printf("Created: %s\n", path)
+	return nil
+}
+
+func (p *ConfigData) checkPathExists(userPath string, relPath string, userId string, userEnv map[string]string, createDir bool) (string, error) {
 	absPath := p.resolvePaths(userPath, relPath)
 	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
 	absPathPath, err := filepath.Abs(absPathSub)
@@ -277,7 +289,14 @@ func (p *ConfigData) checkPathExists(userPath string, relPath string, userEnv ma
 	}
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
-		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
+		if createDir {
+			err = p.createFullDirectory(absPathPath, userId)
+			if err != nil {
+				return absPathPath, err
+			}
+		} else {
+			return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
+		}
 	} else {
 		if !stats.IsDir() {
 			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
@@ -327,15 +346,17 @@ func (p *ConfigData) resolvePaths(userHome string, location string) string {
 	return filepath.Join(filepath.Join(p.GetServerDataRoot(), userHome), strings.TrimPrefix(location, ".."))
 }
 
-func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
-	f, e := p.checkRootPathExists(p.GetServerDataRoot(), emptyMap) // Will check GetServerDataRoot
+func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigErrorData) {
+	userConfigEnv := p.GetUserEnv("")
+
+	f, e := p.checkRootPathExists(p.GetServerDataRoot(), userConfigEnv) // Will check GetServerDataRoot
 	if e != nil {
 		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find UserDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerDataRoot(f)
 	}
 
-	f, e = p.checkRootPathExists(p.GetServerStaticRoot(), emptyMap) // Will check ServerStaticRoot
+	f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv) // Will check ServerStaticRoot
 	if e != nil {
 		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
 	} else {
@@ -352,14 +373,14 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		errorList.AddLog(fmt.Sprintf("Config template   :%s", templ))
 	}
 
-	f, e = p.checkPathExists("", p.GetLogDataPath(), emptyMap)
+	f, e = p.checkPathExists("", p.GetLogDataPath(), "", userConfigEnv, false)
 	if e != nil {
 		errorList.AddError(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
 		p.SetLogDataPath(f)
 	}
 
-	f, e = p.checkFileExists("", "", p.GetFaviconIcoPath(), emptyMap)
+	f, e = p.checkFileExists("", "", p.GetFaviconIcoPath(), userConfigEnv)
 	if e != nil {
 		errorList.AddError(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
 	} else {
@@ -373,37 +394,40 @@ func (p *ConfigData) resolveLocations() (*ConfigData, *ConfigErrorData) {
 		p.internal.ThumbnailTrim = append(p.internal.ThumbnailTrim, 0)
 	}
 
-	for userName, userData := range p.internal.Users {
+	for userId, userData := range p.internal.Users {
+		if userData.Home == "" {
+			userData.Home = userId
+		}
 		userHome := userData.Home
-		for locName, _ := range userData.Locations {
-			location, err := p.GetUserLocPath(userName, locName)
-			if err != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userName, locName))
-			}
 
-			f, e := p.checkPathExists(userHome, location, emptyMap)
+		userConfigEnv = p.GetUserEnv(userId)
+		for locName := range userData.Locations {
+			location, err := p.GetUserLocPath(userId, locName)
+			if err != nil {
+				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userId, locName))
+			}
+			f, e := p.checkPathExists(userHome, location, userId, userConfigEnv, createDir)
 			if e != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] path %s", userName, locName, e.Error()))
+				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] %s", userId, locName, e.Error()))
 			}
 			userData.Locations[locName] = f
 		}
 
-		userConfigEnv := p.GetUserEnv(userName, true)
 		for execName, execData := range userData.Exec {
 			if execData.Log != "" {
 				path := execData.Log
-				f, e := p.checkPathExists(userHome, path, userConfigEnv)
+				f, e := p.checkPathExists(userHome, path, userId, userConfigEnv, createDir)
 				if e != nil {
-					errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] log path %s", userName, execName, e.Error()))
+					errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] log %s", userId, execName, e.Error()))
 				} else {
 					execData.Log = f
 				}
 			}
 
 			path := execData.Dir
-			f, e := p.checkPathExists(userHome, path, userConfigEnv)
+			f, e := p.checkPathExists(userHome, path, userId, userConfigEnv, createDir)
 			if e != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userName, execName, e.Error()))
+				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userId, execName, e.Error()))
 			} else {
 				execData.Dir = f
 			}
@@ -524,21 +548,19 @@ func (p *ConfigData) GetLogData() *LogData {
 	return p.internal.LogData
 }
 
-func (p *ConfigData) GetUserEnv(user string, includeLocations bool) map[string]string {
+func (p *ConfigData) GetUserEnv(user string) map[string]string {
 	m := make(map[string]string)
-	userData, ok := p.internal.Users[user]
-	if ok {
-		if includeLocations {
-			for n, v := range userData.Locations {
+	if user != "" {
+		userData, ok := p.internal.Users[user]
+		if ok {
+			m["id"] = user
+			m["name"] = userData.Name
+			m["home"] = userData.Home
+			for n, v := range userData.Env {
 				m[n] = v
 			}
 		}
-		for n, v := range userData.Env {
-			m[n] = v
-		}
 	}
-	m["user.name"] = userData.Name
-	m["user.home"] = userData.Home
 	t := time.Now()
 	m["year"] = strconv.Itoa(t.Year())
 	m["month"] = padTimeDate(int(t.Month()))

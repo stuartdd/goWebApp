@@ -3,7 +3,10 @@
     "reloadConfigSeconds": 3600,
     "ContentTypeCharset": "utf-8",
     "ServerName": "MyServer",
-    "ThumbNailTrim": [20,4],
+    "ThumbNailTrim": [
+        20,
+        4
+    ],
     "filterFiles": [
         "Json",
         "Data",
@@ -15,7 +18,7 @@
     "faviconIcoPath": "favicon1.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d.log",
-        "Path": "stuart/logs",
+        "Path": "admin/logs",
         "MonitorSeconds": 30,
         "LogLevel": "verbose"
     },
@@ -23,7 +26,7 @@
         "admin": {
             "hidden": true,
             "name": "Admin",
-            "home": "admin",
+            "home": "",
             "Locations": {
                 "cache": "cache"
             },
@@ -47,7 +50,7 @@
                     "cmd": [
                         "./restartServer.sh"
                     ],
-                    "log":"cache",
+                    "log": "logs",
                     "LogOut": "restartOut_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
                     "LogErr": "restartErr_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt"
                 }
@@ -58,11 +61,11 @@
         },
         "bob": {
             "name": "Bob",
-            "home": "bob",
+            "home": "",
             "Locations": {
                 "home": "",
                 "data": "stateData",
-                "thumbs": "***/home/stuart/git/thumbnails/bob",
+                "thumbs": "***/home/stuart/git/thumbnails/%{id}",
                 "original": "***%{WebServerHome}/original",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
@@ -70,17 +73,17 @@
         },
         "stuart": {
             "name": "Stuart",
-            "home": "stuart",
+            "home": "",
             "Locations": {
                 "home": "",
                 "cache": "cache",
                 "logs": "logs",
                 "data": "stateData",
-                "thumbs": "***/home/stuart/git/thumbnails/stuart",
-                "original": "***/home/stuart/git/originals/stuart",
+                "thumbs": "***%{linuxUserGit}/thumbnails/%{id}",
+                "original": "***%{linuxUserGit}/originals/%{id}",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
-                "testtree": "***/home/stuart/git"
+                "testtree": "***%{linuxUserGit}"
             }
         }
     },
@@ -93,5 +96,7 @@
         ],
         "DataFile": "configDataPI.json"
     },
-    "Env": {}
+    "Env": {
+        "linuxUserGit": "/home/stuart/git"
+    }
 }

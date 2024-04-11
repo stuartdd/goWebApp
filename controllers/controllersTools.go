@@ -159,8 +159,8 @@ func (p *UrlRequestParts) GetExecId() string {
 	return p.GetParam(ExecParam)
 }
 
-func (p *UrlRequestParts) SubstituteFromMap(cmd []byte, includeLocations bool) string {
-	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser(), includeLocations))
+func (p *UrlRequestParts) SubstituteFromMap(cmd []byte) string {
+	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser()))
 }
 
 func (p *UrlRequestParts) ToThumbnail(filename string) string {

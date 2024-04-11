@@ -421,21 +421,29 @@ The value **LogData-->Path** is substituted with only the OS Environment variabl
 
 The value **faviconIcoPath** is substituted with only the OS Environment variables. The resulting file is checked.
 
-## Substitution at run time
-
 ### For Each User
 
-Each **Location** is substituted with only the OS Environment variables. The resulting path are checked. 
+For example:
 
-The User Environment values are generated:
+``` json
+"stuart": {
+   "name": "Stuart",
+   "home": "stu"
+   "Locations":{
+      ...
+   },
+   "Env":{
+      ...
+   }
+}
+```
 
-This consists of each value defined in the User Env section. 
+1. OS Environment variables
+2. The 'name' (Stuart), 'home' (stu) and 'id' (stuart) user values are added from, for example, the stuart user shown above. 
+3. The 'year', 'month', 'day', 'hour', 'min', and 'sec' values are added for the time of substitution.
+3. The Env name value pairs.
 
-Additional values are generated as follows:
-
-The 'user.name' and 'user.home' values are added.
-
-The 'year', 'month', 'day', 'hour', 'min', and 'sec' values are added for the time of substitution.
+Each **Location** is substituted using:
 
 Each **Exec-->Log** is substituted with the OS Environment variables And User Environment variables. The resulting path are checked. 
 

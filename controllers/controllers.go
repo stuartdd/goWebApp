@@ -261,21 +261,21 @@ func (p *ExecHandler) Submit() *ResponseData {
 	}
 	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, p.log, func(r []byte) string {
-		return p.parameters.SubstituteFromMap(r, false)
+		return p.parameters.SubstituteFromMap(r)
 	})
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
 		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
 	}
 	if execInfo.LogOut != "" {
-		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser(), false))
+		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
 		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdOut, 0644)
 		if err != nil {
 			return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save stdOut to log", true)
 		}
 	}
 	if execInfo.LogErr != "" {
-		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser(), false))
+		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
 		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdErr, 0644)
 		if err != nil {
 			return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save stdErr to log", true)

@@ -68,7 +68,7 @@ func (h *ServerHandler) Log(s string) {
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.config.IsTimeToReloadConfig() {
 		ts := time.Now().UnixMicro()
-		cfg, errorList := config.NewConfigData(h.config.ConfigName)
+		cfg, errorList := config.NewConfigData(h.config.ConfigName, false)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d micro seconds)", h.config.ConfigName, (time.Now().UnixMicro() - ts)))
@@ -199,7 +199,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		cfg, errorList := config.NewConfigData(h.config.ConfigName)
+		cfg, errorList := config.NewConfigData(h.config.ConfigName, false)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))

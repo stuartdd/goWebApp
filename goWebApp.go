@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"stuartdd.com/config"
@@ -12,18 +13,24 @@ import (
 
 func main() {
 
-	configFileName := ""
-	if len(os.Args) > 1 {
-		configFileName = os.Args[1]
+	configFileName := getArg("config=")
+	createFlag := getArg("create") != ""
+	if createFlag {
+		os.Stdout.WriteString("Will Create locations that are missing:\n")
 	}
 
-	cfg, errorList := config.NewConfigData(configFileName)
+	cfg, errorList := config.NewConfigData(configFileName, createFlag)
 	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
 		os.Exit(1)
 	}
 	if cfg == nil {
 		os.Exit(1)
+	}
+
+	if createFlag {
+		os.Stdout.WriteString("Create locations complete:\n")
+		os.Exit(0)
 	}
 
 	actionQueue := make(chan server.ActionId, 10)
@@ -59,4 +66,18 @@ func main() {
 
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, logger)
 	webAppServer.Start()
+}
+
+func getArg(name string) string {
+	nl := strings.ToLower(name)
+	for i := 1; i < len(os.Args); i++ {
+		al := strings.ToLower(os.Args[i])
+		if al == nl {
+			return nl
+		}
+		if strings.HasPrefix(al, nl) {
+			return al[len(nl):]
+		}
+	}
+	return ""
 }
