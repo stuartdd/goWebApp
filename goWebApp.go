@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -12,25 +13,41 @@ import (
 )
 
 func main() {
-
-	configFileName := getArg("config=")
-	createFlag := getArg("create") != ""
-	if createFlag {
-		os.Stdout.WriteString("Will Create locations that are missing:\n")
+	var addUserName string
+	configFileName, _ := getArg("config=")
+	s, _ := getArg("create")
+	createFlag := s != ""
+	s, pos := getArg("add")
+	addFlag := s != ""
+	if addFlag && pos == 0 {
+		osExitWithMessage(1, "Add user. Name not found")
 	}
-
+	if addFlag {
+		if createFlag {
+			osExitWithMessage(1, "Cannot use Add and Create at the same time")
+		}
+		addUserName = os.Args[pos]
+		osExitWithMessage(-1, fmt.Sprintf("Add User: %s", addUserName))
+	} else {
+		if createFlag {
+			osExitWithMessage(-1, "Will Create USER locations that are missing")
+		}
+	}
 	cfg, errorList := config.NewConfigData(configFileName, createFlag)
 	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
-		os.Exit(1)
+		osExitWithMessage(1, "Config Errors. Cannot continue")
 	}
 	if cfg == nil {
-		os.Exit(1)
+		osExitWithMessage(1, "Config not loaded. Cannot continue")
+	}
+
+	if addFlag {
+		osExitWithMessage(0, "Adding user")
 	}
 
 	if createFlag {
-		os.Stdout.WriteString("Create locations complete:\n")
-		os.Exit(0)
+		osExitWithMessage(0, "Create locations complete")
 	}
 
 	actionQueue := make(chan server.ActionId, 10)
@@ -68,16 +85,30 @@ func main() {
 	webAppServer.Start()
 }
 
-func getArg(name string) string {
+func getArg(name string) (string, int) {
 	nl := strings.ToLower(name)
 	for i := 1; i < len(os.Args); i++ {
 		al := strings.ToLower(os.Args[i])
 		if al == nl {
-			return nl
+			if i < (len(os.Args) - 1) {
+				return nl, i + 1
+			}
+			return nl, 0
 		}
 		if strings.HasPrefix(al, nl) {
-			return al[len(nl):]
+			if i < (len(os.Args) - 1) {
+				return al[len(nl):], i + 1
+			}
+			return al[len(nl):], 0
 		}
 	}
-	return ""
+	return "", 0
+}
+
+func osExitWithMessage(rc int, message string) {
+	os.Stdout.WriteString(message)
+	os.Stdout.WriteString("\n")
+	if rc >= 0 {
+		os.Exit(rc)
+	}
 }
