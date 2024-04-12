@@ -92,7 +92,8 @@
     "FileNameMask": "goWebServer-%y-%m-%d.log",
     "Path": "admin/logs",
     "MonitorSeconds": 30,
-    "LogLevel": "verbose"
+    "LogLevel": "verbose",
+    "ConsoleOut" : true
   },
   "ServerName": "MyServer",
   "PanicResponseCode": 500,

@@ -62,7 +62,7 @@ func TestLoggingFunctions(t *testing.T) {
 func TestLogging(t *testing.T) {
 	cleanLogs(t)
 
-	l, err := NewLogger(testLogDir, "goWebServer-test.log", 10, "verbose")
+	l, err := NewLogger(testLogDir, "goWebServer-test.log", 10, "verbose", false)
 	if err != nil {
 		t.Fatalf("Error: %s", err.Error())
 	}
@@ -72,7 +72,7 @@ func TestLogging(t *testing.T) {
 	l.Log("1")
 	l.Log("2")
 	l.Close()
-	l, err = NewLogger(testLogDir, "goWebServer-test.log", 10, "verbose")
+	l, err = NewLogger(testLogDir, "goWebServer-test.log", 10, "verbose", false)
 	if err != nil {
 		t.Fatalf("Error: %s", err.Error())
 	}

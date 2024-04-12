@@ -87,13 +87,14 @@ type logger struct {
 	logFileData    *logFileData
 	datePrefix     string
 	nextFileCheck  time.Time
+	consoleOut     bool
 	queue          chan string
 	mu             sync.Mutex
 }
 
 const padding0 = "000000000000"
 
-func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel string) (Logger, error) {
+func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel string, consoleOut bool) (Logger, error) {
 	l := &logger{
 		fileNameMask:   pFileNameMask,
 		path:           pPath,
@@ -102,6 +103,7 @@ func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel s
 		logFileData:    newLogFileData(pPath, pFileNameMask, time.Now()),
 		datePrefix:     newDatePrefix(time.Now()),
 		nextFileCheck:  getNextMonitorTime(pMonitorSeconds),
+		consoleOut:     consoleOut,
 		queue:          make(chan string, 20),
 	}
 	go l.deQueue()
@@ -152,10 +154,16 @@ func (l *logger) deQueue() {
 			l.datePrefix = newDatePrefix(t)
 			l.logFileData = l.logFileData.reOpen(l.path, l.fileNameMask, t)
 		}
+
+		out := fmt.Sprintf("%s%s:%s:%s %s\n", l.datePrefix, hs, ms, ss, msg)
 		if l.IsOpen() {
-			l.logFileData.logFile.WriteString(fmt.Sprintf("%s%s:%s:%s %s\n", l.datePrefix, hs, ms, ss, msg))
+			l.logFileData.logFile.WriteString(out)
+		} else {
+			os.Stderr.WriteString(out)
 		}
-		os.Stderr.WriteString(fmt.Sprintf("%s%s:%s:%s %s.\n", l.datePrefix, hs, ms, ss, msg))
+		if l.consoleOut {
+			os.Stderr.WriteString(out)
+		}
 	}
 }
 

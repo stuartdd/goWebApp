@@ -65,6 +65,7 @@ type LogData struct {
 	Path           string
 	MonitorSeconds int
 	LogLevel       string
+	ConsoleOut     bool
 }
 
 func NewLogData() *LogData {
@@ -73,6 +74,7 @@ func NewLogData() *LogData {
 		Path:           "",
 		MonitorSeconds: -1,
 		LogLevel:       "quiet",
+		ConsoleOut:     false,
 	}
 }
 
