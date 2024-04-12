@@ -18,8 +18,6 @@ const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultConfigReloadTime = 3600
 
-var emptyMap = map[string]string{}
-
 /*
 ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
@@ -154,22 +152,23 @@ func (p *ConfigDataInternal) String() (string, error) {
 }
 
 type ConfigData struct {
-	internal     *ConfigDataInternal
-	CurrentPath  string
-	ModuleName   string
-	ConfigName   string
-	Debugging    bool
-	Templating   bool
-	Environment  map[string]string
-	NextLoadTime int64
-	UpSince      time.Time
+	internal         *ConfigDataInternal
+	CurrentPath      string
+	ModuleName       string
+	ConfigName       string
+	Debugging        bool
+	Templating       bool
+	Environment      map[string]string
+	NextLoadTime     int64
+	LocationsCreated []string
+	UpSince          time.Time
 }
 
 /*
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string, createDir bool) (*ConfigData, *ConfigErrorData) {
+func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*ConfigData, *ConfigErrorData) {
 	environ := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
@@ -191,14 +190,16 @@ func NewConfigData(configFileName string, createDir bool) (*ConfigData, *ConfigE
 	}
 
 	wd, _ := os.Getwd()
+	fn, _ := filepath.Abs(configFileName + configFileExtension)
 
 	configDataExtternal := &ConfigData{
-		Debugging:    debugging,
-		CurrentPath:  wd,
-		ModuleName:   moduleName,
-		ConfigName:   configFileName + configFileExtension,
-		Environment:  environ,
-		NextLoadTime: 0,
+		Debugging:        debugging,
+		CurrentPath:      wd,
+		ModuleName:       moduleName,
+		ConfigName:       fn,
+		Environment:      environ,
+		NextLoadTime:     0,
+		LocationsCreated: []string{},
 	}
 
 	configDataInternal := &ConfigDataInternal{
@@ -245,86 +246,10 @@ func NewConfigData(configFileName string, createDir bool) (*ConfigData, *ConfigE
 	}
 
 	configDataExtternal.NextLoadTime = configDataExtternal.getNextReloadConfigMillis()
+	if dontResolve {
+		return configDataExtternal, NewConfigErrorData()
+	}
 	return configDataExtternal.resolveLocations(createDir)
-}
-
-func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string) (string, error) {
-	if rootPath == "" {
-		return "", fmt.Errorf("path is empty")
-	}
-	absPathSub := p.SubstituteFromMap([]byte(rootPath), userEnv)
-	absPathPath, err := filepath.Abs(absPathSub)
-	if err != nil {
-		return absPathPath, fmt.Errorf("path [%s] is invalid", rootPath)
-	}
-	stats, err := os.Stat(absPathPath)
-	if err != nil {
-		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
-	} else {
-		if !stats.IsDir() {
-			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
-		}
-	}
-	return absPathPath, nil
-}
-
-func (p *ConfigData) createFullDirectory(path, userName string) error {
-	if !strings.HasPrefix(path, p.GetUserRoot(userName)) {
-		return fmt.Errorf("[%s] could NOT be created. It is not in %s", path, p.GetUserRoot(userName))
-	}
-	err := os.MkdirAll(path, os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("[%s] could NOT be created. %s", path, err.Error())
-	}
-	fmt.Printf("Created: %s\n", path)
-	return nil
-}
-
-func (p *ConfigData) checkPathExists(userPath string, relPath string, userId string, userEnv map[string]string, createDir bool) (string, error) {
-	absPath := p.resolvePaths(userPath, relPath)
-	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
-	absPathPath, err := filepath.Abs(absPathSub)
-	if err != nil {
-		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathSub)
-	}
-	stats, err := os.Stat(absPathPath)
-	if err != nil {
-		if createDir {
-			err = p.createFullDirectory(absPathPath, userId)
-			if err != nil {
-				return absPathPath, err
-			}
-		} else {
-			return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
-		}
-	} else {
-		if !stats.IsDir() {
-			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
-		}
-	}
-	return absPathPath, nil
-}
-
-func (p *ConfigData) checkFileExists(userPath string, location string, file string, userEnv map[string]string) (string, error) {
-	absPath := p.resolvePaths(userPath, location)
-	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
-	absFilePath, err := filepath.Abs(absPathSub)
-	if err != nil {
-		return "", fmt.Errorf("path [%s] is invalid", absPathSub)
-	}
-	if file == "" {
-		return "", fmt.Errorf("file is undefined. Path [%s]", absFilePath)
-	}
-	absFilePath = filepath.Join(absFilePath, file)
-	stats, err := os.Stat(absFilePath)
-	if err != nil {
-		return "", fmt.Errorf("file [%s] Not found", absFilePath)
-	} else {
-		if stats.IsDir() {
-			return "", fmt.Errorf("file[%s] is a Directory", absFilePath)
-		}
-	}
-	return absFilePath, nil
 }
 
 /*
@@ -445,6 +370,97 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	return p, errorList
 }
 
+func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string) (string, error) {
+	if rootPath == "" {
+		return "", fmt.Errorf("path is empty")
+	}
+	absPathSub := p.SubstituteFromMap([]byte(rootPath), userEnv)
+	absPathPath, err := filepath.Abs(absPathSub)
+	if err != nil {
+		return absPathPath, fmt.Errorf("path [%s] is invalid", rootPath)
+	}
+	stats, err := os.Stat(absPathPath)
+	if err != nil {
+		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
+	} else {
+		if !stats.IsDir() {
+			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
+		}
+	}
+	return absPathPath, nil
+}
+
+func (p *ConfigData) createFullDirectory(path, userId string) error {
+	if !strings.HasPrefix(path, p.GetUserRoot(userId)) {
+		return fmt.Errorf("[%s] could NOT be created. It is not in %s", path, p.GetUserRoot(userId))
+	}
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("[%s] could NOT be created. %s", path, err.Error())
+	}
+	p.LocationsCreated = append(p.LocationsCreated, fmt.Sprintf("Created: User[%s] Path[%s]", userId, path))
+	return nil
+}
+
+func (p *ConfigData) checkPathExists(userPath string, relPath string, userId string, userEnv map[string]string, createDir bool) (string, error) {
+	absPath := p.resolvePaths(userPath, relPath)
+	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
+	absPathPath, err := filepath.Abs(absPathSub)
+	if err != nil {
+		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathSub)
+	}
+	stats, err := os.Stat(absPathPath)
+	if err != nil {
+		if createDir {
+			err = p.createFullDirectory(absPathPath, userId)
+			if err != nil {
+				return absPathPath, err
+			}
+		} else {
+			return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
+		}
+	} else {
+		if !stats.IsDir() {
+			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
+		}
+	}
+	return absPathPath, nil
+}
+
+func (p *ConfigData) checkFileExists(userPath string, location string, file string, userEnv map[string]string) (string, error) {
+	absPath := p.resolvePaths(userPath, location)
+	absPathSub := p.SubstituteFromMap([]byte(absPath), userEnv)
+	absFilePath, err := filepath.Abs(absPathSub)
+	if err != nil {
+		return "", fmt.Errorf("path [%s] is invalid", absPathSub)
+	}
+	if file == "" {
+		return "", fmt.Errorf("file is undefined. Path [%s]", absFilePath)
+	}
+	absFilePath = filepath.Join(absFilePath, file)
+	stats, err := os.Stat(absFilePath)
+	if err != nil {
+		return "", fmt.Errorf("file [%s] Not found", absFilePath)
+	} else {
+		if stats.IsDir() {
+			return "", fmt.Errorf("file[%s] is a Directory", absFilePath)
+		}
+	}
+	return absFilePath, nil
+}
+
+func (p *ConfigData) SaveMe() error {
+	s, err := p.String()
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(p.ConfigName, []byte(s), os.ModePerm)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (p *ConfigData) getNextReloadConfigMillis() int64 {
 	return time.Now().UnixMilli() + (p.internal.ReloadConfigSeconds * 1000)
 }
@@ -476,6 +492,32 @@ func (p *ConfigData) GetUserData(user string) *UserData {
 
 func (p *ConfigData) GetUsers() *map[string]UserData {
 	return &p.internal.Users
+}
+
+func (p *ConfigData) AddUser(user string) error {
+	if p.HasUser(user) {
+		return fmt.Errorf("user '%s' already exists", user)
+	}
+	ud := UserData{
+		Hidden:    nil,
+		Name:      strings.ToUpper(user[0:1]) + user[1:],
+		Home:      user,
+		Locations: map[string]string{"home": "", "data": "stateData"},
+		Exec:      map[string]*ExecInfo{},
+		Env:       map[string]string{},
+	}
+	p.internal.Users[user] = ud
+	return nil
+}
+
+func (p *ConfigData) HasUser(user string) bool {
+	ulc := strings.ToLower(user)
+	for na := range p.internal.Users {
+		if strings.ToLower(na) == ulc {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *ConfigData) GetUserRoot(user string) string {

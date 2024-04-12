@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +14,17 @@ import (
 )
 
 func main() {
+	help, _ := getArg("help")
+	if help != "" {
+		h, err := os.ReadFile("helptext.md")
+		if err != nil {
+			osExitWithMessage(1, "Help file 'helptext.md' not found")
+		}
+		osExitWithMessage(0, string(h))
+	}
+
 	var addUserName string
+	dontResolveConfig := false
 	configFileName, _ := getArg("config=")
 	s, _ := getArg("create")
 	createFlag := s != ""
@@ -26,14 +37,18 @@ func main() {
 		if createFlag {
 			osExitWithMessage(1, "Cannot use Add and Create at the same time")
 		}
+		dontResolveConfig = true
 		addUserName = os.Args[pos]
-		osExitWithMessage(-1, fmt.Sprintf("Add User: %s", addUserName))
-	} else {
-		if createFlag {
-			osExitWithMessage(-1, "Will Create USER locations that are missing")
+	}
+
+	if createFlag {
+		c := osReader("Create missing USER locations:", "y/n")
+		if c != "y" {
+			osExitWithMessage(1, "Create missing USER locations: ABORTED")
 		}
 	}
-	cfg, errorList := config.NewConfigData(configFileName, createFlag)
+
+	cfg, errorList := config.NewConfigData(configFileName, createFlag, dontResolveConfig)
 	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
 		osExitWithMessage(1, "Config Errors. Cannot continue")
@@ -42,12 +57,33 @@ func main() {
 		osExitWithMessage(1, "Config not loaded. Cannot continue")
 	}
 
-	if addFlag {
-		osExitWithMessage(0, "Adding user")
+	if createFlag {
+		if len(cfg.LocationsCreated) == 0 {
+			osExitWithMessage(0, "No user Locations could be crreated:"+s)
+		} else {
+			for _, s := range cfg.LocationsCreated {
+				osExitWithMessage(-1, s)
+			}
+		}
+		os.Exit(0)
 	}
 
-	if createFlag {
-		osExitWithMessage(0, "Create locations complete")
+	if addFlag {
+		c := osReader(fmt.Sprintf("Add User with userid: '%s'", addUserName), "y/n")
+		if c == "y" {
+			err := cfg.AddUser(addUserName)
+			if err != nil {
+				osExitWithMessage(1, fmt.Sprintf("Add User: '%s'.", err.Error()))
+			}
+			err = cfg.SaveMe()
+			if err != nil {
+				osExitWithMessage(1, fmt.Sprintf("Add User: '%s'.", err.Error()))
+			}
+			osExitWithMessage(0, fmt.Sprintf("Add User: '%s' Added and saved", addUserName))
+		} else {
+			osExitWithMessage(1, fmt.Sprintf("Add User: '%s' ABORTED", addUserName))
+		}
+		os.Exit(0)
 	}
 
 	actionQueue := make(chan server.ActionId, 10)
@@ -88,7 +124,8 @@ func main() {
 func getArg(name string) (string, int) {
 	nl := strings.ToLower(name)
 	for i := 1; i < len(os.Args); i++ {
-		al := strings.ToLower(os.Args[i])
+		a := os.Args[i]
+		al := strings.ToLower(a)
 		if al == nl {
 			if i < (len(os.Args) - 1) {
 				return nl, i + 1
@@ -97,9 +134,9 @@ func getArg(name string) (string, int) {
 		}
 		if strings.HasPrefix(al, nl) {
 			if i < (len(os.Args) - 1) {
-				return al[len(nl):], i + 1
+				return a[len(name):], i + 1
 			}
-			return al[len(nl):], 0
+			return a[len(name):], 0
 		}
 	}
 	return "", 0
@@ -111,4 +148,22 @@ func osExitWithMessage(rc int, message string) {
 	if rc >= 0 {
 		os.Exit(rc)
 	}
+}
+
+func osReader(message string, chars string) string {
+	os.Stdout.WriteString(message)
+	os.Stdout.WriteString(" (")
+	os.Stdout.WriteString(chars)
+	os.Stdout.WriteString(")? :")
+	reader := bufio.NewReader(os.Stdin)
+	charsLc := strings.ToLower(chars)
+	char, _, err := reader.ReadRune()
+	if err != nil {
+		osExitWithMessage(1, fmt.Sprintf("Input was not understood: Error:%s", err.Error()))
+	}
+	s := strings.ToLower(string(char))
+	if strings.Contains(charsLc, s) {
+		return s
+	}
+	return ""
 }

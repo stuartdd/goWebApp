@@ -1,102 +1,122 @@
 {
-    "port": 8082,
-    "reloadConfigSeconds": 3600,
-    "ContentTypeCharset": "utf-8",
-    "ServerName": "MyServer",
-    "ThumbNailTrim": [
-        20,
-        4
-    ],
-    "filterFiles": [
-        "Json",
-        "Data",
-        "jpeg",
-        "jpg",
-        "png",
-        "log"
-    ],
-    "faviconIcoPath": "favicon1.ico",
-    "LogData": {
-        "FileNameMask": "goWebServer-%y-%m-%d.log",
-        "Path": "admin/logs",
-        "MonitorSeconds": 30,
-        "LogLevel": "verbose"
-    },
-    "Users": {
-        "admin": {
-            "hidden": true,
-            "name": "Admin",
-            "home": "",
-            "Locations": {
-                "cache": "cache"
-            },
-            "Exec": {
-                "ufs": {
-                    "cmd": [
-                        "./textToJson",
-                        "ufsConfig.json"
-                    ],
-                    "nzCodeReturns": 200,
-                    "stdOutType": "json"
-                },
-                "ds": {
-                    "cmd": [
-                        "./diskSize.sh"
-                    ],
-                    "nzCodeReturns": 200,
-                    "stdOutType": "json"
-                },
-                "restart": {
-                    "cmd": [
-                        "./restartServer.sh"
-                    ],
-                    "log": "logs",
-                    "LogOut": "restartOut_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
-                    "LogErr": "restartErr_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt"
-                }
-            },
-            "Env": {
-                "lsargs": "-l"
-            }
+  "ReloadConfigSeconds": 3600,
+  "Port": 8082,
+  "ThumbnailTrim": [
+    20,
+    4
+  ],
+  "Users": {
+    "admin": {
+      "Hidden": true,
+      "Name": "Admin",
+      "Home": "",
+      "Locations": {
+        "cache": "cache"
+      },
+      "Exec": {
+        "ds": {
+          "Cmd": [
+            "./diskSize.sh"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 200
         },
-        "bob": {
-            "name": "Bob",
-            "home": "",
-            "Locations": {
-                "home": "",
-                "data": "stateData",
-                "thumbs": "***/home/stuart/git/thumbnails/%{id}",
-                "original": "***%{WebServerHome}/original",
-                "usr": "b-testfolder",
-                "pics": "b-pics"
-            }
+        "restart": {
+          "Cmd": [
+            "./restartServer.sh"
+          ],
+          "Dir": "",
+          "StdOutType": "",
+          "Log": "logs",
+          "LogOut": "restartOut_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
+          "LogErr": "restartErr_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
+          "NzCodeReturns": 0
         },
-        "stuart": {
-            "name": "Stuart",
-            "home": "",
-            "Locations": {
-                "home": "",
-                "cache": "cache",
-                "logs": "logs",
-                "data": "stateData",
-                "thumbs": "***%{linuxUserGit}/thumbnails/%{id}",
-                "original": "***%{linuxUserGit}/originals/%{id}",
-                "usr": "s-testfolder",
-                "pics": "s-pics",
-                "testtree": "***%{linuxUserGit}"
-            }
+        "ufs": {
+          "Cmd": [
+            "./textToJson",
+            "ufsConfig.json"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 200
         }
+      },
+      "Env": {
+        "lsargs": "-l"
+      }
     },
-    "ServerDataRoot": "./testdata",
-    "ServerStaticRoot": "%{WebServerHome}/static",
-    "TemplateStaticFiles": {
-        "Files": [
-            "dart.html",
-            "dart.css"
-        ],
-        "DataFile": "configDataPI.json"
+    "bob": {
+      "Hidden": null,
+      "Name": "Bob",
+      "Home": "",
+      "Locations": {
+        "data": "stateData",
+        "home": "",
+        "original": "***%{WebServerHome}/original",
+        "pics": "b-pics",
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "usr": "b-testfolder"
+      },
+      "Exec": null,
+      "Env": null
     },
-    "Env": {
-        "linuxUserGit": "/home/stuart/git"
+    "stuart": {
+      "Hidden": null,
+      "Name": "Stuart",
+      "Home": "",
+      "Locations": {
+        "cache": "cache",
+        "data": "stateData",
+        "home": "",
+        "logs": "logs",
+        "original": "***%{linuxUserGit}/originals/%{id}",
+        "pics": "s-pics",
+        "testtree": "***%{linuxUserGit}",
+        "thumbs": "***%{linuxUserGit}/thumbnails/%{id}",
+        "usr": "s-testfolder"
+      },
+      "Exec": null,
+      "Env": null
     }
+  },
+  "ContentTypeCharset": "utf-8",
+  "LogData": {
+    "FileNameMask": "goWebServer-%y-%m-%d.log",
+    "Path": "admin/logs",
+    "MonitorSeconds": 30,
+    "LogLevel": "verbose"
+  },
+  "ServerName": "MyServer",
+  "PanicResponseCode": 500,
+  "FilterFiles": [
+    "..json",
+    "..data",
+    "..jpeg",
+    "..jpg",
+    "..png",
+    "..log"
+  ],
+  "ServerDataRoot": "./testdata",
+  "ServerStaticRoot": "%{WebServerHome}/static",
+  "TemplateStaticFiles": {
+    "Files": [
+      "dart.html",
+      "dart.css"
+    ],
+    "DataFile": "configDataPI.json",
+    "Data": null,
+    "FullFileName": ""
+  },
+  "FaviconIcoPath": "favicon1.ico",
+  "Env": {
+    "linuxUserGit": "/home/stuart/git"
+  }
 }
