@@ -23,41 +23,44 @@ func main() {
 		osExitWithMessage(0, string(h))
 	}
 
-	var addUserName string
 	dontResolveConfig := false
 	configFileName, _ := getArg("config=")
 	s, _ := getArg("create")
-	createFlag := s != ""
+	createLocationsFlag := s != ""
 	s, pos := getArg("add")
-	addFlag := s != ""
-	if addFlag && pos == 0 {
+	addUserFlag := s != ""
+
+	if addUserFlag && pos == 0 {
+		// add was the last parameter!
 		osExitWithMessage(1, "Add user. Name not found")
 	}
-	if addFlag {
-		if createFlag {
+
+	var addUserName string
+	if addUserFlag {
+		if createLocationsFlag {
 			osExitWithMessage(1, "Cannot use Add and Create at the same time")
 		}
 		dontResolveConfig = true
 		addUserName = os.Args[pos]
 	}
 
-	if createFlag {
+	if createLocationsFlag {
 		c := osReader("Create missing USER locations:", "y/n")
 		if c != "y" {
 			osExitWithMessage(1, "Create missing USER locations: ABORTED")
 		}
 	}
 
-	cfg, errorList := config.NewConfigData(configFileName, createFlag, dontResolveConfig)
+	cfg, errorList := config.NewConfigData(configFileName, createLocationsFlag, dontResolveConfig)
 	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
-		osExitWithMessage(1, "Config Errors. Cannot continue")
+		osExitWithMessage(1, "Config Errors: Cannot continue")
 	}
 	if cfg == nil {
 		osExitWithMessage(1, "Config not loaded. Cannot continue")
 	}
 
-	if createFlag {
+	if createLocationsFlag {
 		if len(cfg.LocationsCreated) == 0 {
 			osExitWithMessage(0, "No user Locations could be crreated:"+s)
 		} else {
@@ -68,7 +71,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if addFlag {
+	if addUserFlag {
 		c := osReader(fmt.Sprintf("Add User with userid: '%s'", addUserName), "y/n")
 		if c == "y" {
 			err := cfg.AddUser(addUserName)
@@ -85,7 +88,9 @@ func main() {
 		}
 		os.Exit(0)
 	}
-
+	/*
+		Starting the server...
+	*/
 	actionQueue := make(chan server.ActionId, 10)
 	defer close(actionQueue)
 

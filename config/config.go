@@ -235,10 +235,6 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*Co
 
 	configDataExtternal.internal = configDataInternal
 
-	for i := 0; i < len(configDataInternal.FilterFiles); i++ {
-		configDataInternal.FilterFiles[i] = fmt.Sprintf(".%s", strings.ToLower(configDataInternal.FilterFiles[i]))
-	}
-
 	SetContentTypeCharset(configDataInternal.ContentTypeCharset)
 	/*
 		Add config data Env to the Environment variables
@@ -250,6 +246,12 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*Co
 	configDataExtternal.NextLoadTime = configDataExtternal.getNextReloadConfigMillis()
 	if dontResolve {
 		return configDataExtternal, NewConfigErrorData()
+	}
+	for i := 0; i < len(configDataInternal.FilterFiles); i++ {
+		f := strings.ToLower(configDataInternal.FilterFiles[i])
+		if !strings.HasPrefix(f, ".") {
+			configDataInternal.FilterFiles[i] = fmt.Sprintf(".%s", f)
+		}
 	}
 	return configDataExtternal.resolveLocations(createDir)
 }

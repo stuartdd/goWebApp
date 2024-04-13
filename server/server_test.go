@@ -83,7 +83,7 @@ func TestServer(t *testing.T) {
 	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
 	AssertContains(t, respBody, []string{
 		"\"error\":false,\"status\": {\"UpSince\":",
-		"\"configName\":\"../goWebAppTest.json\"",
+		"git/goWebApp/goWebAppTest.json",
 	})
 
 	url = "files/user/stuart/loc/data/name/state.json"

@@ -60,9 +60,9 @@
       "Locations": {
         "data": "stateData",
         "home": "",
-        "original": "***%{WebServerHome}/original",
+        "original": "***%{WebServerPictures}/originals/%{id}",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "pics": "b-pics",
-        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
         "usr": "b-testfolder"
       },
       "Exec": null,
@@ -77,10 +77,10 @@
         "data": "stateData",
         "home": "",
         "logs": "logs",
-        "original": "***%{linuxUserGit}/originals/%{id}",
         "pics": "s-pics",
-        "testtree": "***%{linuxUserGit}",
-        "thumbs": "***%{linuxUserGit}/thumbnails/%{id}",
+        "testtree": "***%{WebServerPictures}",
+        "original": "***%{WebServerPictures}/originals/%{id}",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "usr": "s-testfolder"
       },
       "Exec": null,
@@ -98,12 +98,12 @@
   "ServerName": "MyServer",
   "PanicResponseCode": 500,
   "FilterFiles": [
-    "..json",
-    "..data",
-    "..jpeg",
-    "..jpg",
-    "..png",
-    "..log"
+    ".json",
+    ".data",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".log"
   ],
   "ServerDataRoot": "./testdata",
   "ServerStaticRoot": "%{WebServerHome}/static",

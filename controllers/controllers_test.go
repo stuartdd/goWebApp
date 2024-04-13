@@ -11,7 +11,7 @@ import (
 )
 
 func TestToJson(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", false)
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -42,7 +42,7 @@ func TestToJson(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", false)
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatal(errlist.String())
 	}
