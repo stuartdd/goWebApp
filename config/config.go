@@ -293,8 +293,10 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	}
 
 	errorList := NewConfigErrorData()
+
 	if p.IsTemplating() {
 		templ := p.GetTemplateData()
+		templ.DataFile = p.SubstituteFromMap([]byte(templ.DataFile), userConfigEnv)
 		_, err := templ.Init()
 		if err != nil {
 			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
