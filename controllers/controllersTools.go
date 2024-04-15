@@ -52,6 +52,21 @@ func (p *UrlRequestParts) WithHeader(h map[string][]string) *UrlRequestParts {
 	return p
 }
 
+func (p *UrlRequestParts) AsAdmin() *UrlRequestParts {
+	p.parameters[UserParam] = AdminName
+	return p
+}
+
+func (p *UrlRequestParts) WithUser(user string) *UrlRequestParts {
+	p.parameters[UserParam] = user
+	return p
+}
+
+func (p *UrlRequestParts) WithExec(exec string) *UrlRequestParts {
+	p.parameters[ExecParam] = exec
+	return p
+}
+
 func (p *UrlRequestParts) WithParameters(params map[string]string) *UrlRequestParts {
 	p.parameters = params
 	return p

@@ -145,26 +145,27 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		*/
 		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName), h.config, logFunc).Submit())
-			return
-		}
-		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
-		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
-			return
-		}
-		p, ok = getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
-		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).WithParam(controllers.UserParam, controllers.AdminName).WithParam(controllers.ExecParam, "restart"), h.config, func(b1, b2 []byte, i int) map[string]interface{} {
-				return map[string]interface{}{
-					"Status": strings.TrimSpace(string(b1)),
-				}
-			}, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc).Submit())
 			return
 		}
 
+		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
+			return
+		}
 	}
-	_, ok := getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+
+	_, ok := getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	if ok {
+		h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec("restart"), h.config, func(b1, b2 []byte, i int) map[string]interface{} {
+			return map[string]interface{}{
+				"Status": strings.TrimSpace(string(b1)),
+			}
+		}, logFunc).Submit())
+		return
+	}
+	_, ok = getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.actionQueue <- Exit
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson("Server Stopped", false))
