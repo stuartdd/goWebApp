@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Token struct {
@@ -22,14 +23,17 @@ type Line struct {
 }
 
 type Properties struct {
-	InputFile  string
-	OutputFile string
-	Prefix     string
-	Postfix    string
-	Infix      string
-	SkipLines  int
-	MaxLines   int
-	Lines      []*Line
+	InputFile    string
+	OutputFile   string
+	FilePrefix   string
+	FilePostfix  string
+	LinePrefix   string
+	LinePostfix  string
+	Infix        string
+	SkipLines    int
+	LineContains []string
+	MaxLines     int
+	Lines        []*Line
 }
 
 func (p *Properties) String() string {
@@ -48,13 +52,15 @@ func RunMain(configFileName string) {
 		os.Exit(1)
 	}
 	properties := &Properties{
-		SkipLines:  0,
-		MaxLines:   999,
-		InputFile:  "",
-		OutputFile: "",
-		Prefix:     "",
-		Postfix:    "",
-		Infix:      ",",
+		SkipLines:   0,
+		MaxLines:    999,
+		InputFile:   "",
+		OutputFile:  "",
+		FilePrefix:  "",
+		FilePostfix: "",
+		LinePrefix:  "",
+		LinePostfix: "",
+		Infix:       ",",
 	}
 	err = json.Unmarshal(content, &properties)
 	if err != nil {
@@ -65,8 +71,8 @@ func RunMain(configFileName string) {
 	txt := ""
 	var scanner *bufio.Scanner
 	var buff bytes.Buffer
-	if properties.Prefix != "" {
-		buff.WriteString(properties.Prefix)
+	if properties.FilePrefix != "" {
+		buff.WriteString(properties.FilePrefix)
 	}
 
 	if properties.InputFile == "" {
@@ -89,18 +95,34 @@ func RunMain(configFileName string) {
 	buffLen := buff.Len()
 	for scanner.Scan() && count < properties.MaxLines {
 		txt = scanner.Text()
-		tokens := tokenise(count, properties.Lines, []byte(txt))
-		buff.WriteString(tokens)
-		buffLen = buff.Len()
-		if tokens != "" {
-			buff.WriteString(properties.Infix)
+		if contains(txt, properties.LineContains) {
+			if properties.LinePrefix != "" {
+				buff.WriteString(properties.LinePrefix)
+			}
+			if len(properties.Lines) > 0 {
+				tokens := tokenise(count, properties.Lines, []byte(txt))
+				buff.WriteString(tokens)
+				buffLen = buff.Len()
+				if tokens != "" {
+					buff.WriteString(properties.Infix)
+				}
+			} else {
+				if txt != "" {
+					buff.WriteString(txt)
+					buffLen = buff.Len()
+				}
+			}
+			if properties.LinePostfix != "" {
+				buff.WriteString(properties.LinePostfix)
+				buffLen = buff.Len()
+			}
+			count++
 		}
-		count++
 	}
 
 	buff.Truncate(buffLen)
-	if properties.Postfix != "" {
-		buff.WriteString(properties.Postfix)
+	if properties.FilePostfix != "" {
+		buff.WriteString(properties.FilePostfix)
 	}
 	if properties.OutputFile != "" {
 		err = os.WriteFile(properties.OutputFile, buff.Bytes(), 0644)
@@ -118,6 +140,18 @@ func main() {
 		os.Exit(1)
 	}
 	RunMain(os.Args[1])
+}
+
+func contains(line string, cont []string) bool {
+	if len(cont) == 0 {
+		return true
+	}
+	for _, v := range cont {
+		if strings.Contains(line, v) {
+			return true
+		}
+	}
+	return false
 }
 
 func tokenise(lineNum int, lines []*Line, line []byte) string {

@@ -1,10 +1,10 @@
 {
-    "Prefix": "[",
-    "PostFix": "]",
+    "FilePrefix": "[",
+    "FilePostFix": "]",
     "Infix": ",",
     "SkipLines": 0,
-    "InputFile": "ds.raw",
-    "MaxLines": 5,
+    "LineContains" : ["HDD1", "HDD2"],
+    "InputFile": "ds.raw",   "MaxLines": 5,
     "Lines": [
         {
             "Split": ", ",

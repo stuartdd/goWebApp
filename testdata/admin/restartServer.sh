@@ -1,2 +1,4 @@
 #!/bin/bash
-echo '*** RESTART ***'
+
+
+echo '*** RESTARTED ***'

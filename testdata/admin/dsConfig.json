@@ -1,6 +1,6 @@
 {
-    "Prefix": "[",
-    "PostFix": "]",
+    "FilePrefix": "[",
+    "FilePostFix": "]",
     "Infix": ",",
     "SkipLines": 0,
     "MaxLines": 5,
