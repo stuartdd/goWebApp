@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -63,6 +62,10 @@ func (p *ServerHandler) GetUpSince() time.Time {
 
 func (h *ServerHandler) Log(s string) {
 	h.logger.Log(s)
+}
+
+func (h *ServerHandler) close() {
+	h.logger.Close()
 }
 
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +269,11 @@ func (p *WebAppServer) Log(s string) {
 	p.Handler.Log(s)
 }
 
-func (p *WebAppServer) Start() {
+func (p *WebAppServer) Close(rc int) int {
+	p.Handler.close()
+	return rc
+}
+func (p *WebAppServer) Start() int {
 	p.Log("Server Running    :")
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
 	p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
@@ -282,7 +289,16 @@ func (p *WebAppServer) Start() {
 		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}
 	p.Log(fmt.Sprintf("Server Started    :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
-	log.Fatal(http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler))
+
+	err := http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler)
+	if err != nil {
+		p.Log(fmt.Sprintf("Server Error      :%s.", err.Error()))
+		if strings.Contains(err.Error(), "address already in use") {
+			return p.Close(10)
+		}
+		return p.Close(1)
+	}
+	return p.Close(0)
 }
 
 func (p *WebAppServer) String() string {

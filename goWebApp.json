@@ -27,16 +27,12 @@
         },
         "restart": {
           "Cmd": [
-            "./restartServer.sh",
-            "|",
-            "./textToJson",
-            "restartServer.json"
+            "bash",
+            "-c",
+            "./restartServer.sh | ./textToJson restartServer.json"
           ],
           "Dir": "",
-          "StdOutType": "txt",
-          "Log": "logs",
-          "LogOut": "restartOut_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
-          "LogErr": "restartErr_%{year}_%{month}_%{day}_%{hour}_%{min}_%{sec}.txt",
+          "StdOutType": "json",
           "NzCodeReturns": 0
         },
         "ufs": {
@@ -96,7 +92,7 @@
     "Path": "admin/logs",
     "MonitorSeconds": 30,
     "LogLevel": "verbose",
-    "ConsoleOut" : true
+    "ConsoleOut": true
   },
   "ServerName": "MyServer",
   "PanicResponseCode": 500,

@@ -89,7 +89,9 @@ type logger struct {
 	nextFileCheck  time.Time
 	consoleOut     bool
 	queue          chan string
-	mu             sync.Mutex
+	mu1            sync.Mutex
+	mu2            sync.Mutex
+	noMoreCalls    bool
 }
 
 const padding0 = "000000000000"
@@ -105,12 +107,24 @@ func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel s
 		nextFileCheck:  getNextMonitorTime(pMonitorSeconds),
 		consoleOut:     consoleOut,
 		queue:          make(chan string, 20),
+		noMoreCalls:    false,
 	}
 	go l.deQueue()
 	return l, l.logFileData.err
 }
 
 func (l *logger) Close() {
+	l.mu2.Lock()
+	defer l.mu2.Unlock()
+	if l.noMoreCalls {
+		return
+	}
+	l.noMoreCalls = true
+	count := 2000
+	for len(l.queue) > 0 && count > 0 {
+		time.Sleep(time.Millisecond)
+		count--
+	}
 	l.logFileData.close()
 	close(l.queue)
 }
@@ -120,8 +134,11 @@ func (l *logger) IsOpen() bool {
 }
 
 func (l *logger) Log(msg string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	if l.noMoreCalls {
+		return
+	}
+	l.mu1.Lock()
+	defer l.mu1.Unlock()
 	l.queue <- msg
 }
 

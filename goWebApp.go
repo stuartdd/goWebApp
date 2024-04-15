@@ -115,7 +115,7 @@ func main() {
 				time.Sleep(500 * time.Millisecond)
 				logger.Close()
 				time.Sleep(500 * time.Millisecond)
-				os.Exit(1)
+				os.Exit(11)
 			case server.Ignore:
 				logger.Log("Server: Ignore\n")
 			}
@@ -123,7 +123,7 @@ func main() {
 	}()
 
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, logger)
-	webAppServer.Start()
+	os.Exit(webAppServer.Start())
 }
 
 func getArg(name string) (string, int) {
