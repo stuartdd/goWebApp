@@ -180,16 +180,14 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok := getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec("restart"), h.config, func(b1, b2 []byte, i int) map[string]interface{} {
-			return map[string]interface{}{
-				"Status": strings.TrimSpace(string(b1)),
-			}
-		}, logFunc).Submit())
+		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "23"), 23, "Restart Requested")
+		h.actionQueue <- a
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapJson(map[string]interface{}{"Status": "RESTARTED"}))
 		return
 	}
 	_, ok = getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", ""), 11, "Exit Requested")
+		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson(a.String(), false))
 		return

@@ -25,16 +25,6 @@
           "LogErr": "",
           "NzCodeReturns": 200
         },
-        "restart": {
-          "Cmd": [
-            "bash",
-            "-c",
-            "./restartServer.sh | ./textToJson restartServer.json"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "NzCodeReturns": 0
-        },
         "ufs": {
           "Cmd": [
             "./textToJson",
