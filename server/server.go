@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,24 @@ const (
 	Exit ActionId = iota
 	Ignore
 )
+
+type ActionEvent struct {
+	Id  ActionId
+	Rc  int
+	Msg string
+}
+
+func (p *ActionEvent) String() string {
+	return fmt.Sprintf("[%d] %s", p.Rc, p.Msg)
+}
+
+func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent {
+	i, err := strconv.Atoi(rc)
+	if err != nil {
+		i = fallback
+	}
+	return &ActionEvent{Id: id, Rc: i, Msg: m}
+}
 
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
 var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
@@ -42,12 +61,12 @@ var execUserCmdMatch = NewUrlRequestMatcher("/exec/user/*/exec/*", "GET")
 
 type ServerHandler struct {
 	config      *config.ConfigData
-	actionQueue chan ActionId
+	actionQueue chan *ActionEvent
 	logger      logging.Logger
 	upSince     time.Time
 }
 
-func NewServerHandler(configData *config.ConfigData, actionQueue chan ActionId, logger logging.Logger, upSince time.Time) *ServerHandler {
+func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEvent, logger logging.Logger, upSince time.Time) *ServerHandler {
 	return &ServerHandler{
 		config:      configData,
 		actionQueue: actionQueue,
@@ -170,8 +189,9 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_, ok = getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		h.actionQueue <- Exit
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson("Server Stopped", false))
+		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", ""), 11, "Exit Requested")
+		h.actionQueue <- a
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson(a.String(), false))
 		return
 	}
 	_, ok = getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -259,7 +279,7 @@ type WebAppServer struct {
 	Handler *ServerHandler
 }
 
-func NewWebAppServer(configData *config.ConfigData, actionQueue chan ActionId, logger logging.Logger) *WebAppServer {
+func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, logger logging.Logger) *WebAppServer {
 	return &WebAppServer{
 		Handler: NewServerHandler(configData, actionQueue, logger, time.Now()),
 	}

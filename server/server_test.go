@@ -335,7 +335,7 @@ func TestClient(t *testing.T) {
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
 	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58, 0)
-	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"Server Stopped\"}", 74, 0)
+	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"[11] Exit Requested\"}", 79, 0)
 	AssertLogContains(t, logger, []string{"Req:  /ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
@@ -398,12 +398,12 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 }
 
 func RunServer(config *config.ConfigData, logger logging.Logger) {
-	actionQueue := make(chan ActionId, 10)
+	actionQueue := make(chan *ActionEvent, 10)
 	defer close(actionQueue)
 	go func() {
 		for {
-			acId := <-actionQueue
-			switch acId {
+			ae := <-actionQueue
+			switch ae.Id {
 			case Exit:
 				fmt.Printf("Server: Stopped\n")
 			case Ignore:

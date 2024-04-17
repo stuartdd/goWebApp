@@ -91,7 +91,7 @@ func main() {
 	/*
 		Starting the server...
 	*/
-	actionQueue := make(chan server.ActionId, 10)
+	actionQueue := make(chan *server.ActionEvent, 10)
 	defer close(actionQueue)
 
 	ld := cfg.GetLogData()
@@ -109,15 +109,15 @@ func main() {
 	go func() {
 		for {
 			a := <-actionQueue
-			switch a {
+			switch a.Id {
 			case server.Exit:
-				logger.Log("Server Terminated :-----------------------------------------------------------------")
-				time.Sleep(500 * time.Millisecond)
+				logger.Log(fmt.Sprintf("Server Terminated : %s", a.String()))
+				time.Sleep(200 * time.Millisecond)
 				logger.Close()
-				time.Sleep(500 * time.Millisecond)
-				os.Exit(11)
+				time.Sleep(200 * time.Millisecond)
+				os.Exit(a.Rc)
 			case server.Ignore:
-				logger.Log("Server: Ignore\n")
+				logger.Log("Server: Action Ignore")
 			}
 		}
 	}()

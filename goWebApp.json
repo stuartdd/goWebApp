@@ -111,7 +111,7 @@
       "dart.html",
       "dart.css"
     ],
-    "DataFile": "%{WebServerHome}/static/configDataPI.json",
+    "DataFile": "./testdata/configDataPI.json",
     "Data": null,
     "FullFileName": ""
   },
