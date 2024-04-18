@@ -15,13 +15,14 @@ type execData struct {
 	StdErrLog string
 	log       func(string)
 	info      string
+	detached  bool
 }
 
 func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, logFunc func(string), substitute func([]byte) string) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, detached bool, logFunc func(string), substitute func([]byte) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -31,6 +32,9 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 	} else {
 		subCmd = commands
 	}
+	// if detached {
+	// 	subCmd = append(subCmd, "&")
+	// }
 	return &execData{
 		Cmd:       subCmd,
 		Dir:       dir,
@@ -38,6 +42,7 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 		StdErrLog: stdErr,
 		log:       logFunc,
 		info:      info,
+		detached:  detached,
 	}
 }
 
@@ -62,10 +67,22 @@ func (p *execData) Run() ([]byte, []byte, int, error) {
 	if p.Dir != "" {
 		cmd.Dir = p.Dir
 	}
+
 	var stdout, stderr bytes.Buffer
 	code := 0
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	if p.detached {
+		err := cmd.Start()
+		if err != nil {
+			stdout.WriteString("Error:")
+			stdout.WriteString(err.Error())
+			return nil, nil, -1, err
+		}
+		cmd.Process.Release()
+		return stdout.Bytes(), stderr.Bytes(), 0, nil
+	}
+
 	err := cmd.Run()
 	if err != nil {
 		if p.log != nil {

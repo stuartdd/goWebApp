@@ -260,7 +260,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
 	}
 	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, p.log, func(r []byte) string {
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, execInfo.Detached, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromMap(r)
 	})
 	stdOut, stdErr, code, err := execData.Run()

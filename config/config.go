@@ -89,6 +89,7 @@ type ExecInfo struct {
 	LogOut        string
 	LogErr        string
 	NzCodeReturns int
+	Detached      bool
 }
 
 func (p *ExecInfo) GetOutLogFile() string {

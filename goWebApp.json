@@ -14,6 +14,15 @@
         "cache": "cache"
       },
       "Exec": {
+        "lr": {
+          "Cmd": [
+            "./startLongRun.sh", "longRun.sh"
+          ],
+          "Dir": "",
+          "LogOut": "",
+          "LogErr": "",
+          "StdOutType": "txt"
+        },
         "ds": {
           "Cmd": [
             "./diskSize.sh"
