@@ -32,9 +32,9 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 	} else {
 		subCmd = commands
 	}
-	// if detached {
-	// 	subCmd = append(subCmd, "&")
-	// }
+	if detached && subCmd[len(subCmd)-1] != "&" {
+		subCmd = append(subCmd, "&")
+	}
 	return &execData{
 		Cmd:       subCmd,
 		Dir:       dir,
@@ -75,11 +75,20 @@ func (p *execData) Run() ([]byte, []byte, int, error) {
 	if p.detached {
 		err := cmd.Start()
 		if err != nil {
-			stdout.WriteString("Error:")
-			stdout.WriteString(err.Error())
-			return nil, nil, -1, err
+			stdout.WriteString("{\"Error\":true")
+			for i, v := range pruned[0 : len(pruned)-1] {
+				stdout.WriteString(fmt.Sprintf(", \"P%d\":\"%s\"", i, v))
+			}
+			stdout.WriteString("}")
+			return stdout.Bytes(), stderr.Bytes(), -1, err
 		}
+		pid := cmd.Process.Pid
 		cmd.Process.Release()
+		stdout.WriteString(fmt.Sprintf("{\"Error\":false, \"pid\":%d", pid))
+		for i, v := range pruned[0 : len(pruned)-1] {
+			stdout.WriteString(fmt.Sprintf(", \"P%d\":\"%s\"", i, v))
+		}
+		stdout.WriteString("}")
 		return stdout.Bytes(), stderr.Bytes(), 0, nil
 	}
 

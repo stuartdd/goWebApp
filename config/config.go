@@ -209,7 +209,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*Co
 		ReloadConfigSeconds: defaultConfigReloadTime,
 		Port:                8080,
 		Users:               make(map[string]UserData),
-		LogData:             nil,
+		LogData:             &LogData{},
 		ContentTypeCharset:  "utf-8",
 		ServerName:          moduleName,
 		FilterFiles:         []string{},
@@ -617,6 +617,8 @@ func (p *ConfigData) GetUserEnv(user string) map[string]string {
 	m["hour"] = padTimeDate(t.Hour())
 	m["min"] = padTimeDate(int(t.Minute()))
 	m["sec"] = padTimeDate(t.Second())
+	m["doy"] = padTimeDate(t.YearDay())
+	m["ms"] = padTimeDate(int(t.UnixMilli()))
 	return m
 }
 

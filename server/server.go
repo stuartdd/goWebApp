@@ -293,8 +293,12 @@ func (p *WebAppServer) Close(rc int) int {
 }
 func (p *WebAppServer) Start() int {
 	p.Log("Server Running    :")
+	if p.Handler.logger.IsOpen() {
+		p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
+	} else {
+		p.Log("Server Log        :Is not Open. All logging is to the console")
+	}
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
-	p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
 	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetServerDataRoot()))
 	if p.Handler.config.IsTemplating() {

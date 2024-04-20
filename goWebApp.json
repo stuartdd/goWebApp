@@ -16,12 +16,11 @@
       "Exec": {
         "lr": {
           "Cmd": [
-            "./startLongRun.sh", "longRun.sh"
+            "./longRun.sh", "../stuart/logs/longRun_%{doy}_%{hour}_%{min}_%{sec}.log"
           ],
           "Dir": "",
-          "LogOut": "",
-          "LogErr": "",
-          "StdOutType": "txt"
+          "StdOutType": "json",
+          "Detached":true
         },
         "ds": {
           "Cmd": [

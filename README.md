@@ -440,10 +440,12 @@ For example:
 
 1. OS Environment variables
 2. The 'name' (Stuart), 'home' (stu) and 'id' (stuart) user values are added from, for example, the stuart user shown above. 
-3. The 'year', 'month', 'day', 'hour', 'min', and 'sec' values are added for the time of substitution.
+3. The 'ms', 'doy', 'year', 'month', 'day', 'hour', 'min', and 'sec' values are added for the time of substitution. 
+    'doy' = Day Of Year.
+    'ms' = 'Unix Style' milliseconds since the epoch.
 3. The Env name value pairs.
 
-Each **Location** is substituted using:
+Each **Location** is substituted.
 
 Each **Exec-->Log** is substituted with the OS Environment variables And User Environment variables. The resulting path are checked. 
 

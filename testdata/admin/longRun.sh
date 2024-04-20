@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOGFILE=logs/longRun-`date +%Y-%m-%d`.log
+LOGFILE=$1
 while true 
 do
     echo "$(date '+%F %T') : Task" >> $LOGFILE

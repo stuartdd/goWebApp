@@ -97,6 +97,19 @@ type logger struct {
 const padding0 = "000000000000"
 
 func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel string, consoleOut bool) (Logger, error) {
+	if pPath == "" || pFileNameMask == "" {
+		return &logger{
+			logFileData: &logFileData{
+				fileName: "",
+				logFile:  nil,
+				err:      nil,
+			},
+			fileNameMask: pFileNameMask,
+			noMoreCalls:  true,
+			path:         pPath,
+			datePrefix:   newDatePrefix(time.Now()),
+		}, nil
+	}
 	l := &logger{
 		fileNameMask:   pFileNameMask,
 		path:           pPath,
@@ -134,54 +147,61 @@ func (l *logger) IsOpen() bool {
 }
 
 func (l *logger) Log(msg string) {
-	if l.noMoreCalls {
-		return
-	}
 	l.mu1.Lock()
 	defer l.mu1.Unlock()
+	if l.noMoreCalls {
+		os.Stdout.WriteString(buildLogLine(msg, l.datePrefix, time.Now()))
+		return
+	}
 	l.queue <- msg
 }
 
 func (l *logger) LogFileName() string {
+	if l.logFileData.fileName == "" {
+		return l.fileNameMask
+	}
 	return l.logFileData.fileName
 }
 
 func (l *logger) deQueue() {
 	for msg := range l.queue {
 		t := time.Now()
-		h := t.Hour()
-		hs := strconv.Itoa(h)
-		if len(hs) < 2 {
-			hs = "0" + hs
-		}
-		m := t.Minute()
-		ms := strconv.Itoa(m)
-		if len(ms) < 2 {
-			ms = "0" + ms
-		}
-
-		s := t.Second()
-		ss := strconv.Itoa(s)
-		if len(ss) < 2 {
-			ss = "0" + ss
-		}
-
 		if t.After(l.nextFileCheck) {
 			l.nextFileCheck = getNextMonitorTime(l.monitorSeconds)
 			l.datePrefix = newDatePrefix(t)
 			l.logFileData = l.logFileData.reOpen(l.path, l.fileNameMask, t)
 		}
 
-		out := fmt.Sprintf("%s%s:%s:%s %s\n", l.datePrefix, hs, ms, ss, msg)
+		out := buildLogLine(msg, l.datePrefix, t)
 		if l.IsOpen() {
 			l.logFileData.logFile.WriteString(out)
+			if l.consoleOut {
+				os.Stderr.WriteString(out)
+			}	
 		} else {
 			os.Stderr.WriteString(out)
 		}
-		if l.consoleOut {
-			os.Stderr.WriteString(out)
-		}
 	}
+}
+
+func buildLogLine(msg string, datePrefix string, t time.Time) string {
+	h := t.Hour()
+	hs := strconv.Itoa(h)
+	if len(hs) < 2 {
+		hs = "0" + hs
+	}
+	m := t.Minute()
+	ms := strconv.Itoa(m)
+	if len(ms) < 2 {
+		ms = "0" + ms
+	}
+
+	s := t.Second()
+	ss := strconv.Itoa(s)
+	if len(ss) < 2 {
+		ss = "0" + ss
+	}
+	return fmt.Sprintf("%s%s:%s:%s %s\n", datePrefix, hs, ms, ss, msg)
 }
 
 func getNextMonitorTime(n int) time.Time {

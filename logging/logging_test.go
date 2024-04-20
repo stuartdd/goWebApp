@@ -12,7 +12,7 @@ import (
 const testLogDir = "../testdata/logs"
 const dtStringLen = len("2024/03/05 15:34:51 ")
 
-func TestLofFileData(t *testing.T) {
+func TestLogFileData(t *testing.T) {
 	cleanLogs(t)
 	lfd1 := newLogFileData("p", "m", time.Date(2021, 4, 15, 14, 30, 45, 100, time.Local))
 	if lfd1.err == nil {
@@ -59,6 +59,23 @@ func TestLoggingFunctions(t *testing.T) {
 	AssertEquals(t, "FLi0999", fixedLenInt(999, 4), "0999")
 }
 
+func TestLoggingSink(t *testing.T) {
+	l, err := NewLogger("", "goWebServer-test.log", 10, "verbose", false)
+	if err != nil {
+		t.Fatalf("Error: Empty path should not produce an error: %s", err.Error())
+	}
+	l.Log("Should log to console")
+	if l.LogFileName() != "goWebServer-test.log" {
+		t.Fatalf("Error: Empty path should not effect file name")
+	}
+	if l.IsOpen() {
+		t.Fatalf("Error: Empty path should not Open log")
+	}
+	_, err = NewLogger(testLogDir, "", 10, "verbose", false)
+	if err == nil {
+		t.Fatalf("Error: Empty path file name should produce an error: %s", err.Error())
+	}
+}
 func TestLogging(t *testing.T) {
 	cleanLogs(t)
 
