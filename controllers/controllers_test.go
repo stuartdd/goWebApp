@@ -58,7 +58,7 @@ func TestExec(t *testing.T) {
 		return map[string]interface{}{"error": true, "code": ec, "out": string(out), "err": string(err)}
 	}, func(s string) {
 		// Log function
-	})
+	}, nil)
 
 	res := ex.Submit()
 

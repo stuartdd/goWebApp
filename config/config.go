@@ -59,6 +59,11 @@ func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
 	}
 	return false
 }
+type LongRunningData struct {
+	Path string
+	File string
+	Script string
+}
 
 type LogData struct {
 	FileNameMask   string

@@ -68,13 +68,15 @@ type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
 	log        func(string)
+	addLrp     func(string, string, int, bool) bool
 }
 
-func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string)) Handler {
+func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
 	return &ReadFileHandler{
 		parameters: urlParts,
 		configData: configData,
 		log:        logFunc,
+		addLrp:     addFunc,
 	}
 }
 
@@ -94,7 +96,7 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 			if p.log != nil {
 				p.log(fmt.Sprintf("ReadFileHandler:Redirect as:%s", exec.String()))
 			}
-			return NewExecHandler(p.parameters.WithParam("exec", p.parameters.GetName()), p.configData, nil, p.log).Submit()
+			return NewExecHandler(p.parameters.WithParam("exec", p.parameters.GetName()), p.configData, nil, p.log, p.addLrp).Submit()
 		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
@@ -244,17 +246,25 @@ type ExecHandler struct {
 	parameters *UrlRequestParts
 	createMap  func([]byte, []byte, int) map[string]interface{}
 	log        func(string)
+	addLrp     func(string, string, int, bool) bool
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string)) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
 		log:        logFunc,
+		addLrp:     addFunc,
 	}
 }
 
 func (p *ExecHandler) Submit() *ResponseData {
+	if p.addLrp != nil {
+		ok := p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), 0, false)
+		if !ok {
+			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec already running", true)
+		}
+	}
 	execInfo, err := p.parameters.GetUserExecInfo()
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
@@ -262,6 +272,10 @@ func (p *ExecHandler) Submit() *ResponseData {
 	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, execInfo.Detached, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromMap(r)
+	}, func(pid int) {
+		if p.addLrp != nil {
+			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
+		}
 	})
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
@@ -354,7 +368,7 @@ func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 
 // "{\"Alloc\":\"2 MiB (2309672 B)\",\"Sys\":\"12 MiB (12672016 B)\",\"TotalAlloc\":\"2 MiB (2309672 B)\",\"configName\":\"goWebApp.json\",\"error\":false,\"reloadConfig\":3080.27,\"upSince\":\"Fri Apr  5 12:48:19 2024\",\"upTime\":\"00:08:39\"}"
 // "[{\"error\":false,}{\"Alloc\":\"1 MiB (1368424 B)\"}]"
-func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, upSince time.Time) []byte {
+func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, upSince time.Time, longRunning map[string]string) []byte {
 	var b bytes.Buffer
 	var st runtime.MemStats
 	runtime.ReadMemStats(&st)
@@ -369,6 +383,9 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 	writeParamAsJsonString("Sys", fmtAlloc(st.Sys), true, false, true, &b)
 	writeParamAsJsonString("configName", configData.ConfigName, true, false, true, &b)
 	writeParamAsJsonString("Log Dir", configData.GetLogDataPath(), true, false, true, &b)
+	for n, v := range longRunning {
+		writeParamAsJsonString(n, v, true, false, true, &b)
+	}
 	writeParamAsJsonString("Log File", logFileName, true, false, false, &b)
 	b.WriteRune('}')
 	b.WriteRune('}')

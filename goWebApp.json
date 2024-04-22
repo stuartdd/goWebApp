@@ -14,9 +14,17 @@
         "cache": "cache"
       },
       "Exec": {
-        "lr": {
+        "lr1": {
           "Cmd": [
-            "./longRun.sh", "../stuart/logs/longRun_%{doy}_%{hour}_%{min}_%{sec}.log"
+            "./longRun.sh", "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Detached":true
+        },
+        "lr2": {
+          "Cmd": [
+            "./longRun.sh", "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
           ],
           "Dir": "",
           "StdOutType": "json",

@@ -64,6 +64,7 @@ type ServerHandler struct {
 	actionQueue chan *ActionEvent
 	logger      logging.Logger
 	upSince     time.Time
+	longRunning *LongRunningManager
 }
 
 func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEvent, logger logging.Logger, upSince time.Time) *ServerHandler {
@@ -71,6 +72,7 @@ func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEve
 		config:      configData,
 		actionQueue: actionQueue,
 		logger:      logger,
+		longRunning: NewLongRunningManager()
 		upSince:     upSince,
 	}
 }
@@ -122,7 +124,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -147,12 +149,12 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -167,13 +169,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		*/
 		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 
 		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 	}
@@ -200,7 +202,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.logger.LogFileName(), h.GetUpSince())))
+		h.longRunning.UpdateLongRunningProcess()
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.logger.LogFileName(), h.GetUpSince(), h.longRunning.LongRunningMap())))
 		return
 	}
 	_, ok = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
@@ -274,7 +277,8 @@ func timeAsString() string {
 }
 
 type WebAppServer struct {
-	Handler *ServerHandler
+	Handler     *ServerHandler
+	LongRunning int
 }
 
 func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, logger logging.Logger) *WebAppServer {
