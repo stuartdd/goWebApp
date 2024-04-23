@@ -1,4 +1,2 @@
 #!/bin/bash
-#ps -q $1
-pwd
-echo "HI"
+ps -q $1 | grep $1

@@ -412,7 +412,7 @@ func RunServer(config *config.ConfigData, logger logging.Logger) {
 		}
 	}()
 
-	server := NewWebAppServer(config, actionQueue, logger)
+	server := NewWebAppServer(config, actionQueue, nil, logger)
 	serverState = "Running"
 	server.Start()
 }

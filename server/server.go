@@ -67,12 +67,15 @@ type ServerHandler struct {
 	longRunning *LongRunningManager
 }
 
-func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEvent, logger logging.Logger, upSince time.Time) *ServerHandler {
+func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *LongRunningManager, logger logging.Logger, upSince time.Time) *ServerHandler {
+	if lrm == nil {
+		lrm = NewLongRunningManagerDisabled()
+	}
 	return &ServerHandler{
 		config:      configData,
 		actionQueue: actionQueue,
 		logger:      logger,
-		longRunning: NewLongRunningManager()
+		longRunning: lrm,
 		upSince:     upSince,
 	}
 }
@@ -281,9 +284,9 @@ type WebAppServer struct {
 	LongRunning int
 }
 
-func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, logger logging.Logger) *WebAppServer {
+func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *LongRunningManager, logger logging.Logger) *WebAppServer {
 	return &WebAppServer{
-		Handler: NewServerHandler(configData, actionQueue, logger, time.Now()),
+		Handler: NewServerHandler(configData, actionQueue, lrm, logger, time.Now()),
 	}
 }
 
@@ -296,7 +299,7 @@ func (p *WebAppServer) Close(rc int) int {
 	return rc
 }
 func (p *WebAppServer) Start() int {
-	p.Log("Server Running    :")
+	p.Log(fmt.Sprintf("Server Started    :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
 	if p.Handler.logger.IsOpen() {
 		p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
 	} else {
@@ -310,11 +313,10 @@ func (p *WebAppServer) Start() int {
 	} else {
 		p.Log("Server Templating :OFF.")
 	}
-
+	p.Log(fmt.Sprintf("LR Process Manager:%s", p.Handler.longRunning.String()))
 	for _, un := range p.Handler.config.GetUserNamesList() {
 		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}
-	p.Log(fmt.Sprintf("Server Started    :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
 
 	err := http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler)
 	if err != nil {

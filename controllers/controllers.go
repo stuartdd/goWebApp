@@ -384,7 +384,11 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 	writeParamAsJsonString("configName", configData.ConfigName, true, false, true, &b)
 	writeParamAsJsonString("Log Dir", configData.GetLogDataPath(), true, false, true, &b)
 	for n, v := range longRunning {
-		writeParamAsJsonString(n, v, true, false, true, &b)
+		if n == "error" {
+			writeParamAsJsonString("Long Running Process", v, true, false, true, &b)
+		} else {
+			writeParamAsJsonString(n, v, true, false, true, &b)
+		}
 	}
 	writeParamAsJsonString("Log File", logFileName, true, false, false, &b)
 	b.WriteRune('}')

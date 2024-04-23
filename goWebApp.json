@@ -124,5 +124,10 @@
   "FaviconIcoPath": "favicon1.ico",
   "Env": {
     "linuxUserGit": "/home/stuart/git"
+  },
+  "ExecManager":{
+    "Path" : "./testdata/admin",
+    "File" : "RunningProcs.json",
+    "TestCommand" : "./checkLrp.sh"
   }
 }

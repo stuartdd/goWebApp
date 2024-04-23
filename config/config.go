@@ -59,10 +59,11 @@ func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
 	}
 	return false
 }
-type LongRunningData struct {
-	Path string
-	File string
-	Script string
+
+type ExecManager struct {
+	Path        string
+	File        string
+	TestCommand string
 }
 
 type LogData struct {
@@ -149,6 +150,7 @@ type ConfigDataInternal struct {
 	TemplateStaticFiles *TemplateStaticFiles
 	FaviconIcoPath      string
 	Env                 map[string]string
+	ExecManager         *ExecManager
 }
 
 func (p *ConfigDataInternal) String() (string, error) {
@@ -492,6 +494,10 @@ func (p *ConfigData) GetTimeToReloadConfig() float64 {
 
 func (p *ConfigData) GetServerName() string {
 	return p.internal.ServerName
+}
+
+func (p *ConfigData) GetExecManager() *ExecManager {
+	return p.internal.ExecManager
 }
 
 func (p *ConfigData) GetUserData(user string) *UserData {

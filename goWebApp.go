@@ -102,6 +102,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	lrm := server.NewLongRunningManagerDisabled()
+	em := cfg.GetExecManager()
+	if em != nil {
+		lrm, err = server.NewLongRunningManager(em.Path, em.File, em.TestCommand, logger.Log)
+		if err != nil {
+			osExitWithMessage(1, fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))
+		}
+	}
+
 	logger.Log("Application Start :-----------------------------------------------------------------")
 	for _, l := range errorList.Logs() {
 		logger.Log(l)
@@ -122,7 +131,7 @@ func main() {
 		}
 	}()
 
-	webAppServer := server.NewWebAppServer(cfg, actionQueue, logger)
+	webAppServer := server.NewWebAppServer(cfg, actionQueue, lrm, logger)
 	os.Exit(webAppServer.Start())
 }
 
