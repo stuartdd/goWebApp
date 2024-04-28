@@ -1,7 +1,9 @@
 package image
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -113,74 +115,123 @@ func TestImage(t *testing.T) {
 	walker := image.walker
 	fmt.Printf("%s\n", image)
 	fmt.Printf("%s\n", walker.LinePrint(0, 16, 2))
-	fmt.Printf("%s\n", walker.LinePrint(OfsTiffEntries, 12, 20))
+	fmt.Printf("%s\n", walker.LinePrint(22+2, 12, 20))
 
 	for i, ifd := range image.IFDdata {
 		fmt.Printf("%2d:%s [%s]\n", i, ifd, image.GetIDFData(i))
 	}
+	var output bytes.Buffer
 	for i, ifd := range image.IFDdata {
 		tag, ok := MapTags[ifd.tag]
 		if ok {
-			fmt.Printf("%s=%s\n", tag.desc, image.GetIDFData(i))
+			output.WriteString(fmt.Sprintf("%s=%s\n", tag.desc, image.GetIDFData(i)))
+		} else {
+			output.WriteString(fmt.Sprintf("Un-Registered Tag[0x%4x]=%s\n", ifd.tag, image.GetIDFData(i)))
 		}
-
 	}
+	fmt.Println(output.String())
+	a := strings.TrimSpace(output.String())
+	b := strings.TrimSpace(golden)
+	if b != a {
+		t.Fatal("Not the same")
+	}
+
 }
 
 /*
-exif:ApertureValue=153/100
-exif:ColorSpace=65535
-exif:DateTime=2023:08:22 18:03:33
-exif:DateTimeDigitized=2023:08:22 18:03:33
-exif:DateTimeOriginal=2023:08:22 18:03:33
-exif:DigitalZoomRatio=229/100
-exif:ExifOffset=246
-exif:ExifVersion=0220
-exif:ExposureBiasValue=0/100
-exif:ExposureMode=0
-exif:ExposureProgram=2
-exif:ExposureTime=1/50
-exif:Flash=0
-exif:FNumber=170/100
-exif:FocalLength=630/100
-exif:FocalLengthIn35mmFilm=23
-exif:GPSAltitude=87/1
-exif:GPSAltitudeRef=0
-exif:GPSInfo=720
-exif:GPSLatitude=51/1,32/1,4224480/1000000
-exif:GPSLatitudeRef=N
-exif:GPSLongitude=3/1,6/1,43447320/1000000
-exif:GPSLongitudeRef=W
-exif:ImageLength=2252
-exif:ImageUniqueID=P12XLPE00NM
-exif:ImageWidth=4000
-exif:Make=samsung
-exif:MaxApertureValue=153/100
-exif:MeteringMode=2
-exif:Model=Galaxy S23 Ultra
-exif:OffsetTime=+01:00
-exif:OffsetTimeOriginal=+01:00
-exif:Orientation=6
-exif:PhotographicSensitivity=800
-exif:PixelXDimension=4000
-exif:PixelYDimension=2252
-exif:ResolutionUnit=2
-exif:SceneCaptureType=0
-exif:ShutterSpeedValue=1/50
-exif:Software=S918BXXS3AWF7
-exif:SubSecTime=845
-exif:SubSecTimeDigitized=845
-exif:SubSecTimeOriginal=845
-exif:thumbnail:Compression=6
-exif:thumbnail:ImageLength=288
-exif:thumbnail:ImageWidth=512
-exif:thumbnail:JPEGInterchangeFormat=972
-exif:thumbnail:JPEGInterchangeFormatLength=44018
-exif:thumbnail:ResolutionUnit=2
-exif:thumbnail:XResolution=72/1
-exif:thumbnail:YResolution=72/1
-exif:WhiteBalance=0
-exif:XResolution=72/1
-exif:YCbCrPositioning=1
-exif:YResolution=72/1
+
+0000 FFD8 				SOI Start of Image
+0002 FFE1 				APP 1 Marker {EXIF}
+0004 SSSS 				Size of APP1 (44998 AF C6)
+0006 45 78 69 66 00 00 	'Exif00' OfsExifHeader
+0012 49 49 2a 00 		'II*0' or 'MM*0' OfsEndianDef
+0016 08 00 00 00 		Offset to TIFF (Main Image) OfsMainImageOffset
+XXXX 0D 00    			Number of entries (12 bytes each) * BASE
+
+XXXX FFD9 EOI End of Image
+
+Value 				1 				2 				3 				4 				5 					6
+Format 				unsigned byte 	ascii strings 	unsigned short 	unsigned long 	unsigned rational 	signed byte
+Bytes/component 	1 				1 				2 				4 				8 					1
+
+Value 				7 				8 				9 				10 				11 					12
+Format 				undefined 		signed short 	signed long 	signed rational single float 		double float
+Bytes/component 	1 				2 				4 				8 				4 					8
 */
+
+const golden string = `ApertureValue=153/100
+ColorSpace=65535
+DateTime=2023:08:22 18:03:33
+DateTimeDigitized=2023:08:22 18:03:33
+DateTimeOriginal=2023:08:22 18:03:33
+DigitalZoomRatio=229/100
+ExifOffset=246
+ExifVersion=0220
+ExposureBiasValue=0/100
+ExposureMode=0
+ExposureProgram=2
+ExposureTime=1/50
+Flash=0
+FNumber=170/100
+FocalLength=630/100
+FocalLengthIn35mmFilm=23
+ImageLength=2252
+ImageUniqueID=P12XLPE00NM
+ImageWidth=4000
+Make=samsung
+MaxApertureValue=153/100
+MeteringMode=2
+Model=Galaxy S23 Ultra
+OffsetTime=+01:00
+OffsetTimeOriginal=+01:00
+Orientation=6
+ResolutionUnit=2
+SceneCaptureType=0
+ShutterSpeedValue=1/50
+Software=S918BXXS3AWF7
+SubSecTime=845
+SubSecTimeDigitized=845
+SubSecTimeOriginal=845
+WhiteBalance=0
+XResolution=72/1
+YCbCrPositioning=1
+YResolution=72/1`
+
+const golden2 string = `ApertureValue=153/100
+ColorSpace=65535
+DateTime=2023:08:22 18:03:33
+DateTimeDigitized=2023:08:22 18:03:33
+DateTimeOriginal=2023:08:22 18:03:33
+DigitalZoomRatio=229/100
+ExifImageHeight=2252
+ExifImageWidth=4000
+ExifVersion=30323230
+ExposureBiasValue=00
+ExposureMode=0
+ExposureProgram=2
+ExposureTime=1/50
+FNumber=170/100
+Flash=0
+FocalLength=630/100
+FocalLengthIn35mmFilm=23
+ImageLength=2252
+ImageUniqueID=P12XLPE00NM
+ImageWidth=4000
+Make=samsung
+MaxApertureValue=153/100
+MeteringMode=2
+Model=Galaxy S23 Ultra
+OffsetTime=+01:00
+OffsetTimeOriginal=+01:00
+Orientation=6
+ResolutionUnit=2
+SceneCaptureType=0
+ShutterSpeedValue=1/50
+Software=S918BXXS3AWF7
+SubsecTime=845
+SubsecTimeDigitized=845
+SubsecTimeOriginal=845
+WhiteBalance=0
+XResolution=72/1
+YCbCrPositioning=1
+YResolution=72/1`

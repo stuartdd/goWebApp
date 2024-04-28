@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -14,10 +15,12 @@ const OfsSOI = 0
 const OfsAPP1Marker = 2
 const OfsAPP1Size = 4
 const OfsExifHeader = 6
-const OfsTiffEndian = 12
-const OfsTiffHeader = 16
-const OfsTiffCount = 20
-const OfsTiffEntries = 22
+const OfsEndianDef = 12
+const OfsMainImageOffset = 16
+
+const TiffRecordSize = 12
+const TagExifSubIFD uint32 = 34665
+const TagGPSIFD uint32 = 34853
 
 type Tag struct {
 	id       uint32
@@ -65,9 +68,30 @@ type image struct {
 	exif       bool
 	app1Marker string
 	app1Size   uint32 // APP1 data size
-	IFDOffset  uint32
-	IDFBase    uint32
 	IFDdata    []*IFDEntry
+}
+
+func (p *image) sortEntries() {
+	m := map[string]*IFDEntry{}
+	for i, x := range p.IFDdata {
+		tag, ok := MapTags[x.tag]
+		if ok {
+			m[tag.desc] = x
+		} else {
+			m[fmt.Sprintf("x:%4x:%d", x.tag, i)] = x
+		}
+	}
+
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	sorted := make([]*IFDEntry, len(keys))
+	for i, s := range keys {
+		sorted[i] = m[s]
+	}
+	p.IFDdata = sorted
 }
 
 func (p *image) IsExif() bool {
@@ -78,7 +102,7 @@ func (p *image) GetValueBytes(ifd *IFDEntry, tt *TagFormat) []byte {
 	byteCount := ifd.length * tt.length
 	if (byteCount) > 4 {
 		// Location is a pointer from the IDFBase
-		return p.walker.Pos(uint32(p.walker.BytesToUint(ifd.location)) + p.IDFBase).Bytes(byteCount)
+		return p.walker.Pos(uint32(p.walker.BytesToUint(ifd.location)) + TiffRecordSize).Bytes(byteCount)
 	} else {
 		// Location is the value
 		return ifd.location
@@ -95,6 +119,7 @@ func (p *image) GetIDFData(index int) (resp string) {
 		panic(fmt.Sprintf("GetIDFData out or range: max=%d requested=%d", len(p.IFDdata), index))
 	}
 	ifd := p.IFDdata[index]
+
 	tiffType := MapTiffFormats[ifd.format]
 	bytes := p.GetValueBytes(ifd, tiffType)
 	switch tiffType.format {
@@ -136,7 +161,16 @@ func NewIDFEntry(walker *walker) *IFDEntry {
 
 func (p *IFDEntry) String() string {
 	tf := MapTiffFormats[p.format]
-	return fmt.Sprintf("IDF: TAG[%d]  FORMAT[%s] LEN[%d * %d] Location[%s] Desc[%s]", p.tag, tf, p.length, tf.length, fmt.Sprintf("%x", p.location), MapTags[p.tag])
+	ta, ok := MapTags[p.tag]
+	if !ok {
+
+		ta = &Tag{
+			id:       0,
+			desc:     fmt.Sprintf("Undefined. Tag 0x%4x", p.tag),
+			longDesc: "",
+		}
+	}
+	return fmt.Sprintf("IDF: TAG[%d]  FORMAT[%s] LEN[%d * %d] Location[%s] Desc[%s]", p.tag, tf, p.length, tf.length, fmt.Sprintf("%x", p.location), ta)
 }
 
 type walker struct {
@@ -331,7 +365,10 @@ func (p *walker) Pos(n uint32) *walker {
 
 func pad(i uint32, n int) string {
 	s := fmt.Sprintf("%d", i)
-	return "00000"[0:n-len(s)] + s
+	if len(s) >= n {
+		return s
+	}
+	return "00000000000"[0:n-len(s)] + s
 }
 
 func GetImage(path string) (*image, error) {
@@ -357,43 +394,46 @@ func GetImage(path string) (*image, error) {
 		app1Marker: walker.Pos(OfsAPP1Marker).Hex(walker.Bytes(2)),
 		app1Size:   uint32(walker.Pos(OfsAPP1Size).bytesToUintBE(walker.Bytes(2))), // Always Big Endian
 		exif:       walker.Pos(OfsExifHeader).ZstringEquals("Exif"),
+		IFDdata:    []*IFDEntry{},
 	}
-	image.walker.littleE = (walker.Pos(OfsTiffEndian).ZstringEquals("II*"))
+	image.walker.littleE = (walker.Pos(OfsEndianDef).ZstringEquals("II*"))
 	/*
 		The rest of the image data needs to know the littleE setting to work
+
+		Calc the start if the tags Using TIFF Header offset
 	*/
-	image.IFDOffset = OfsTiffHeader + uint32(walker.Pos(OfsTiffHeader).BytesToUint(walker.Bytes(4))) - 2
-	tiffCount := int(walker.Pos(OfsTiffCount).BytesToUint(walker.Bytes(2)))
-	if tiffCount <= 0 || tiffCount > 1000 {
-		panic(fmt.Sprintf("Image TIFF data count is invalid. Expected[1..200]. Actual=[%d]", tiffCount))
+	mainTiffDir := OfsMainImageOffset + uint32(walker.Pos(OfsMainImageOffset).BytesToUint(walker.Bytes(4))-4)
+	image.readDirectory(mainTiffDir, walker)
+
+	image.sortEntries()
+
+	return image, nil
+}
+
+func (p *image) readDirectory(base uint32, walker *walker) {
+	dirCount := int(walker.Pos(base).BytesToUint(walker.Bytes(2)))
+	if dirCount <= 0 || dirCount > 200 {
+		panic(fmt.Sprintf("Image TIFF data count is invalid. Expected[1..200]. Actual=[%d]", dirCount))
 	}
-	walker.Pos(image.IFDOffset)
-	ents := []*IFDEntry{}
-	for i := 0; i < tiffCount; i++ {
+	for i := 0; i < dirCount; i++ {
+		// currentPos := walker.pos
 		ne := NewIDFEntry(walker)
-		if ne.tag == 34665 {
+		if ne.tag == TagExifSubIFD || ne.tag == TagGPSIFD {
 			ofs := walker.BytesToUint(ne.location)
-			walker.Pos(image.IFDOffset + uint32((ofs + 4)))
-			fmt.Printf("%s\n", walker.LinePrint(walker.pos, 12, 10))
+			fmt.Println()
+			fmt.Printf("%s\n", walker.LinePrint(uint32(ofs+12), 12, 2))
+			p.readDirectory(uint32(ofs+12), walker.Clone())
 		} else {
-			ents = append(ents, ne)
+			p.IFDdata = append(p.IFDdata, ne)
 		}
 	}
-	image.IDFBase = OfsTiffEndian
-	image.IFDdata = ents
-	return image, nil
+
 }
 
 type TiffFormat uint16
 
 /*
-Value 	1 	2 	3 	4 	5 	6
-Format 	unsigned byte 	ascii strings 	unsigned short 	unsigned long 	unsigned rational 	signed byte
-Bytes/component 	1 	1 	2 	4 	8 	1
-Value 	7 	8 	9 	10 	11 	12
-Format 	undefined 	signed short 	signed long 	signed rational 	single float 	double float
-Bytes/component 	1 	2 	4 	8 	4 	8
-*/
+ */
 const (
 	FormatUint8 TiffFormat = iota + 1
 	FormatString
@@ -521,4 +561,55 @@ var MapTags = map[uint32]*Tag{
 	700:   newExifTagDetails(700, "XMP", "XML packet containing XMP metadata"),
 	32781: newExifTagDetails(32781, "ImageID", "OPI-related."),
 	34732: newExifTagDetails(34732, "ImageLayer", "Defined in the Mixed Raster Content part of RFC 2301, used to denote the particular function of this Image in the mixed raster scheme."),
+	33434: newExifTagDetails(33434, "ExposureTime", "Exposure time (reciprocal of shutter speed). Unit is second. "),
+	33437: newExifTagDetails(33437, "FNumber", "The actual F-number(F-stop) of lens when the image was taken. "),
+	34850: newExifTagDetails(34850, "ExposureProgram", "Exposure program that the camera used when image was taken. '1' means manual control, '2' program normal, '3' aperture priority, '4' shutter priority, '5' program creative (slow program), '6' program action(high-speed program), '7' portrait mode, '8' landscape mode. "),
+	34855: newExifTagDetails(34855, "ISOSpeedRatings", "CCD sensitivity equivalent to Ag-Hr film speedrate. "),
+	36880: newExifTagDetails(36800, "OffsetTime", "Get time zone from 'Offset Time'"),
+	36881: newExifTagDetails(36800, "OffsetTimeOriginal", "Get time zone from 'Offset Time Original'"),
+	36864: newExifTagDetails(36864, "ExifVersion", "Exif version number. Stored as 4bytes of ASCII character (like 0210) "),
+	36867: newExifTagDetails(36867, "DateTimeOriginal", "Date/Time of original image taken. This value should not be modified by user program. "),
+	36868: newExifTagDetails(36868, "DateTimeDigitized", "Date/Time of image digitized. Usually, it contains the same value of DateTimeOriginal(0x9003). "),
+	37121: newExifTagDetails(37121, "ComponentConfiguration", "It seems value 0x00,0x01,0x02,0x03 always. "),
+	37122: newExifTagDetails(37122, "CompressedBitsPerPixel", "The average compression ratio of JPEG. "),
+	37377: newExifTagDetails(37377, "ShutterSpeedValue", "Shutter speed. To convert this value to ordinary 'Shutter Speed'; calculate this value's power of 2, then reciprocal. For example, if value is '4', shutter speed is 1/(2^4)=1/16 second. "),
+	37378: newExifTagDetails(37378, "ApertureValue", "The actual aperture value of lens when the image was taken. To convert this value to ordinary F-number(F-stop), calculate this value's power of root 2 (=1.4142). For example, if value is '5', F-number is 1.4142^5 = F5.6. "),
+	37379: newExifTagDetails(37379, "BrightnessValue", "Brightness of taken subject, unit is EV. "),
+	37380: newExifTagDetails(37380, "ExposureBiasValue", "Exposure bias value of taking picture. Unit is EV. "),
+	37381: newExifTagDetails(37381, "MaxApertureValue", "Maximum aperture value of lens. You can convert to F-number by calculating power of root 2 (same process of ApertureValue(0x9202). "),
+	37382: newExifTagDetails(37382, "SubjectDistance", "Distance to focus point, unit is meter. "),
+	37383: newExifTagDetails(37383, "MeteringMode", "Exposure metering method. '1' means average, '2' center weighted average, '3' spot, '4' multi-spot, '5' multi-segment. "),
+	37384: newExifTagDetails(37384, "LightSource", "Light source, actually this means white balance setting. '0' means auto, '1' daylight, '2' fluorescent, '3' tungsten, '10' flash. "),
+	37385: newExifTagDetails(37385, "Flash", "'1' means flash was used, '0' means not used. "),
+	37386: newExifTagDetails(37386, "FocalLength", "Focal length of lens used to take image. Unit is millimeter. "),
+	37500: newExifTagDetails(37500, "MakerNote", "Maker dependent internal data. Some of maker such as Olympus/Nikon/Sanyo etc. uses IFD format for this area. "),
+	37510: newExifTagDetails(37510, "UserComment", "Stores user comment. "),
+	40960: newExifTagDetails(40960, "FlashPixVersion", "Stores FlashPix version. Unknown but 4bytes of ASCII characters '0100' exists. "),
+	40961: newExifTagDetails(40961, "ColorSpace", "Value is '1'. "),
+	40962: newExifTagDetails(40962, "ExifImageWidth", "Size of main image. "),
+	40963: newExifTagDetails(40963, "ExifImageHeight", "ExifImageHeight "),
+	40964: newExifTagDetails(40964, "RelatedSoundFile", "If this digicam can record audio data with image, shows name of audio data. "),
+	40965: newExifTagDetails(40965, "ExifInteroperabilityOffset", "Extension of 'ExifR98', detail is unknown. This value is offset to IFD format data. Currently there are 2 directory entries, first one is Tag0x0001, value is 'R98', next is Tag0x0002, value is '0100'. "),
+	41486: newExifTagDetails(41486, "FocalPlaneXResolution", "CCD's pixel density. "),
+	41487: newExifTagDetails(41487, "FocalPlaneYResolution", "FocalPlaneYResolution "),
+	41488: newExifTagDetails(41488, "FocalPlaneResolutionUnit", "Unit of FocalPlaneXResoluton/FocalPlaneYResolution. '1' means no-unit, '2' inch, '3' centimeter. "),
+	41495: newExifTagDetails(41495, "SensingMethod", "Shows type of image sensor unit. '2' means 1 chip color area sensor, most of all digicam use this type. "),
+	41728: newExifTagDetails(41728, "FileSource", "Unknown but value is '3'. "),
+	41729: newExifTagDetails(41729, "SceneType", "Unknown but value is '1'. "),
+	37520: newExifTagDetails(41729, "SubsecTime", "Used to record fractions of seconds for the DateTime tag"),
+	37521: newExifTagDetails(37521, "SubsecTimeOriginal", "Used to record fractions of seconds for the DateTimeOriginal tag."),
+	37522: newExifTagDetails(37522, "SubsecTimeDigitized", "Used to record fractions of seconds for the DateTimeDigitized tag."),
+	41986: newExifTagDetails(41986, "ExposureMode", "Indicates the exposure mode set when the image was shot."),
+	41987: newExifTagDetails(41987, "WhiteBalance", "Indicates the white balance mode set when the image was shot."),
+	41988: newExifTagDetails(41988, "DigitalZoomRatio", "Indicates the digital zoom ratio when the image was shot."),
+	41989: newExifTagDetails(41989, "FocalLengthIn35mmFilm", "Indicates the equivalent focal length assuming a 35mm film camera, in mm."),
+	41990: newExifTagDetails(41990, "SceneCaptureType", "Indicates the type of scene that was shot."),
+	42016: newExifTagDetails(42016, "ImageUniqueID", "Indicates an identifier assigned uniquely to each image"),
+
+	1: newExifTagDetails(1, "GPSLatitudeRef", "Indicates whether the latitude is north or south latitude"),
+	2: newExifTagDetails(2, "GPSLatitude", "Indicates the latitude"),
+	3: newExifTagDetails(3, "GPSLongitudeRef", "Indicates whether the longitude is east or west longitude."),
+	4: newExifTagDetails(4, "GPSLongitude", "Indicates the longitude."),
+	5: newExifTagDetails(5, "GPSAltitudeRef", "Indicates the altitude used as the reference altitude."),
+	6: newExifTagDetails(6, "GPSAltitude", "Indicates the altitude based on the reference in GPSAltitudeRef."),
 }

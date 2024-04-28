@@ -94,3 +94,38 @@
 700:NewTagX(700, "XMP", "XML packet containing XMP metadata"),
 32781:NewTagX(32781, "ImageID", "OPI-related."),
 34732:NewTagX(34732, "ImageLayer", "Defined in the Mixed Raster Content part of RFC 2301, used to denote the particular function of this Image in the mixed raster scheme."),
+
+
+0x829a ExposureTime 1 Exposure time (reciprocal of shutter speed). Unit is second.
+0x829d FNumber 1 The actual F-number(F-stop) of lens when the image was taken.
+0x8822 ExposureProgram 1 Exposure program that the camera used when image was taken. '1' means manual control, '2' program normal, '3' aperture priority, '4' shutter priority, '5' program creative (slow program), '6' program action(high-speed program), '7' portrait mode, '8' landscape mode.
+0x8827 ISOSpeedRatings 2 CCD sensitivity equivalent to Ag-Hr film speedrate.
+0x9000 ExifVersion 4 Exif version number. Stored as 4bytes of ASCII character (like "0210")
+0x9003 DateTimeOriginal 20 Date/Time of original image taken. This value should not be modified by user program.
+0x9004 DateTimeDigitized 20 Date/Time of image digitized. Usually, it contains the same value of DateTimeOriginal(0x9003).
+0x9101 ComponentConfiguration 0 It seems value 0x00,0x01,0x02,0x03 always.
+0x9102 CompressedBitsPerPixel 1 The average compression ratio of JPEG.
+0x9201 ShutterSpeedValue 1 Shutter speed. To convert this value to ordinary 'Shutter Speed'; calculate this value's power of 2, then reciprocal. For example, if value is '4', shutter speed is 1/(2^4)=1/16 second.
+0x9202 ApertureValue 1 The actual aperture value of lens when the image was taken. To convert this value to ordinary F-number(F-stop), calculate this value's power of root 2 (=1.4142). For example, if value is '5', F-number is 1.4142^5 = F5.6.
+0x9203 BrightnessValue 1 Brightness of taken subject, unit is EV.
+0x9204 ExposureBiasValue 1 Exposure bias value of taking picture. Unit is EV.
+0x9205 MaxApertureValue 1 Maximum aperture value of lens. You can convert to F-number by calculating power of root 2 (same process of ApertureValue(0x9202).
+0x9206 SubjectDistance 1 Distance to focus point, unit is meter.
+0x9207 MeteringMode 1 Exposure metering method. '1' means average, '2' center weighted average, '3' spot, '4' multi-spot, '5' multi-segment.
+0x9208 LightSource 1 Light source, actually this means white balance setting. '0' means auto, '1' daylight, '2' fluorescent, '3' tungsten, '10' flash.
+0x9209 Flash 1 '1' means flash was used, '0' means not used.
+0x920a FocalLength 1 Focal length of lens used to take image. Unit is millimeter.
+0x927c MakerNote 0Maker dependent internal data. Some of maker such as Olympus/Nikon/Sanyo etc. uses IFD format for this area.
+0x9286 UserComment 0Stores user comment.
+0xa000 FlashPixVersion 4 Stores FlashPix version. Unknown but 4bytes of ASCII characters "0100"exists.
+0xa001 ColorSpace 1 Unknown, value is '1'.
+0xa002 ExifImageWidth 1 Size of main image.
+0xa003 ExifImageHeight 1
+0xa004 RelatedSoundFile 0If this digicam can record audio data with image, shows name of audio data.
+0xa005 ExifInteroperabilityOffset 1 Extension of "ExifR98", detail is unknown. This value is offset to IFD format data. Currently there are 2 directory entries, first one is Tag0x0001, value is "R98", next is Tag0x0002, value is "0100".
+0xa20e FocalPlaneXResolution 1 CCD's pixel density.
+0xa20f FocalPlaneYResolution 1
+0xa210 FocalPlaneResolutionUnit 1 Unit of FocalPlaneXResoluton/FocalPlaneYResolution. '1' means no-unit, '2' inch, '3' centimeter.
+0xa217 SensingMethod 1 Shows type of image sensor unit. '2' means 1 chip color area sensor, most of all digicam use this type.
+0xa300 FileSource 1 Unknown but value is '3'.
+0xa301 SceneType 1 Unknown but value is '1'.
