@@ -6,111 +6,103 @@ import (
 )
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
-var sd = "12345abc"
-
-var xx = []byte{0xFF, 0xD8, 0xFF, 0xE1, 0x76, 0xD4, 0x45, 0x78, 0x69, 0x66, 0, 0}
-
-func TestWalkerFind(t *testing.T) {
-	bd := []byte(sd)
-	walker := NewWalker(&bd, len(td))
-	if walker.Search("5a") != 4 {
-		t.Fatal("Should find 5a")
-	}
-	b := walker.Advance(1)
-	if b != '5' {
-		t.Fatal("Should find 5")
-	}
-	walker.Reset()
-	if walker.Search("123") != 0 {
-		t.Fatal("Should find 123")
-	}
-	b = walker.Advance(1)
-	if b != '1' {
-		t.Fatal("Should find 5")
-	}
-
-	if walker.Search("ab") != 5 {
-		t.Fatal("Should find ab")
-	}
-	if walker.Search("abc") != 5 {
-		t.Fatal("Should find abc")
-	}
-	walker.Reset()
-	if walker.Search("abcd") != -1 {
-		t.Fatal("Should not find abcd")
-	}
-
-}
 
 func TestWalkerInt(t *testing.T) {
-	walker := NewWalker(&td, len(td))
-	if walker.Int8() != 255 {
+	walker := NewWalker(&td, uint32(len(td)))
+	walker.SetLittleE(false)
+
+	if walker.BytesToUint(walker.Bytes(1)) != 255 {
 		t.Fatal("1st byte != 255")
 	}
-	w1 := fmt.Sprintf("%x", walker.Int16())
+	w1 := fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
 	if w1 != "8ff" {
 		t.Fatal("int word as hex != 8ff")
 	}
-	w1 = fmt.Sprintf("%x", walker.Int16())
+	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
 	if w1 != "4af" {
 		t.Fatal("int word as hex != 4af")
 	}
-	w1 = fmt.Sprintf("%x", walker.Int16())
+	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
 	if w1 != "c645" {
 		t.Fatal("int word as hex != c645")
 	}
 	walker.Reset()
-	w1 = fmt.Sprintf("%x", walker.Int16())
+	walker.SetLittleE(true)
+	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
 	if w1 != "8ff" {
 		t.Fatal("int word-hi as hex != 8ff")
 	}
-	w1 = fmt.Sprintf("%x", walker.SetPos(6))
+	w1 = fmt.Sprintf("%x", walker.Pos(6).BytesToUint(walker.Bytes(1)))
 	if w1 != "45" {
 		t.Fatal("int word-hi as hex != 45")
 	}
+
+	walker.Reset()
+	walker.SetLittleE(false)
+	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
+	if w1 != "ff08" {
+		t.Fatal("int word-hi as hex != ff08")
+	}
+	w1 = fmt.Sprintf("%x", walker.Pos(6).BytesToUint(walker.Bytes(1)))
+	if w1 != "45" {
+		t.Fatal("int word-hi as hex != 45")
+	}
+
+	walker.Reset()
+	w1 = fmt.Sprintf("%x", walker.Pos(0).bytesToUintBE(walker.Bytes(4)))
+	if w1 != "ff08ff04" {
+		t.Fatal("int word-hi as hex != ff08ff04")
+	}
+	w1 = fmt.Sprintf("%x", walker.Pos(0).bytesToUintLE(walker.Bytes(4)))
+	if w1 != "4ff08ff" {
+		t.Fatal("int word-hi as hex != 4ff08ff")
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "setPos past end: Max=7 Requested=8" {
+			if r != "Pos was set past end: Max=7 Requested=8" {
 				t.Fatalf("SetPos(8) Did not panic with correct message")
 			}
 		}
 	}()
-	walker.SetPos(8)
+	walker.Pos(8)
+	t.Fatal("Should not get here")
+
 }
 
 func TestWalkerHex(t *testing.T) {
-	walker := NewWalker(&td, len(td))
-	if walker.Hex8() != "ff" {
+	walker := NewWalker(&td, uint32(len(td)))
+	if walker.Hex(walker.Bytes(1)) != "ff" {
 		t.Fatal("1st byte != ff")
 	}
-	if walker.Hex8() != "08" {
+	if walker.Hex(walker.Bytes(1)) != "08" {
 		t.Fatal("byte != 08")
 	}
 	walker.Retard(1)
-	if walker.Hex8() != "08" {
+	if walker.Hex(walker.Bytes(1)) != "08" {
 		t.Fatal("byte != 08")
 	}
-	if walker.Hex16() != "ff04" {
+	if walker.Hex(walker.Bytes(2)) != "ff04" {
 		t.Fatal("word != ff04")
 	}
 	walker.Retard(2)
-	if walker.Hex16() != "ff04" {
+	if walker.Hex(walker.Bytes(2)) != "ff04" {
 		t.Fatal("word != ff04")
 	}
-	if walker.Hex8() != "af" {
+	if walker.Hex(walker.Bytes(1)) != "af" {
 		t.Fatal("byte != af")
 	}
-	if walker.Hex16() != "c645" {
+	if walker.Hex(walker.Bytes(2)) != "c645" {
 		t.Fatal("word != c645")
 	}
 	defer func() {
 		if r := recover(); r != nil {
 			if r != "Advanced past end: Max=7 Requested=8" {
-				t.Fatalf("Hex16() Did not panic with correct message")
+				t.Fatalf("Hex(2) Did not panic with correct message")
 			}
 		}
 	}()
-	walker.Hex16() // Will take it past end
+	walker.Hex(walker.Bytes(2)) // Will take it past end
 }
 
 func TestImage(t *testing.T) {
@@ -119,52 +111,76 @@ func TestImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	walker := image.walker
-	// ofs (065505 BE) 057855 LE
-	fmt.Printf("%s", image)
-	fmt.Printf(" %s\n", walker.Pos(4).Hex16())
-	fmt.Printf("%s\n", walker.line16(0, 1))
-	fmt.Printf("%s\n", walker.line16(16, 15))
-	fmt.Printf("Offset to IFD0  %d\n", walker.Pos(16).Int32())
-	fmt.Printf("Entries %d\n", walker.Int16())
-	for i := 1; i < 10; i++ {
-		fmt.Println()
-		fmt.Printf("%2d TagNum   %d\n", i, walker.Int16())
-		fmt.Printf("%2d TagType  %d\n", i, walker.Int16())
-		fmt.Printf("%2d Data Len %d\n", i, walker.Int32())
-		fmt.Printf("%2d Location %d\n", i, walker.Int32())
+	fmt.Printf("%s\n", image)
+	fmt.Printf("%s\n", walker.LinePrint(0, 16, 2))
+	fmt.Printf("%s\n", walker.LinePrint(OfsTiffEntries, 12, 20))
+
+	for i, ifd := range image.IFDdata {
+		fmt.Printf("%2d:%s [%s]\n", i, ifd, image.GetIDFData(i))
 	}
+	for i, ifd := range image.IFDdata {
+		tag, ok := MapTags[ifd.tag]
+		if ok {
+			fmt.Printf("%s=%s\n", tag.desc, image.GetIDFData(i))
+		}
 
-	// for i := 0; i < 64; i++ {
-	// 	fmt.Printf("%s,", walker.Hex8())
-	// 	if (i % 16) == 0 {
-	// 		fmt.Println()
-	// 	}
-	// }
-	// fmt.Println()
-
-	// walker.Reset()
-
-	// h16 := walker.Hex16()
-	// if h16 != "ffd8" {
-	// 	t.Fatalf("Not a jpeg image. SOF = %s", h16)
-	// }
-
-	// h16 = walker.Hex16() // APP1 segment marker 0xFFE1
-	// if h16 != "ffe1" {
-	// 	t.Fatalf("Not a APP1 Marker . APP1 = %s", h16)
-	// }
-	// // len := walker.Int16Hi()
-	// // ident := walker.Hex16()
-	// // if len != 10 {
-	// // 	t.Fatalf("Invalid len . APP1 = %d (%d) ident(%s)", len, walker.len, ident)
-	// // }
-	// pos := walker.Search("DateTimeOriginal")
-	// if pos < 0 {
-	// 	t.Fatalf("BOO HOO")
-	// }
-	// for i := 0; i < 40; i++ {
-	// 	fmt.Printf("%c,", walker.Int8())
-	// }
-	// fmt.Println()
-
+	}
 }
+
+/*
+exif:ApertureValue=153/100
+exif:ColorSpace=65535
+exif:DateTime=2023:08:22 18:03:33
+exif:DateTimeDigitized=2023:08:22 18:03:33
+exif:DateTimeOriginal=2023:08:22 18:03:33
+exif:DigitalZoomRatio=229/100
+exif:ExifOffset=246
+exif:ExifVersion=0220
+exif:ExposureBiasValue=0/100
+exif:ExposureMode=0
+exif:ExposureProgram=2
+exif:ExposureTime=1/50
+exif:Flash=0
+exif:FNumber=170/100
+exif:FocalLength=630/100
+exif:FocalLengthIn35mmFilm=23
+exif:GPSAltitude=87/1
+exif:GPSAltitudeRef=0
+exif:GPSInfo=720
+exif:GPSLatitude=51/1,32/1,4224480/1000000
+exif:GPSLatitudeRef=N
+exif:GPSLongitude=3/1,6/1,43447320/1000000
+exif:GPSLongitudeRef=W
+exif:ImageLength=2252
+exif:ImageUniqueID=P12XLPE00NM
+exif:ImageWidth=4000
+exif:Make=samsung
+exif:MaxApertureValue=153/100
+exif:MeteringMode=2
+exif:Model=Galaxy S23 Ultra
+exif:OffsetTime=+01:00
+exif:OffsetTimeOriginal=+01:00
+exif:Orientation=6
+exif:PhotographicSensitivity=800
+exif:PixelXDimension=4000
+exif:PixelYDimension=2252
+exif:ResolutionUnit=2
+exif:SceneCaptureType=0
+exif:ShutterSpeedValue=1/50
+exif:Software=S918BXXS3AWF7
+exif:SubSecTime=845
+exif:SubSecTimeDigitized=845
+exif:SubSecTimeOriginal=845
+exif:thumbnail:Compression=6
+exif:thumbnail:ImageLength=288
+exif:thumbnail:ImageWidth=512
+exif:thumbnail:JPEGInterchangeFormat=972
+exif:thumbnail:JPEGInterchangeFormatLength=44018
+exif:thumbnail:ResolutionUnit=2
+exif:thumbnail:XResolution=72/1
+exif:thumbnail:YResolution=72/1
+exif:WhiteBalance=0
+exif:XResolution=72/1
+exif:YCbCrPositioning=1
+exif:YResolution=72/1
+*/
