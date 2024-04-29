@@ -21,6 +21,8 @@ const OfsMainImageOffset = 16
 const TiffRecordSize = 12
 const TagExifSubIFD uint32 = 34665
 const TagGPSIFD uint32 = 34853
+const TagExifVersion uint32 = 36864
+const TagInteroperability uint32 = 40965
 
 type Tag struct {
 	id       uint32
@@ -29,9 +31,9 @@ type Tag struct {
 }
 
 type TagFormat struct {
-	format TiffFormat
-	length uint32
-	desc   string
+	format  TiffFormat
+	byteLen uint32
+	desc    string
 }
 
 func (p *Tag) String() string {
@@ -39,17 +41,17 @@ func (p *Tag) String() string {
 }
 
 func (p *TagFormat) String() string {
-	return fmt.Sprintf("%d:%d:%s", p.format, p.length, p.desc)
+	return fmt.Sprintf("id:%d cnt:%d:%s", p.format, p.byteLen, p.desc)
 }
 
-func newTagFormat(format TiffFormat, desc string, len uint32) *TagFormat {
-	if len < 1 {
-		len = 1
+func newTagFormat(format TiffFormat, desc string, byteLen uint32) *TagFormat {
+	if byteLen < 1 {
+		byteLen = 1
 	}
 	return &TagFormat{
-		format: format,
-		length: len,
-		desc:   desc,
+		format:  format,
+		byteLen: byteLen,
+		desc:    desc,
 	}
 }
 
@@ -99,7 +101,7 @@ func (p *image) IsExif() bool {
 }
 
 func (p *image) GetValueBytes(ifd *IFDEntry, tt *TagFormat) []byte {
-	byteCount := ifd.length * tt.length
+	byteCount := ifd.items * tt.byteLen
 	if (byteCount) > 4 {
 		// Location is a pointer from the IDFBase
 		return p.walker.Pos(uint32(p.walker.BytesToUint(ifd.location)) + TiffRecordSize).Bytes(byteCount)
@@ -109,34 +111,52 @@ func (p *image) GetValueBytes(ifd *IFDEntry, tt *TagFormat) []byte {
 	}
 }
 
-func (p *image) GetIDFData(index int) (resp string) {
-	defer func() {
-		if r := recover(); r != nil {
-			resp = fmt.Sprintf("%s", r)
-		}
-	}()
+func (p *image) GetIDFData(index int) string {
 	if index < 0 || index >= len(p.IFDdata) {
 		panic(fmt.Sprintf("GetIDFData out or range: max=%d requested=%d", len(p.IFDdata), index))
 	}
+	var line bytes.Buffer
 	ifd := p.IFDdata[index]
+	items := int(ifd.items)
+	tagFormat := MapTiffFormats[ifd.format]
+	bytes := p.GetValueBytes(ifd, tagFormat)
 
-	tiffType := MapTiffFormats[ifd.format]
-	bytes := p.GetValueBytes(ifd, tiffType)
-	switch tiffType.format {
-	case FormatString:
-		return string(bytes[0 : len(bytes)-1])
-	case FormatUint8:
-		return fmt.Sprintf("%d", p.walker.BytesToUint(bytes[0:1]))
-	case FormatUint16:
-		return fmt.Sprintf("%d", p.walker.BytesToUint(bytes[0:2]))
-	case FormatUint32:
-		return fmt.Sprintf("%d", p.walker.BytesToUint(bytes[0:4]))
-	case FormatURational:
-		n := p.walker.BytesToUint(bytes[:4])
-		d := p.walker.BytesToUint(bytes[4:])
-		return fmt.Sprintf("%d/%d", n, d)
+	if tagFormat.format == FormatString {
+		return string(bytes[0 : items-1])
 	}
-	return p.walker.Hex(bytes[0:ifd.length])
+
+	if ifd.tag == TagExifVersion {
+		return string(bytes[0:items])
+	}
+
+	if tagFormat.format == FormatUndefined {
+		line.WriteString(string(bytes[0:items]))
+		line.WriteRune('|')
+	}
+	bytePos := 0
+	byteLen := int(tagFormat.byteLen)
+	for i := 0; i < items; i++ {
+		subBytes := bytes[bytePos : bytePos+byteLen]
+		switch tagFormat.format {
+		case FormatUint8:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
+		case FormatUint16:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
+		case FormatUint32:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
+		case FormatRational, FormatURational:
+			n := p.walker.BytesToUint(subBytes[0:4])
+			d := p.walker.BytesToUint(subBytes[4:])
+			line.WriteString(fmt.Sprintf("%d/%d", n, d))
+		default:
+			line.WriteString(p.walker.Hex(subBytes))
+		}
+		bytePos = bytePos + byteLen
+		if i < (items - 1) {
+			line.WriteRune(',')
+		}
+	}
+	return line.String()
 }
 
 func (p *image) String() string {
@@ -146,7 +166,7 @@ func (p *image) String() string {
 type IFDEntry struct {
 	tag      uint32
 	format   uint16
-	length   uint32
+	items    uint32
 	location []byte
 }
 
@@ -154,7 +174,7 @@ func NewIDFEntry(walker *walker) *IFDEntry {
 	return &IFDEntry{
 		tag:      uint32(walker.BytesToUint(walker.Bytes(2))),
 		format:   uint16(walker.BytesToUint(walker.Bytes(2))),
-		length:   uint32(walker.BytesToUint(walker.Bytes(4))),
+		items:    uint32(walker.BytesToUint(walker.Bytes(4))),
 		location: walker.Bytes(4),
 	}
 }
@@ -170,7 +190,7 @@ func (p *IFDEntry) String() string {
 			longDesc: "",
 		}
 	}
-	return fmt.Sprintf("IDF: TAG[%d]  FORMAT[%s] LEN[%d * %d] Location[%s] Desc[%s]", p.tag, tf, p.length, tf.length, fmt.Sprintf("%x", p.location), ta)
+	return fmt.Sprintf("IDF: TAG[%d]  FORMAT[%s] ITEMS[%d] Location[%s] Desc[%s]", p.tag, tf, p.items, fmt.Sprintf("%x", p.location), ta)
 }
 
 type walker struct {
@@ -223,17 +243,10 @@ func (p *walker) Bytes(n uint32) []byte {
 func (p *walker) Hex(b []byte) string {
 	var line bytes.Buffer
 	for i := 0; i < len(b); i++ {
-		line.WriteString(p.hex8(b[i]))
+		line.WriteString(byteToHex(b[i]))
+		//		line.WriteRune(sep)
 	}
 	return line.String()
-}
-
-func (p *walker) hex8(b byte) string {
-	s := fmt.Sprintf("%x", b)
-	if len(s) == 1 {
-		return "0" + s
-	}
-	return s
 }
 
 func (p *walker) BytesToUint(b []byte) uint64 {
@@ -372,6 +385,11 @@ func pad(i uint32, n int) string {
 }
 
 func GetImage(path string) (*image, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("%s", r)
+		}
+	}()
 	p, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -418,10 +436,8 @@ func (p *image) readDirectory(base uint32, walker *walker) {
 	for i := 0; i < dirCount; i++ {
 		// currentPos := walker.pos
 		ne := NewIDFEntry(walker)
-		if ne.tag == TagExifSubIFD || ne.tag == TagGPSIFD {
+		if ne.tag == TagExifSubIFD || ne.tag == TagGPSIFD || ne.tag == TagInteroperability {
 			ofs := walker.BytesToUint(ne.location)
-			fmt.Println()
-			fmt.Printf("%s\n", walker.LinePrint(uint32(ofs+12), 12, 2))
 			p.readDirectory(uint32(ofs+12), walker.Clone())
 		} else {
 			p.IFDdata = append(p.IFDdata, ne)
@@ -431,6 +447,15 @@ func (p *image) readDirectory(base uint32, walker *walker) {
 }
 
 type TiffFormat uint16
+
+var hexDigits = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'}
+
+func byteToHex(b byte) string {
+	var l bytes.Buffer
+	l.WriteRune(hexDigits[b>>4])
+	l.WriteRune(hexDigits[b&0x0f])
+	return l.String()
+}
 
 /*
  */
@@ -454,7 +479,7 @@ var MapTiffFormats = map[uint16]*TagFormat{
 	2:  newTagFormat(FormatString, "ASCII String", 1),
 	3:  newTagFormat(FormatUint16, "Short Uint16", 2),
 	4:  newTagFormat(FormatUint32, "Long Uint32", 4),
-	5:  newTagFormat(FormatURational, "n/d URationa", 8),
+	5:  newTagFormat(FormatURational, "n/d URational", 8),
 	6:  newTagFormat(FormatInt8, "Byte Int8", 1),
 	7:  newTagFormat(FormatUndefined, "Undefined", 1),
 	8:  newTagFormat(FormatInt8, "Short Int8", 1),
@@ -606,6 +631,7 @@ var MapTags = map[uint32]*Tag{
 	41990: newExifTagDetails(41990, "SceneCaptureType", "Indicates the type of scene that was shot."),
 	42016: newExifTagDetails(42016, "ImageUniqueID", "Indicates an identifier assigned uniquely to each image"),
 
+	0: newExifTagDetails(0, "GPSVersionID", "Indicates the version of GPSInfoIFD."),
 	1: newExifTagDetails(1, "GPSLatitudeRef", "Indicates whether the latitude is north or south latitude"),
 	2: newExifTagDetails(2, "GPSLatitude", "Indicates the latitude"),
 	3: newExifTagDetails(3, "GPSLongitudeRef", "Indicates whether the longitude is east or west longitude."),
