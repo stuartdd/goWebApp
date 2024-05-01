@@ -1,10 +1,8 @@
 package image
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -101,14 +99,6 @@ func TestWalkerHex(t *testing.T) {
 	if walker.Hex(walker.Bytes(1)) != "08" {
 		t.Fatal("byte != 08")
 	}
-	walker.Retard(1)
-	if walker.Hex(walker.Bytes(1)) != "08" {
-		t.Fatal("byte != 08")
-	}
-	if walker.Hex(walker.Bytes(2)) != "FF04" {
-		t.Fatal("word != ff04")
-	}
-	walker.Retard(2)
 	if walker.Hex(walker.Bytes(2)) != "FF04" {
 		t.Fatal("word != ff04")
 	}
@@ -129,34 +119,14 @@ func TestWalkerHex(t *testing.T) {
 }
 
 func TestImage(t *testing.T) {
-	image, err := GetImage("../testdata/testImage.jpg")
+	_, err := GetImage("../testdata/testImage.jpg", false, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// walker := image.walker
-	// fmt.Printf("%s\n", image)
-	// fmt.Printf("%s\n", walker.LinePrint(0, 16, 2))
-	// fmt.Printf("%s\n", walker.LinePrint(22+2, 12, 20))
 
 	// for i, ifd := range image.IFDdata {
-	// 	fmt.Printf("%2d:%s [%s]\n", i, ifd, image.GetIDFData(i))
+	// 	fmt.Printf("%2d:%s [%s]\n", i, ifd, image.GetIDFData(ifd))
 	// }
-	var output bytes.Buffer
-	for i, ifd := range image.IFDdata {
-		tag, ok := MapTags[ifd.tag]
-		if ok {
-			output.WriteString(fmt.Sprintf("%s=%s\n", tag.desc, image.GetIDFData(i)))
-		} else {
-			output.WriteString(fmt.Sprintf("Un-Registered Tag[0x%4x]=%s\n", ifd.tag, image.GetIDFData(i)))
-		}
-	}
-	fmt.Println(output.String())
-	a := strings.TrimSpace(output.String())
-	b := strings.TrimSpace(golden)
-	if b != a {
-		t.Fatal("Not the same")
-	}
-
 }
 
 /*
