@@ -2,6 +2,7 @@ package image
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -78,7 +79,7 @@ func TestHex(t *testing.T) {
 		b = append(b, byte(i))
 	}
 	walker := NewWalker(&b, uint32(len(b)))
-	res := walker.Hex(walker.Bytes(256))
+	res := walker.Hex(walker.Bytes(256), "")
 	for i := 0; i < 256; i++ {
 		b := res[i*2 : (i*2)+2]
 		d, err := strconv.ParseInt("0"+b, 16, 16)
@@ -94,19 +95,19 @@ func TestHex(t *testing.T) {
 
 func TestWalkerHex(t *testing.T) {
 	walker := NewWalker(&td, uint32(len(td)))
-	if walker.Hex(walker.Bytes(1)) != "FF" {
+	if walker.Hex(walker.Bytes(1), "0x") != "0xFF" {
 		t.Fatal("1st byte != ff")
 	}
-	if walker.Hex(walker.Bytes(1)) != "08" {
+	if walker.Hex(walker.Bytes(1), "0x") != "0x08" {
 		t.Fatal("byte != 08")
 	}
-	if walker.Hex(walker.Bytes(2)) != "FF04" {
+	if walker.Hex(walker.Bytes(2), "0x") != "0xFF04" {
 		t.Fatal("word != ff04")
 	}
-	if walker.Hex(walker.Bytes(1)) != "AF" {
+	if walker.Hex(walker.Bytes(1), "") != "AF" {
 		t.Fatal("byte != af")
 	}
-	if walker.Hex(walker.Bytes(2)) != "C645" {
+	if walker.Hex(walker.Bytes(2), "") != "C645" {
 		t.Fatal("word != c645")
 	}
 	defer func() {
@@ -116,30 +117,89 @@ func TestWalkerHex(t *testing.T) {
 			}
 		}
 	}()
-	walker.Hex(walker.Bytes(2)) // Will take it past end
+	walker.Hex(walker.Bytes(2), "") // Will take it past end
 }
 
-func callback(ifd *IFDEntry, walker *Walker) bool {
-	if strings.Contains(ifd.tagData.name, "Date") {
-		// pos := uint32(walker.BytesToUint(ifd.location)) + TiffRecordSize
+// : FF D8 FF E1 8E 1F 45 78 69 66 00 00 4D 4D 00 2A 00 00 00 08 00 09 88 25 00 04 00 00 00 01 00 00 03 F9 01 10 00 02 00 00 00 08 00 00 00 7A 02 13 00 03 065496 065505 036383 017784 026982 000000 019789 000042 000000 000008 000009 034853 000004 000000 000001 000000 001017 000272 000002 000000 000008 000000 000122 000531 000003
+// : ÿ  Ø  ÿ  á      F  x  i  f      M  M    *                %                    ù                        z          FFD8   FFE1   8E1F   4578   6966   0000   4D4D   002A   0000   0008   0009   8825   0004   0000   0001   0000   03F9   0110   0002   0000   0008   0000   007A   0213   0003
+var td1 = []byte{0xFF, 0xD8, 0xFF, 0xE1, 0x8E, 0x1F, 0x46, 0x78, 0x69, 0x66, 0x00, 0x00, 0x4D, 0x4D, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x08, 0x00, 0x09, 0x88, 0x25, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xF9, 0x01, 0x10, 0x00, 0x02, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x7A, 0x02, 0x13, 0x00, 0x03}
+var td2 = []byte{0xFF, 0xD0, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
+var td3 = []byte{0xFF, 0xD8, 0xFF, 0xEF, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
+var td4 = []byte{0xFF, 0xD8, 0xFF, 0xE1, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
 
-		// fmt.Printf("TAG:37510\n%s", walker.LinePrint(walker.posit, 12, 1))
-		// fmt.Printf("TAG:37510\n%s", walker.LinePrint(pos, 100, 1))
-
-		return true
+func TestBadExifMarker(t *testing.T) {
+	createDataFile(t, td1)
+	defer removeDataFile(t)
+	_, err := GetImage("td1.jpg", true, true, true, nil)
+	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
+		t.Fatalf("TD1 %s", err.Error())
 	}
-	return false
 }
 
-func TestImage(t *testing.T) {
-	_, err := GetImage("../testdata/test_data_01.ti", true, false, true, nil)
+func TestBadSOI(t *testing.T) {
+	createDataFile(t, td2)
+	defer removeDataFile(t)
+	_, err := GetImage("td1.jpg", true, true, true, nil)
+	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
+		t.Fatalf("BadSOI %s", err.Error())
+	}
+}
+
+func TestBadA001(t *testing.T) {
+	createDataFile(t, td3)
+	defer removeDataFile(t)
+	_, err := GetImage("td1.jpg", true, true, true, nil)
+	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
+		t.Fatalf("BadA001 %s", err.Error())
+	}
+}
+
+func TestBadJpg(t *testing.T) {
+	createDataFile(t, td4)
+	defer removeDataFile(t)
+	_, err := GetImage("td1.jpg", true, true, true, nil)
+	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
+		t.Fatalf("%s", err.Error())
+	}
+}
+
+func createDataFile(t *testing.T, data []byte) {
+	err := os.WriteFile("td1.jpg", data, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
 
-	// for i, ifd := range image.IFDdata {
-	// 	fmt.Printf("%2d:%s [%s]\n", i, ifd, image.GetIDFData(ifd))
-	// }
+func removeDataFile(t *testing.T) {
+	err := os.Remove("td1.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+const golden string = `DateTimeDigitized=2016:11:06 11:29:18
+DateTimeOriginal=2016:11:06 11:29:18
+`
+
+func TestImage01(t *testing.T) {
+	im, err := GetImage("../testdata/test_data_01.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
+		return strings.Contains(ifd.TagData.Name, "Date")
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if im.Output() != golden {
+		t.Fatalf("Output is not same a golden:\n'%s'\n'%s'", im.Output(), golden)
+	}
+}
+
+func TestImage02(t *testing.T) {
+	_, err := GetImage("../testdata/test_data_02.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
+		return strings.Contains(ifd.TagData.Name, "Date")
+	})
+	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0" {
+		t.Fatal(err)
+	}
 }
 
 /*
@@ -164,59 +224,3 @@ Bytes/component 	1 				2 				4 				8 				4 					8
 
 magick testImage.jpg -print "%[EXIF:*]\n" info:
 */
-
-const golden string = `exif:ApertureValue=153/100
-exif:ColorSpace=65535
-exif:DateTime=2023:08:22 18:03:33
-exif:DateTimeDigitized=2023:08:22 18:03:33
-exif:DateTimeOriginal=2023:08:22 18:03:33
-exif:DigitalZoomRatio=229/100
-exif:ExifOffset=246
-exif:ExifVersion=0220
-exif:ExposureBiasValue=0/100
-exif:ExposureMode=0
-exif:ExposureProgram=2
-exif:ExposureTime=1/50
-exif:Flash=0
-exif:FNumber=170/100
-exif:FocalLength=630/100
-exif:FocalLengthIn35mmFilm=23
-exif:GPSAltitude=87/1
-exif:GPSAltitudeRef=0
-exif:GPSInfo=720
-exif:GPSLatitude=51/1,32/1,4224480/1000000
-exif:GPSLatitudeRef=N
-exif:GPSLongitude=3/1,6/1,43447320/1000000
-exif:GPSLongitudeRef=W
-exif:ImageLength=2252
-exif:ImageUniqueID=P12XLPE00NM
-exif:ImageWidth=4000
-exif:Make=samsung
-exif:MaxApertureValue=153/100
-exif:MeteringMode=2
-exif:Model=Galaxy S23 Ultra
-exif:OffsetTime=+01:00
-exif:OffsetTimeOriginal=+01:00
-exif:Orientation=6
-exif:PhotographicSensitivity=800
-exif:PixelXDimension=4000
-exif:PixelYDimension=2252
-exif:ResolutionUnit=2
-exif:SceneCaptureType=0
-exif:ShutterSpeedValue=1/50
-exif:Software=S918BXXS3AWF7
-exif:SubSecTime=845
-exif:SubSecTimeDigitized=845
-exif:SubSecTimeOriginal=845
-exif:thumbnail:Compression=6
-exif:thumbnail:ImageLength=288
-exif:thumbnail:ImageWidth=512
-exif:thumbnail:JPEGInterchangeFormat=972
-exif:thumbnail:JPEGInterchangeFormatLength=44018
-exif:thumbnail:ResolutionUnit=2
-exif:thumbnail:XResolution=72/1
-exif:thumbnail:YResolution=72/1
-exif:WhiteBalance=0
-exif:XResolution=72/1
-exif:YCbCrPositioning=1
-exif:YResolution=72/1`

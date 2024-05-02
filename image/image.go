@@ -26,9 +26,9 @@ const TagGPSIFD uint32 = 34853
 const TagInteroperabilityIFD uint32 = 40965
 
 type Tag struct {
-	tag            uint32
-	name           string
-	longDesc       string
+	TagNum         uint32
+	Name           string
+	LongDesc       string
 	formatOverride TiffFormat
 }
 
@@ -39,7 +39,7 @@ type TagFormat struct {
 }
 
 func (p *Tag) String() string {
-	return fmt.Sprintf("%s: %s", p.name, p.longDesc)
+	return fmt.Sprintf("%s: %s", p.Name, p.LongDesc)
 }
 
 func (p *TagFormat) String() string {
@@ -59,9 +59,9 @@ func newTagFormat(format TiffFormat, desc string, byteLen uint32) *TagFormat {
 
 func newExifTagDetails(tag uint32, desc string, formatOverride TiffFormat, longD string) *Tag {
 	return &Tag{
-		tag:            tag,
-		name:           desc,
-		longDesc:       longD,
+		TagNum:         tag,
+		Name:           desc,
+		LongDesc:       longD,
 		formatOverride: formatOverride,
 	}
 }
@@ -69,8 +69,8 @@ func newExifTagDetails(tag uint32, desc string, formatOverride TiffFormat, longD
 type IFDEntry struct {
 	itemCount   uint32
 	location    []byte
-	value       string
-	tagData     *Tag
+	Value       string
+	TagData     *Tag
 	tagFormat   *TagFormat
 	DataAddress uint32
 	ByteCount   uint32
@@ -98,8 +98,8 @@ func newIFDEntry(walker *Walker) *IFDEntry {
 	return &IFDEntry{
 		itemCount:   items,
 		location:    loc,
-		value:       "",
-		tagData:     tagData,
+		Value:       "",
+		TagData:     tagData,
 		tagFormat:   tagFmt,
 		DataAddress: addressOfData,
 		ByteCount:   byteCount,
@@ -107,117 +107,12 @@ func newIFDEntry(walker *Walker) *IFDEntry {
 
 }
 
-func (p *IFDEntry) diagnostics(m string) string {
-	return fmt.Sprintf("IFD:%s TAG[%d:%s] FORMAT[%s] ITEM_COUNT[%d] LOCATION[%s] VALUE[%s] TAG_DESC[%s]", m, p.tagData.tag, p.tagData.name, p.tagFormat, p.itemCount, bytesToHex(p.location), p.value, p.tagData.longDesc)
+func (p *IFDEntry) Diagnostics(m string) string {
+	return fmt.Sprintf("IFD:%s TAG[%d:%s] FORMAT[%s] ITEM_COUNT[%d] LOCATION[%s] VALUE[%s] TAG_DESC[%s]", m, p.TagData.TagNum, p.TagData.Name, p.tagFormat, p.itemCount, bytesToHex(p.location), p.Value, p.TagData.LongDesc)
 }
 
-func (p *IFDEntry) output() string {
-	return fmt.Sprintf("%s=%s", p.tagData.name, p.value)
-}
-
-type image struct {
-	name          string
-	walker        *Walker
-	soi           string
-	exif          bool
-	app1Marker    string
-	app1Size      uint32 // APP1 data size
-	mainDirOffset uint32
-	IFDdata       []*IFDEntry
-	debug         bool
-	echo          bool
-	sort          bool
-	selector      func(*IFDEntry, *Walker) bool
-}
-
-func (p *image) diagnostics(m string) string {
-	return fmt.Sprintf("DEBUG:%s SOI[%s]  APP1 Mark[%s] APP1 Size[%d] FileLen[%d]Name[%s] LittleE[%t] EXIF[%t] OffsetToMainDir[%d] Entries[%d]\n", m, p.soi, p.app1Marker, p.app1Size, p.walker.len, p.name, p.walker.littleE, p.IsExif(), p.mainDirOffset, len(p.IFDdata))
-}
-
-func (p *image) sortEntries() {
-	m := map[string]*IFDEntry{}
-	for i, x := range p.IFDdata {
-		tag, ok := mapTags[x.tagData.tag]
-		if ok {
-			m[tag.name] = x
-		} else {
-			m[fmt.Sprintf("x:%4x:%d", x.tagData.tag, i)] = x
-		}
-	}
-
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	sorted := make([]*IFDEntry, len(keys))
-	for i, s := range keys {
-		sorted[i] = m[s]
-	}
-	p.IFDdata = sorted
-}
-
-func (p *image) IsExif() bool {
-	return p.exif
-}
-
-func (p *image) getValueBytes(ifd *IFDEntry) []byte {
-	byteCount := ifd.itemCount * ifd.tagFormat.byteLen
-	if (byteCount) > 4 {
-		// Location is a pointer from the IDFBase
-		// Clone the walker so we can use it to get the bytes without effecting the parser
-		w := p.walker.Clone()
-		return w.Pos(uint32(w.BytesToUint(ifd.location)) + TiffRecordSize).Bytes(byteCount)
-	} else {
-		// Location is the value
-		return ifd.location
-	}
-}
-
-func (p *image) GetIDFData(ifd *IFDEntry) string {
-	var line bytes.Buffer
-	bytes := p.getValueBytes(ifd)
-	items := int(ifd.itemCount)
-	tagFormat := ifd.tagFormat
-
-	if tagFormat.tiffFormat == FormatString {
-		for _, c := range bytes {
-			if c == 0 {
-				break
-			}
-			line.WriteByte(c)
-		}
-		return strings.TrimSpace(line.String())
-	}
-
-	if ifd.tagData.tag == TagExifVersion {
-		return string(bytes[0 : items-1])
-	}
-
-	bytePos := 0
-	byteLen := int(tagFormat.byteLen)
-	for i := 0; i < items; i++ {
-		subBytes := bytes[bytePos : bytePos+byteLen]
-		switch tagFormat.tiffFormat {
-		case FormatUint8:
-			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
-		case FormatUint16:
-			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
-		case FormatUint32:
-			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
-		case FormatRational, FormatURational:
-			n := p.walker.BytesToUint(subBytes[0:4])
-			d := p.walker.BytesToUint(subBytes[4:])
-			line.WriteString(fmt.Sprintf("%d/%d", n, d))
-		default:
-			line.WriteString(p.walker.Hex(subBytes))
-		}
-		bytePos = bytePos + byteLen
-		if i < (items - 1) {
-			line.WriteRune(',')
-		}
-	}
-	return line.String()
+func (p *IFDEntry) Output() string {
+	return fmt.Sprintf("%s=%s", p.TagData.Name, p.Value)
 }
 
 type Walker struct {
@@ -267,8 +162,8 @@ func (p *Walker) Bytes(n uint32) []byte {
 	return b
 }
 
-func (p *Walker) Hex(b []byte) string {
-	return bytesToHex(b)
+func (p *Walker) Hex(b []byte, pre string) string {
+	return pre + bytesToHex(b)
 }
 
 func (p *Walker) BytesToUint(b []byte) uint64 {
@@ -276,6 +171,13 @@ func (p *Walker) BytesToUint(b []byte) uint64 {
 		return p.bytesToUintLE(b)
 	}
 	return p.bytesToUintBE(b)
+}
+
+func (p *Walker) BytesToInt(b []byte) int64 {
+	if p.littleE {
+		return int64(p.bytesToUintLE(b))
+	}
+	return int64(p.bytesToUintBE(b))
 }
 
 func (p *Walker) bytesToUintLE(b []byte) uint64 {
@@ -363,7 +265,7 @@ func (q *Walker) LinePrint(start uint32, count int, lines int) string {
 		line.WriteRune(' ')
 		p := clone.posit
 		for i := 0; i < count; i++ {
-			line.WriteString(clone.Hex(clone.Bytes(1)))
+			line.WriteString(clone.Hex(clone.Bytes(1), ""))
 			line.WriteRune(' ')
 		}
 		clone.Pos(p)
@@ -381,7 +283,7 @@ func (q *Walker) LinePrint(start uint32, count int, lines int) string {
 		}
 		clone.Pos(p)
 		for i := 0; i < count/2; i++ {
-			line.WriteString(clone.Hex(clone.Bytes(2)))
+			line.WriteString(clone.Hex(clone.Bytes(2), ""))
 			line.WriteString("   ")
 		}
 		line.WriteString("\n")
@@ -389,10 +291,28 @@ func (q *Walker) LinePrint(start uint32, count int, lines int) string {
 	return line.String()
 }
 
-func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry, *Walker) bool) (*image, error) {
+type image struct {
+	name          string
+	walker        *Walker
+	soi           string
+	exif          bool
+	app1Marker    string
+	app1Size      uint32 // APP1 data size
+	mainDirOffset uint32
+	IFDdata       []*IFDEntry
+	debug         bool
+	echo          bool
+	sort          bool
+	selector      func(*IFDEntry, *Walker) bool
+}
+
+func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry, *Walker) bool) (img *image, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			os.Stderr.WriteString(fmt.Sprintf("%s\n", r))
+			msg := fmt.Sprintf("PANIC:%s", r)
+			os.Stderr.WriteString(msg)
+			img = nil
+			err = fmt.Errorf(msg)
 		}
 	}()
 	p, err := filepath.Abs(path)
@@ -417,12 +337,35 @@ func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 		selector:   sel,
 		name:       path,
 		walker:     walker,
-		soi:        walker.Pos(OfsSOI).Hex(walker.Bytes(2)),
-		app1Marker: walker.Pos(OfsAPP1Marker).Hex(walker.Bytes(2)),
-		app1Size:   uint32(walker.Pos(OfsAPP1Size).bytesToUintBE(walker.Bytes(2))), // Always Big Endian
-		exif:       walker.Pos(OfsExifHeader).ZstringEquals("Exif"),
-		IFDdata:    []*IFDEntry{},
+		soi:        walker.Pos(OfsSOI).Hex(walker.Bytes(2), ""),
+		app1Marker: walker.Pos(OfsAPP1Marker).Hex(walker.Bytes(2), ""),
+		// Always Big Endian
+		// Size includes the size bytes so sub 2
+		app1Size: uint32(walker.Pos(OfsAPP1Size).bytesToUintBE(walker.Bytes(2)) - 2),
+		exif:     walker.Pos(OfsExifHeader).ZstringEquals("Exif"),
+		IFDdata:  []*IFDEntry{},
 	}
+
+	if image.debug {
+		os.Stdout.WriteString(image.Diagnostics("IMG"))
+		os.Stdout.WriteString("\n")
+		if image.selector != nil {
+			if !image.selector(nil, walker.Clone().Pos(OfsMainImageOffset)) {
+				os.Exit(1)
+			}
+		}
+	}
+
+	if image.soi != "FFD8" {
+		panic(fmt.Sprintf("Jpeg marker 'FFD8' is missing (Offset %d) found %s", OfsSOI, image.soi))
+	}
+	if image.app1Marker != "FFE1" {
+		panic(fmt.Sprintf("Jpeg APP1 marker 'FFE1' is missing (Offset %d) found %s", OfsAPP1Marker, image.app1Marker))
+	}
+	if !image.exif {
+		panic(fmt.Sprintf("Jpeg 'Exif' data marker is missing (Offset %d) found %s", OfsExifHeader, bytesToZString(walker.Pos(OfsExifHeader).Bytes(6))))
+	}
+
 	image.walker.littleE = (walker.Pos(OfsEndianDef).ZstringEquals("II*"))
 	/*
 		The rest of the image data needs to know the littleE setting to work
@@ -430,10 +373,6 @@ func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 		Calc the start if the tags Using TIFF Header offset
 	*/
 	image.mainDirOffset = uint32(walker.Pos(OfsMainImageOffset).BytesToUint(walker.Bytes(4)))
-
-	if image.debug {
-		os.Stdout.WriteString(image.diagnostics(""))
-	}
 
 	mainTiffDir := OfsMainImageOffset + image.mainDirOffset - uint32(4)
 	image.readDirectory(mainTiffDir, walker, 0)
@@ -444,11 +383,110 @@ func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 
 	if image.echo {
 		for _, ifd := range image.IFDdata {
-			os.Stdout.WriteString(ifd.output())
+			os.Stdout.WriteString(ifd.Output())
 			os.Stdout.WriteString("\n")
 		}
 	}
 	return image, nil
+}
+
+func (p *image) Diagnostics(m string) string {
+	return fmt.Sprintf("DEBUG:%s SOI[%s]  APP1 Mark[%s] APP1 Size[%d] FileLen[%d]Name[%s] LittleE[%t] EXIF[%t] OffsetToMainDir[%d] Entries[%d]", m, p.soi, p.app1Marker, p.app1Size, p.walker.len, p.name, p.walker.littleE, p.IsExif(), p.mainDirOffset, len(p.IFDdata))
+}
+
+func (p *image) Output() string {
+	var line bytes.Buffer
+	for _, o := range p.IFDdata {
+		line.WriteString(o.Output())
+		line.WriteString("\n")
+	}
+	return line.String()
+}
+
+func (p *image) sortEntries() {
+	m := map[string]*IFDEntry{}
+	for i, x := range p.IFDdata {
+		tag, ok := mapTags[x.TagData.TagNum]
+		if ok {
+			m[tag.Name] = x
+		} else {
+			m[fmt.Sprintf("x:%4x:%d", x.TagData.TagNum, i)] = x
+		}
+	}
+
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	sorted := make([]*IFDEntry, len(keys))
+	for i, s := range keys {
+		sorted[i] = m[s]
+	}
+	p.IFDdata = sorted
+}
+
+func (p *image) IsExif() bool {
+	return p.exif
+}
+
+func (p *image) getValueBytes(ifd *IFDEntry) []byte {
+	byteCount := ifd.itemCount * ifd.tagFormat.byteLen
+	if (byteCount) > 4 {
+		// Location is a pointer from the IDFBase
+		// Clone the walker so we can use it to get the bytes without effecting the parser
+		w := p.walker.Clone()
+		return w.Pos(uint32(w.BytesToUint(ifd.location)) + TiffRecordSize).Bytes(byteCount)
+	} else {
+		// Location is the value
+		return ifd.location
+	}
+}
+
+func (p *image) GetIDFData(ifd *IFDEntry) string {
+	var line bytes.Buffer
+	bytes := p.getValueBytes(ifd)
+	items := int(ifd.itemCount)
+	tagFormat := ifd.tagFormat
+
+	if tagFormat.tiffFormat == FormatString || ifd.TagData.TagNum == TagExifVersion {
+		return bytesToZString(bytes)
+	}
+
+	bytePos := 0
+	byteLen := int(tagFormat.byteLen)
+	for i := 0; i < items; i++ {
+		subBytes := bytes[bytePos : bytePos+byteLen]
+		switch tagFormat.tiffFormat {
+		case FormatUint8:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
+		case FormatInt8:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToInt(subBytes)))
+		case FormatUint16:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
+		case FormatInt16:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToInt(subBytes)))
+		case FormatUint32:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToUint(subBytes)))
+		case FormatInt32:
+			line.WriteString(fmt.Sprintf("%d", p.walker.BytesToInt(subBytes)))
+		case FormatURational:
+			n := p.walker.BytesToUint(subBytes[0:4])
+			d := p.walker.BytesToUint(subBytes[4:])
+			line.WriteString(fmt.Sprintf("%d/%d", n, d))
+		case FormatRational:
+			n := p.walker.BytesToInt(subBytes[0:4])
+			d := p.walker.BytesToInt(subBytes[4:])
+			line.WriteString(fmt.Sprintf("%d/%d", n, d))
+		default:
+			line.WriteString(p.walker.Hex(subBytes, "0x"))
+		}
+		bytePos = bytePos + byteLen
+		if i < (items - 1) {
+			line.WriteRune(',')
+		}
+	}
+	return line.String()
 }
 
 func (p *image) readDirectory(base uint32, walker *Walker, dirId uint32) {
@@ -459,18 +497,18 @@ func (p *image) readDirectory(base uint32, walker *Walker, dirId uint32) {
 	for i := 0; i < dirCount; i++ {
 		current := walker.posit
 		ne := newIFDEntry(walker)
-		ne.value = p.GetIDFData(ne)
-		if ne.tagData.tag == TagExifSubIFD || ne.tagData.tag == TagGPSIFD || ne.tagData.tag == TagInteroperabilityIFD {
+		ne.Value = p.GetIDFData(ne)
+		if ne.TagData.TagNum == TagExifSubIFD || ne.TagData.TagNum == TagGPSIFD || ne.TagData.TagNum == TagInteroperabilityIFD {
 			ofs := walker.BytesToUint(ne.location)
-			p.readDirectory(uint32(ofs+12), walker.Clone(), ne.tagData.tag)
+			p.readDirectory(uint32(ofs+12), walker.Clone(), ne.TagData.TagNum)
 		} else {
 			if p.debug {
 				var n string
 				n, ok := dirTagNames[dirId]
 				if ok {
-					os.Stdout.WriteString(ne.diagnostics(fmt.Sprintf("[%d]%s", i, n)))
+					os.Stdout.WriteString(ne.Diagnostics(fmt.Sprintf("[%d]%s", i, n)))
 				} else {
-					os.Stdout.WriteString(ne.diagnostics(fmt.Sprintf("[%d]%d", i, ne.tagData.tag)))
+					os.Stdout.WriteString(ne.Diagnostics(fmt.Sprintf("[%d]%d", i, ne.TagData.TagNum)))
 				}
 				os.Stdout.WriteString("\n")
 			}
@@ -499,6 +537,17 @@ func byteToHex(b byte) string {
 	l.WriteRune(hexDigits[b>>4])
 	l.WriteRune(hexDigits[b&0x0f])
 	return l.String()
+}
+
+func bytesToZString(b []byte) string {
+	var line bytes.Buffer
+	for _, c := range b {
+		if c == 0 {
+			break
+		}
+		line.WriteByte(c)
+	}
+	return strings.TrimSpace(line.String())
 }
 
 func pad(i uint32, n int) string {
@@ -543,9 +592,9 @@ func ToTagData(tag uint32) *Tag {
 	ta, ok := mapTags[tag]
 	if !ok {
 		ta = &Tag{
-			tag:      tag,
-			name:     fmt.Sprintf("Undefined. Tag 0x%4x", tag),
-			longDesc: "",
+			TagNum:   tag,
+			Name:     fmt.Sprintf("Undefined. Tag 0x%4x", tag),
+			LongDesc: "",
 		}
 	}
 	return ta
