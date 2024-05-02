@@ -3,6 +3,7 @@ package image
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -118,8 +119,20 @@ func TestWalkerHex(t *testing.T) {
 	walker.Hex(walker.Bytes(2)) // Will take it past end
 }
 
+func callback(ifd *IFDEntry, walker *Walker) bool {
+	if strings.Contains(ifd.tagData.name, "Date") {
+		// pos := uint32(walker.BytesToUint(ifd.location)) + TiffRecordSize
+
+		// fmt.Printf("TAG:37510\n%s", walker.LinePrint(walker.posit, 12, 1))
+		// fmt.Printf("TAG:37510\n%s", walker.LinePrint(pos, 100, 1))
+
+		return true
+	}
+	return false
+}
+
 func TestImage(t *testing.T) {
-	_, err := GetImage("../testdata/testImage.jpg", false, true, true)
+	_, err := GetImage("../testdata/test_data_01.ti", true, false, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
