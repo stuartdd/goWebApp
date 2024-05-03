@@ -1,7 +1,6 @@
 package image
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -31,8 +30,10 @@ func TestWalker(t *testing.T) {
 	fmt.Println(c)
 
 	const tdFileJson = "td1.json"
-	j, _ := json.Marshal(l)
-	createDataFile(t, j, tdFileJson)
+	err = l.Save(tdFileJson)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer removeDataFile(t, tdFileJson)
 
 	count := 0
@@ -53,15 +54,7 @@ func TestWalker(t *testing.T) {
 	}
 	fmt.Println(count)
 
-	dd, err := os.ReadFile(tdFileJson)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ll := newPicDir("Root")
-	err = json.Unmarshal(dd, ll)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ll, err := newPicDir("Root").Load(tdFileJson)
 
 	count = 0
 	ll.VisitEachFile(func(p *PicPath, s string) {

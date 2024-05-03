@@ -2,6 +2,7 @@ package image
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -51,6 +52,43 @@ func (p *PicPath) pop() string {
 	return ""
 }
 
+func newPicDir(dir string) *PicDir {
+	return &PicDir{
+		Dir:   dir,
+		Files: []*PicFile{},
+		Subs:  []*PicDir{},
+	}
+}
+
+func (p *PicDir) Load(fil string) (*PicDir, error) {
+	dd, err := os.ReadFile(fil)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(dd, p)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (p *PicDir) ToJson() ([]byte, error) {
+	j, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return []byte{}, err
+	}
+	return j, nil
+
+}
+
+func (p *PicDir) Save(fil string) error {
+	jData, err := p.ToJson()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(fil, jData, 0644)
+}
+
 func (p *PicDir) VisitEachFile(onFile func(*PicPath, string)) {
 	pp := newPicPath()
 	p.visitEachFile(pp, onFile)
@@ -66,14 +104,6 @@ func (p *PicDir) visitEachFile(path *PicPath, onFile func(*PicPath, string)) {
 		path.push(d.Dir)
 		d.visitEachFile(path, onFile)
 		path.pop()
-	}
-}
-
-func newPicDir(dir string) *PicDir {
-	return &PicDir{
-		Dir:   dir,
-		Files: []*PicFile{},
-		Subs:  []*PicDir{},
 	}
 }
 
@@ -117,7 +147,7 @@ func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 		return nil, err
 	}
 	pref := len(f) + 1
-	dir := newPicDir("root")
+	dir := newPicDir(f)
 	filepath.Walk(f, func(path string, info fs.FileInfo, err error) error {
 		if info != nil {
 			if !info.IsDir() {
