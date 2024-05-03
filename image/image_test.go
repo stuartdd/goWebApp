@@ -1,6 +1,7 @@
 package image
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -9,6 +10,78 @@ import (
 )
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
+
+func TestWalker(t *testing.T) {
+	m := map[string]string{}
+
+	c := 0
+	l, err := WalkDir("/home/stuart/git/originals", func(p string, n string) bool {
+		_, ok := m[p]
+		if ok {
+			t.Fatalf("Duplicate of walk! %s", p)
+		}
+		m[p] = "."
+		c++
+		return strings.HasSuffix(n, ".jpg") || strings.HasSuffix(n, ".JPG")
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to walk %v", err)
+	}
+	fmt.Println(c)
+
+	const tdFileJson = "td1.json"
+	j, _ := json.Marshal(l)
+	createDataFile(t, j, tdFileJson)
+	defer removeDataFile(t, tdFileJson)
+
+	count := 0
+	l.VisitEachFile(func(p *PicPath, s string) {
+		fn := fmt.Sprintf("/home/stuart/git/originals/%s%s", p, s)
+		_, err = os.Stat(fn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, ok := m[fn]
+		if !ok {
+			t.Fatalf("Node is NOT in the map! %s", fn)
+		}
+		count++
+	})
+	if count != c {
+		t.Fatalf("Number of nodes added (%d) != nodes visited (%d)", c, count)
+	}
+	fmt.Println(count)
+
+	dd, err := os.ReadFile(tdFileJson)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ll := newPicDir("Root")
+	err = json.Unmarshal(dd, ll)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count = 0
+	ll.VisitEachFile(func(p *PicPath, s string) {
+		fn := fmt.Sprintf("/home/stuart/git/originals/%s%s", p, s)
+		_, err = os.Stat(fn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, ok := m[fn]
+		if !ok {
+			t.Fatalf("Node is NOT in the map! %s", fn)
+		}
+		count++
+	})
+	if count != c {
+		t.Fatalf("Number of nodes added (%d) != nodes visited (%d)", c, count)
+	}
+
+	fmt.Println(count)
+}
 
 func TestWalkerInt(t *testing.T) {
 	walker := NewWalker(&td, uint32(len(td)))
@@ -127,51 +200,53 @@ var td2 = []byte{0xFF, 0xD0, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x0
 var td3 = []byte{0xFF, 0xD8, 0xFF, 0xEF, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
 var td4 = []byte{0xFF, 0xD8, 0xFF, 0xE1, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
 
+const tdFile = "td1.jpg"
+
 func TestBadExifMarker(t *testing.T) {
-	createDataFile(t, td1)
-	defer removeDataFile(t)
-	_, err := GetImage("td1.jpg", true, true, true, nil)
+	createDataFile(t, td1, tdFile)
+	defer removeDataFile(t, tdFile)
+	_, err := GetImage(tdFile, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
 		t.Fatalf("TD1 %s", err.Error())
 	}
 }
 
 func TestBadSOI(t *testing.T) {
-	createDataFile(t, td2)
-	defer removeDataFile(t)
-	_, err := GetImage("td1.jpg", true, true, true, nil)
+	createDataFile(t, td2, tdFile)
+	defer removeDataFile(t, tdFile)
+	_, err := GetImage(tdFile, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
 		t.Fatalf("BadSOI %s", err.Error())
 	}
 }
 
 func TestBadA001(t *testing.T) {
-	createDataFile(t, td3)
-	defer removeDataFile(t)
-	_, err := GetImage("td1.jpg", true, true, true, nil)
+	createDataFile(t, td3, tdFile)
+	defer removeDataFile(t, tdFile)
+	_, err := GetImage(tdFile, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
 		t.Fatalf("BadA001 %s", err.Error())
 	}
 }
 
 func TestBadJpg(t *testing.T) {
-	createDataFile(t, td4)
-	defer removeDataFile(t)
-	_, err := GetImage("td1.jpg", true, true, true, nil)
+	createDataFile(t, td4, tdFile)
+	defer removeDataFile(t, tdFile)
+	_, err := GetImage(tdFile, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
 		t.Fatalf("%s", err.Error())
 	}
 }
 
-func createDataFile(t *testing.T, data []byte) {
-	err := os.WriteFile("td1.jpg", data, 0644)
+func createDataFile(t *testing.T, data []byte, fil string) {
+	err := os.WriteFile(fil, data, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func removeDataFile(t *testing.T) {
-	err := os.Remove("td1.jpg")
+func removeDataFile(t *testing.T, fil string) {
+	err := os.Remove(fil)
 	if err != nil {
 		t.Fatal(err)
 	}
