@@ -1,10 +1,10 @@
 package image
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -116,18 +116,58 @@ func (p *IFDEntry) Output() string {
 }
 
 type Walker struct {
-	data    *[]uint8
+	data    *ExtendBuffer
 	posit   uint32
-	len     uint32
 	littleE bool
 }
 
-func NewWalker(b *[]uint8, len uint32) *Walker {
+type ExtendBuffer struct {
+	extendBy uint32
+	reader   *bufio.Reader
+	buff     []uint8
+	length   uint32
+}
+
+func NewExtendBuffer(reader *bufio.Reader, size uint32, extendBy uint32) *ExtendBuffer {
+	eb := &ExtendBuffer{
+		reader:   reader,
+		buff:     make([]uint8, 0),
+		length:   0,
+		extendBy: extendBy,
+	}
+	eb.extend(size)
+	return eb
+}
+
+func (p *ExtendBuffer) extend(required uint32) {
+	buffer := make([]byte, required+p.extendBy)
+	lenRead, err := p.reader.Read(buffer)
+	if err != nil {
+		if required > uint32(lenRead) || lenRead == 0 {
+			panic(fmt.Sprintf("Failed to extend buffer by %d. Only able to read %d. Error: %s", required, lenRead, err.Error()))
+		}
+	}
+	if required > uint32(lenRead) {
+		panic(fmt.Sprintf("Failed to extend buffer by %d. Only able to read %d.", required, lenRead))
+	}
+	p.buff = append(p.buff, buffer[:lenRead]...)
+	p.length = p.length + uint32(lenRead)
+}
+
+func NewWalker(reader *bufio.Reader, lenToRead uint32, extendBy uint32) (*Walker, error) {
+	buffer := NewExtendBuffer(reader, lenToRead, extendBy)
 	return &Walker{
-		data:    b,
+		data:    buffer,
 		posit:   0,
-		len:     len,
 		littleE: false,
+	}, nil
+}
+
+func (p *Walker) Clone() *Walker {
+	return &Walker{
+		data:    p.data,
+		posit:   p.posit,
+		littleE: p.littleE,
 	}
 }
 
@@ -138,9 +178,9 @@ func (p *Walker) SetLittleE(yes bool) {
 func (p *Walker) Zstring(max int) string {
 	var line bytes.Buffer
 	count := 0
-	for p.canAdvance() {
+	for count < max {
 		b := p.Advance(1)
-		if b > 0 && count < max {
+		if b > 0 {
 			line.WriteByte(byte(b))
 		} else {
 			return line.String()
@@ -216,42 +256,29 @@ func (p *Walker) Char() string {
 	return string(byte(b & 0xFF))
 }
 
-func (p *Walker) canNotAdvance() bool {
-	return p.posit >= p.len
-}
-
-func (p *Walker) canAdvance() bool {
-	return p.posit < p.len
-}
-
-func (p *Walker) Reset() *Walker {
-	p.posit = 0
-	return p
-}
-
 func (p *Walker) Advance(n uint32) uint32 {
-	if p.canNotAdvance() {
-		panic(fmt.Sprintf("Advanced past end: Max=%d Requested=%d", p.len-1, p.posit))
-	}
-	b := (*p.data)[p.posit]
+	// if !p.ensurePos(p.posit) {
+	// 	panic(fmt.Sprintf("Advanced past end of file: Max=%d Requested=%d", p.data.length-1, p.posit))
+	// }
+	p.ensurePos(p.posit)
+	b := p.data.buff[p.posit]
 	p.posit = p.posit + n
 	return uint32(b) & 0xFF
 }
 
 func (p *Walker) Pos(n uint32) *Walker {
-	if n >= p.len {
-		panic(fmt.Sprintf("Pos was set past end: Max=%d Requested=%d", p.len-1, n))
-	}
+	// if !p.ensurePos(n) {
+	// 	panic(fmt.Sprintf("Pos was set past end: Max=%d Requested=%d", p.data.length-1, n))
+	// }
+	p.ensurePos(n)
 	p.posit = n
 	return p
 }
 
-func (p *Walker) Clone() *Walker {
-	return &Walker{
-		data:    p.data,
-		posit:   p.posit,
-		len:     p.len,
-		littleE: p.littleE,
+func (p *Walker) ensurePos(pos uint32) {
+	if pos >= p.data.length {
+		required := pos - (p.data.length - 1)
+		p.data.extend(required)
 	}
 }
 
@@ -315,21 +342,21 @@ func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 			err = fmt.Errorf(msg)
 		}
 	}()
+
 	p, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
-	reader, err := os.Open(p)
+	fil, err := os.Open(p)
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer fil.Close()
 
-	byteArray, err := io.ReadAll(reader)
+	walker, err := NewWalker(bufio.NewReader(fil), 1024, 512)
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("Failed to read file: %v", err))
 	}
-	walker := NewWalker(&byteArray, uint32(len(byteArray)))
 	image := &image{
 		debug:      debug,
 		echo:       echo,
@@ -391,7 +418,7 @@ func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 }
 
 func (p *image) Diagnostics(m string) string {
-	return fmt.Sprintf("DEBUG:%s SOI[%s]  APP1 Mark[%s] APP1 Size[%d] FileLen[%d]Name[%s] LittleE[%t] EXIF[%t] OffsetToMainDir[%d] Entries[%d]", m, p.soi, p.app1Marker, p.app1Size, p.walker.len, p.name, p.walker.littleE, p.IsExif(), p.mainDirOffset, len(p.IFDdata))
+	return fmt.Sprintf("DEBUG:%s SOI[%s]  APP1 Mark[%s] APP1 Size[%d] FileLen[%d]Name[%s] LittleE[%t] EXIF[%t] OffsetToMainDir[%d] Entries[%d]", m, p.soi, p.app1Marker, p.app1Size, p.walker.data.length, p.name, p.walker.littleE, p.IsExif(), p.mainDirOffset, len(p.IFDdata))
 }
 
 func (p *image) Output() string {

@@ -1,12 +1,16 @@
 package image
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+const tdFileJson = "td1.json"
+const tdFileJpeg = "td1.jpg"
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
 
@@ -29,12 +33,11 @@ func TestWalker(t *testing.T) {
 	}
 	fmt.Println(c)
 
-	const tdFileJson = "td1.json"
 	err = l.Save(tdFileJson)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer removeDataFile(t, tdFileJson)
+	defer removeDataFile(tdFileJson)
 
 	count := 0
 	l.VisitEachFile(func(p *PicPath, s string) {
@@ -77,7 +80,13 @@ func TestWalker(t *testing.T) {
 }
 
 func TestWalkerInt(t *testing.T) {
-	walker := NewWalker(&td, uint32(len(td)))
+	createDataFile(t, td, tdFileJpeg)
+	walker, err := NewWalker(createReader(t, tdFileJpeg), uint32(len(td)), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeDataFile(tdFileJpeg)
+
 	walker.SetLittleE(false)
 
 	if walker.BytesToUint(walker.Bytes(1)) != 255 {
@@ -95,7 +104,7 @@ func TestWalkerInt(t *testing.T) {
 	if w1 != "c645" {
 		t.Fatal("int word as hex != c645")
 	}
-	walker.Reset()
+	walker.Pos(0)
 	walker.SetLittleE(true)
 	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
 	if w1 != "8ff" {
@@ -106,7 +115,7 @@ func TestWalkerInt(t *testing.T) {
 		t.Fatal("int word-hi as hex != 45")
 	}
 
-	walker.Reset()
+	walker.Pos(0)
 	walker.SetLittleE(false)
 	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
 	if w1 != "ff08" {
@@ -117,7 +126,7 @@ func TestWalkerInt(t *testing.T) {
 		t.Fatal("int word-hi as hex != 45")
 	}
 
-	walker.Reset()
+	walker.Pos(0)
 	w1 = fmt.Sprintf("%x", walker.Pos(0).bytesToUintBE(walker.Bytes(4)))
 	if w1 != "ff08ff04" {
 		t.Fatal("int word-hi as hex != ff08ff04")
@@ -129,7 +138,7 @@ func TestWalkerInt(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "Pos was set past end: Max=7 Requested=8" {
+			if r != "Failed to extend buffer by 1. Only able to read 0. Error: EOF" {
 				t.Fatalf("SetPos(8) Did not panic with correct message")
 			}
 		}
@@ -144,7 +153,13 @@ func TestHex(t *testing.T) {
 	for i := 0; i < 256; i++ {
 		b = append(b, byte(i))
 	}
-	walker := NewWalker(&b, uint32(len(b)))
+	createDataFile(t, b, tdFileJpeg)
+	walker, err := NewWalker(createReader(t, tdFileJpeg), uint32(len(b)), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeDataFile(tdFileJpeg)
+
 	res := walker.Hex(walker.Bytes(256), "")
 	for i := 0; i < 256; i++ {
 		b := res[i*2 : (i*2)+2]
@@ -160,7 +175,13 @@ func TestHex(t *testing.T) {
 }
 
 func TestWalkerHex(t *testing.T) {
-	walker := NewWalker(&td, uint32(len(td)))
+	createDataFile(t, td, tdFileJpeg)
+	walker, err := NewWalker(createReader(t, tdFileJpeg), uint32(len(td)), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeDataFile(tdFileJpeg)
+
 	if walker.Hex(walker.Bytes(1), "0x") != "0xFF" {
 		t.Fatal("1st byte != ff")
 	}
@@ -178,7 +199,7 @@ func TestWalkerHex(t *testing.T) {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "Advanced past end: Max=7 Requested=8" {
+			if r != "Failed to extend buffer by 1. Only able to read 0. Error: EOF" {
 				t.Fatalf("Hex(2) Did not panic with correct message")
 			}
 		}
@@ -193,39 +214,123 @@ var td2 = []byte{0xFF, 0xD0, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x0
 var td3 = []byte{0xFF, 0xD8, 0xFF, 0xEF, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
 var td4 = []byte{0xFF, 0xD8, 0xFF, 0xE1, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x84, 0x00, 0x06, 0x04, 0x04, 0x05, 0x04, 0x03, 0x06, 0x05, 0x04, 0x05, 0x06, 0x06, 0x06, 0x07, 0x09, 0x0F, 0x09, 0x09, 0x08, 0x08, 0x09, 0x12, 0x0D, 0x0D, 0x0A}
 
-const tdFile = "td1.jpg"
+func TestWalkerRead2(t *testing.T) {
+	createDataFile(t, td1, tdFileJpeg)
+	w, err := NewWalker(createReader(t, tdFileJpeg), uint32(0), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		b := w.Advance(1)
+		if b != uint32(td1[i]) {
+			t.Fatalf("Byte should be %d actual %d", td1[i], b)
+		}
+	}
+	w.Pos(17)
+	for i := 17; i < 27; i++ {
+		b := w.Advance(1)
+		if b != uint32(td1[i]) {
+			t.Fatalf("Byte should be %d actual %d", td1[i], b)
+		}
+	}
+
+}
+func TestWalkerRead10(t *testing.T) {
+	createDataFile(t, td1, tdFileJpeg)
+	w, err := NewWalker(createReader(t, tdFileJpeg), uint32(0), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		b := w.Advance(1)
+		if b != uint32(td1[i]) {
+			t.Fatalf("Byte should be %d actual %d", td1[i], b)
+		}
+	}
+	w.Pos(17)
+	for i := 17; i < 27; i++ {
+		b := w.Advance(1)
+		if b != uint32(td1[i]) {
+			t.Fatalf("Byte should be %d actual %d", td1[i], b)
+		}
+	}
+}
+
+func TestWalkerAdvanceOffEnd(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			if r != "Failed to extend buffer by 1. Only able to read 0. Error: EOF" {
+				t.Fatalf("Advance(1) Did not panic with correct message")
+			}
+		}
+	}()
+	createDataFile(t, td1, tdFileJpeg)
+	w, err := NewWalker(createReader(t, tdFileJpeg), uint32(0), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Pos(37)
+	for i := 37; i < len(td1); i++ {
+		b := w.Advance(1)
+		if b != uint32(td1[i]) {
+			t.Fatalf("Byte should be %d actual %d", td1[i], b)
+		}
+	}
+	// Following should panic EOF
+	w.Advance(1)
+}
+
+func TestWalkerPosPastEnd(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			if r != "Failed to extend buffer by 4. Only able to read 2." {
+				t.Fatalf("w.Pos(51) Did not panic with correct message")
+			}
+		}
+	}()
+	createDataFile(t, td1, tdFileJpeg)
+	w, err := NewWalker(createReader(t, tdFileJpeg), uint32(0), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Pos(37)
+	// Length of buffer is not 37+10
+	//
+	// Following should panic EOF. File only has 3 to go we wanted 4
+	w.Pos(51)
+}
 
 func TestBadExifMarker(t *testing.T) {
-	createDataFile(t, td1, tdFile)
-	defer removeDataFile(t, tdFile)
-	_, err := GetImage(tdFile, true, true, true, nil)
+	createDataFile(t, td1, tdFileJpeg)
+	defer removeDataFile(tdFileJpeg)
+	_, err := GetImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
 		t.Fatalf("TD1 %s", err.Error())
 	}
 }
 
 func TestBadSOI(t *testing.T) {
-	createDataFile(t, td2, tdFile)
-	defer removeDataFile(t, tdFile)
-	_, err := GetImage(tdFile, true, true, true, nil)
+	createDataFile(t, td2, tdFileJpeg)
+	defer removeDataFile(tdFileJpeg)
+	_, err := GetImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
 		t.Fatalf("BadSOI %s", err.Error())
 	}
 }
 
 func TestBadA001(t *testing.T) {
-	createDataFile(t, td3, tdFile)
-	defer removeDataFile(t, tdFile)
-	_, err := GetImage(tdFile, true, true, true, nil)
+	createDataFile(t, td3, tdFileJpeg)
+	defer removeDataFile(tdFileJpeg)
+	_, err := GetImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
 		t.Fatalf("BadA001 %s", err.Error())
 	}
 }
 
 func TestBadJpg(t *testing.T) {
-	createDataFile(t, td4, tdFile)
-	defer removeDataFile(t, tdFile)
-	_, err := GetImage(tdFile, true, true, true, nil)
+	createDataFile(t, td4, tdFileJpeg)
+	defer removeDataFile(tdFileJpeg)
+	_, err := GetImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
 		t.Fatalf("%s", err.Error())
 	}
@@ -238,11 +343,16 @@ func createDataFile(t *testing.T, data []byte, fil string) {
 	}
 }
 
-func removeDataFile(t *testing.T, fil string) {
-	err := os.Remove(fil)
+func createReader(t *testing.T, fil string) *bufio.Reader {
+	f, err := os.Open(fil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return bufio.NewReader(f)
+}
+
+func removeDataFile(fil string) {
+	os.Remove(fil)
 }
 
 const golden string = `DateTimeDigitized=2016:11:06 11:29:18
@@ -266,6 +376,13 @@ func TestImage02(t *testing.T) {
 		return strings.Contains(ifd.TagData.Name, "Date")
 	})
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0" {
+		t.Fatal(err)
+	}
+}
+
+func TestImage03(t *testing.T) {
+	_, err := GetImage("../testdata/test_data_01.ti", false, true, true, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 }
