@@ -34,6 +34,7 @@ type Tag struct {
 
 type TagFormat struct {
 	tiffFormat TiffFormat
+	name       string
 	byteLen    uint32
 	desc       string
 }
@@ -46,7 +47,7 @@ func (p *TagFormat) String() string {
 	return fmt.Sprintf("id:%d bytes:%d: type:%s", p.tiffFormat, p.byteLen, p.desc)
 }
 
-func newTagFormat(format TiffFormat, desc string, byteLen uint32) *TagFormat {
+func newTagFormat(format TiffFormat, name string, desc string, byteLen uint32) *TagFormat {
 	if byteLen < 1 {
 		byteLen = 1
 	}
@@ -54,6 +55,7 @@ func newTagFormat(format TiffFormat, desc string, byteLen uint32) *TagFormat {
 		tiffFormat: format,
 		byteLen:    byteLen,
 		desc:       desc,
+		name:       name,
 	}
 }
 
@@ -128,14 +130,14 @@ type ExtendBuffer struct {
 	length   uint32
 }
 
-func NewExtendBuffer(reader *bufio.Reader, size uint32, extendBy uint32) *ExtendBuffer {
+func NewExtendBuffer(reader *bufio.Reader, extendBy uint32) *ExtendBuffer {
 	eb := &ExtendBuffer{
 		reader:   reader,
 		buff:     make([]uint8, 0),
 		length:   0,
 		extendBy: extendBy,
 	}
-	eb.extend(size)
+	eb.extend(0)
 	return eb
 }
 
@@ -154,8 +156,8 @@ func (p *ExtendBuffer) extend(required uint32) {
 	p.length = p.length + uint32(lenRead)
 }
 
-func NewWalker(reader *bufio.Reader, lenToRead uint32, extendBy uint32) (*Walker, error) {
-	buffer := NewExtendBuffer(reader, lenToRead, extendBy)
+func NewWalker(reader *bufio.Reader, extendBy uint32) (*Walker, error) {
+	buffer := NewExtendBuffer(reader, extendBy)
 	return &Walker{
 		data:    buffer,
 		posit:   0,
@@ -257,9 +259,6 @@ func (p *Walker) Char() string {
 }
 
 func (p *Walker) Advance(n uint32) uint32 {
-	// if !p.ensurePos(p.posit) {
-	// 	panic(fmt.Sprintf("Advanced past end of file: Max=%d Requested=%d", p.data.length-1, p.posit))
-	// }
 	p.ensurePos(p.posit)
 	b := p.data.buff[p.posit]
 	p.posit = p.posit + n
@@ -267,9 +266,6 @@ func (p *Walker) Advance(n uint32) uint32 {
 }
 
 func (p *Walker) Pos(n uint32) *Walker {
-	// if !p.ensurePos(n) {
-	// 	panic(fmt.Sprintf("Pos was set past end: Max=%d Requested=%d", p.data.length-1, n))
-	// }
 	p.ensurePos(n)
 	p.posit = n
 	return p
@@ -353,7 +349,7 @@ func GetImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 	}
 	defer fil.Close()
 
-	walker, err := NewWalker(bufio.NewReader(fil), 1024, 512)
+	walker, err := NewWalker(bufio.NewReader(fil), 1024)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read file: %v", err))
 	}
@@ -574,7 +570,7 @@ func bytesToZString(b []byte) string {
 		}
 		line.WriteByte(c)
 	}
-	return strings.TrimSpace(line.String())
+	return line.String()
 }
 
 func pad(i uint32, n int) string {
@@ -631,18 +627,50 @@ func ToTagData(tag uint32) *Tag {
 Format type to type enum, name and bytes per entry
 */
 var mapTiffFormats = map[uint16]*TagFormat{
-	1:  newTagFormat(FormatUint8, "Byte Uint8", 1),
-	2:  newTagFormat(FormatString, "ASCII String", 1),
-	3:  newTagFormat(FormatUint16, "Short Uint16", 2),
-	4:  newTagFormat(FormatUint32, "Long Uint32", 4),
-	5:  newTagFormat(FormatURational, "n/d URational", 8),
-	6:  newTagFormat(FormatInt8, "Byte Int8", 1),
-	7:  newTagFormat(FormatUndefined, "Undefined", 1),
-	8:  newTagFormat(FormatInt8, "Short Int8", 1),
-	9:  newTagFormat(FormatInt16, "Long Int16", 2),
-	10: newTagFormat(FormatRational, "n/d Rational", 8),
-	11: newTagFormat(FormatFloat32, "Single Float32", 2),
-	12: newTagFormat(FormatFloat64, "Double Float64", 4),
+	1:  newTagFormat(FormatUint8, "FormatUint8", "Byte Uint8", 1),
+	2:  newTagFormat(FormatString, "FormatString", "ASCII String", 1),
+	3:  newTagFormat(FormatUint16, "FormatUint16", "Short Uint16", 2),
+	4:  newTagFormat(FormatUint32, "FormatUint32", "Long Uint32", 4),
+	5:  newTagFormat(FormatURational, "FormatURational", "n/d URational", 8),
+	6:  newTagFormat(FormatInt8, "FormatInt8", "Byte Int8", 1),
+	7:  newTagFormat(FormatUndefined, "FormatUndefined", "Undefined", 1),
+	8:  newTagFormat(FormatInt8, "FormatInt8", "Short Int8", 1),
+	9:  newTagFormat(FormatInt16, "FormatInt16", "Long Int16", 2),
+	10: newTagFormat(FormatRational, "FormatRational", "n/d Rational", 8),
+	11: newTagFormat(FormatFloat32, "FormatFloat32", "Single Float32", 2),
+	12: newTagFormat(FormatFloat64, "FormatFloat64", "Double Float64", 4),
+}
+
+func getTiffFormats(tf TiffFormat) *TagFormat {
+	for _, v := range mapTiffFormats {
+		if v.tiffFormat == tf {
+			return v
+		}
+	}
+	return nil
+}
+
+var mapTiffFormetNames = map[string]TiffFormat{
+	"ASCII":     FormatString,
+	"SHORT":     FormatUint16,
+	"LONG":      FormatUint32,
+	"RATIONAL":  FormatURational,
+	"BYTE":      FormatUint8,
+	"SRATIONAL": FormatRational,
+	"IFD":       FormatString,
+	"UNDEFINED": FormatUndefined,
+	"FLOAT":     FormatFloat32,
+	"DOUBLE":    FormatFloat64,
+}
+
+func getTiffFormatsFromNames(formatNames string) []*TagFormat {
+	resp := []*TagFormat{}
+	for n, v := range mapTiffFormetNames {
+		if strings.Contains(formatNames, n) {
+			resp = append(resp, getTiffFormats(v))
+		}
+	}
+	return resp
 }
 
 /*
@@ -751,7 +779,7 @@ var mapTags = map[uint32]*Tag{
 	34855: newExifTagDetails(34855, "ISOSpeedRatings", FormatUndefined, "CCD sensitivity equivalent to Ag-Hr film speedrate. "),
 	36880: newExifTagDetails(36800, "OffsetTime", FormatUndefined, "Get time zone from 'Offset Time'"),
 	36881: newExifTagDetails(36800, "OffsetTimeOriginal", FormatUndefined, "Get time zone from 'Offset Time Original'"),
-	36864: newExifTagDetails(36864, "ExifVersion", FormatUndefined, "Exif version number. Stored as 4bytes of ASCII character (like 0210) "),
+	36864: newExifTagDetails(36864, "ExifVersion", FormatString, "Exif version number. Stored as 4bytes of ASCII character (like 0210) "),
 	36867: newExifTagDetails(36867, "DateTimeOriginal", FormatUndefined, "Date/Time of original image taken. This value should not be modified by user program. "),
 	36868: newExifTagDetails(36868, "DateTimeDigitized", FormatUndefined, "Date/Time of image digitized. Usually, it contains the same value of DateTimeOriginal(0x9003). "),
 	37121: newExifTagDetails(37121, "ComponentConfiguration", FormatUndefined, "It seems value 0x00,0x01,0x02,0x03 always. "),
@@ -768,7 +796,7 @@ var mapTags = map[uint32]*Tag{
 	37386: newExifTagDetails(37386, "FocalLength", FormatUndefined, "Focal length of lens used to take image. Unit is millimeter. "),
 	37500: newExifTagDetails(37500, "MakerNote", FormatUndefined, "Maker dependent internal data. Some of maker such as Olympus/Nikon/Sanyo etc. uses IFD format for this area. "),
 	37510: newExifTagDetails(37510, "UserComment", FormatString, "Stores user comment. "),
-	40960: newExifTagDetails(40960, "FlashPixVersion", FormatUndefined, "Stores FlashPix version. Unknown but 4bytes of ASCII characters '0100' exists. "),
+	40960: newExifTagDetails(40960, "FlashPixVersion", FormatString, "Stores FlashPix version. Unknown but 4bytes of ASCII characters '0100' exists. "),
 	40961: newExifTagDetails(40961, "ColorSpace", FormatUndefined, "Value is '1'. "),
 	40962: newExifTagDetails(40962, "ExifImageWidth", FormatUndefined, "Size of main image. "),
 	40963: newExifTagDetails(40963, "ExifImageHeight", FormatUndefined, "ExifImageHeight "),
