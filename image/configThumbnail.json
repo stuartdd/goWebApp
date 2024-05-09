@@ -3,7 +3,8 @@
     "thumbNailTimeStamp": "yyyy_MM_dd_HH_mm_ss",
     "thumbNailFileSuffix": ".jpg",
     "imageExtensions": [
-        ".jpg",".JPG"
+        ".jpg",
+        ".JPG"
     ],
     "logPath": "../logs",
     "logName": "ThumbNailGen",
@@ -38,8 +39,8 @@
                 "imageRoot": "/media/USBHDD1/shares/julie",
                 "imagePaths": [
                     "Huawei_camera",
-                                        "Documents",
-                                        "Downloads",
+                    "Documents",
+                    "Downloads",
                     "Camera uploads",
                     "HtcCamera",
                     "Julie_Photos",
@@ -73,4 +74,3 @@
         }
     }
 }
-

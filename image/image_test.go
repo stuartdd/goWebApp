@@ -326,7 +326,7 @@ func TestWalkerPosPastEnd(t *testing.T) {
 func TestBadExifMarker(t *testing.T) {
 	createDataFile(t, td1, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := GetImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
 		t.Fatalf("TD1 %s", err.Error())
 	}
@@ -335,7 +335,7 @@ func TestBadExifMarker(t *testing.T) {
 func TestBadSOI(t *testing.T) {
 	createDataFile(t, td2, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := GetImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
 		t.Fatalf("BadSOI %s", err.Error())
 	}
@@ -344,7 +344,7 @@ func TestBadSOI(t *testing.T) {
 func TestBadA001(t *testing.T) {
 	createDataFile(t, td3, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := GetImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
 		t.Fatalf("BadA001 %s", err.Error())
 	}
@@ -353,7 +353,7 @@ func TestBadA001(t *testing.T) {
 func TestBadJpg(t *testing.T) {
 	createDataFile(t, td4, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := GetImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil)
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
 		t.Fatalf("%s", err.Error())
 	}
@@ -383,7 +383,7 @@ DateTimeOriginal=2016:11:06 11:29:18
 `
 
 func TestImage01(t *testing.T) {
-	im, err := GetImage("../testdata/test_data_01.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
+	im, err := NewImage("../testdata/test_data_01.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
 	})
 	if err != nil {
@@ -395,7 +395,7 @@ func TestImage01(t *testing.T) {
 }
 
 func TestImage02(t *testing.T) {
-	_, err := GetImage("../testdata/test_data_02.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
+	_, err := NewImage("../testdata/test_data_02.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
 	})
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0" {
@@ -404,7 +404,7 @@ func TestImage02(t *testing.T) {
 }
 
 func TestImage03(t *testing.T) {
-	_, err := GetImage("../testdata/test_data_01.ti", true, false, true, func(i *IFDEntry, w *Walker) bool {
+	_, err := NewImage("../testdata/test_data_01.ti", true, false, true, func(i *IFDEntry, w *Walker) bool {
 		if i != nil {
 			_, ok := sampleFromMagick[i.TagData.Name]
 			if !ok {
