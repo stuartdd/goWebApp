@@ -19,7 +19,8 @@ const secondCut = "</table>"
 // const logName2 = "ripTest2.log"
 const logName3 = "ripTest3.log"
 const logName4 = "ripTest4.log"
-const logName5 = "ripTest5.log"
+
+// const logName5 = "ripTest5.log"
 
 func TestReadHtml(t *testing.T) {
 	os.Remove(logName4)

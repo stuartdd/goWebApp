@@ -38,6 +38,8 @@ func newIFDEntry(walker *Walker) *IFDEntry {
 
 	// Get the tag data from the tagNumber
 	tagData := lookUpTagData(tagNumber)
+
+	// Get the format from the tagNumber
 	tagFmt := lookUpTagFormat(formatId)
 
 	if tagFmt.tiffFormat == FormatUndefined {
@@ -61,11 +63,22 @@ func newIFDEntry(walker *Walker) *IFDEntry {
 }
 
 func (p *IFDEntry) Diagnostics(m string) string {
-	return fmt.Sprintf("IFD:%s TAG[%d:%s] FORMAT[%s] ITEM_COUNT[%d] LOCATION[%s] VALUE[%s] TAG_DESC[%s]", m, p.TagData.TagNum, p.TagData.Name, p.tagFormat, p.itemCount, bytesToHex(p.location), p.Value, p.TagData.LongDesc)
+	len := p.itemCount * p.tagFormat.byteLen
+	var loc string
+	if len <= 4 {
+		loc = fmt.Sprintf("VALUE[%s:%s]", bytesToHex(p.location), p.Value)
+	} else {
+		loc = fmt.Sprintf("OFFSET[%s] VALUE[%s]", bytesToHex(p.location), p.Value)
+	}
+	return fmt.Sprintf("IFD:%s TAG[%d:%s] ITEM_COUNT[%d*%d] FORMAT[%s] %s TAG_DESC[%s]", m, p.TagData.TagNum, p.TagData.Name, p.itemCount, p.tagFormat.byteLen, p.tagFormat, loc, p.TagData.LongDesc)
 }
 
 func (p *IFDEntry) Output() string {
 	return fmt.Sprintf("%s=%s", p.TagData.Name, p.Value)
+}
+
+func (p *IFDEntry) isSubDir() bool {
+	return p.TagData.IsDir
 }
 
 type image struct {
@@ -81,19 +94,33 @@ type image struct {
 	echo          bool
 	sort          bool
 	selector      func(*IFDEntry, *Walker) bool
+	logOutput     *os.File
 }
 
-func NewImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry, *Walker) bool) (img *image, err error) {
+func NewImage(imagePath string, debug bool, echo bool, sort bool, sel func(*IFDEntry, *Walker) bool, log string) (img *image, err error) {
+	var logOutput *os.File
+	if log != "" {
+		logOutput, err = os.Create(log)
+		if err != nil {
+			panic(fmt.Sprintf("Requested output file '%s' could not be created", log))
+		}
+	}
+	defer logClose(logOutput)
+
 	defer func() {
 		if r := recover(); r != nil {
 			msg := fmt.Sprintf("PANIC:%s", r)
-			os.Stderr.WriteString(msg)
+			if logOutput == nil {
+				os.Stderr.WriteString(msg)
+			} else {
+				logOutput.WriteString(msg)
+			}
 			img = nil
 			err = fmt.Errorf(msg)
 		}
 	}()
 
-	p, err := filepath.Abs(path)
+	p, err := filepath.Abs(imagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -112,20 +139,20 @@ func NewImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 		echo:       echo,
 		sort:       sort,
 		selector:   sel,
-		name:       path,
+		name:       imagePath,
 		walker:     walker,
 		soi:        walker.Pos(OfsSOI).Hex(walker.Bytes(2), ""),
 		app1Marker: walker.Pos(OfsAPP1Marker).Hex(walker.Bytes(2), ""),
 		// Always Big Endian
 		// Size includes the size bytes so sub 2
-		app1Size: uint32(walker.Pos(OfsAPP1Size).bytesToUintBE(walker.Bytes(2)) - 2),
-		exif:     walker.Pos(OfsExifHeader).ZstringEquals("Exif"),
-		IFDdata:  []*IFDEntry{},
+		app1Size:  uint32(walker.Pos(OfsAPP1Size).bytesToUintBE(walker.Bytes(2)) - 2),
+		exif:      walker.Pos(OfsExifHeader).ZstringEquals("Exif"),
+		IFDdata:   []*IFDEntry{},
+		logOutput: logOutput,
 	}
 
 	if image.debug {
-		os.Stdout.WriteString(image.Diagnostics("IMG"))
-		os.Stdout.WriteString("\n")
+		image.logWriteLn(image.Diagnostics("IMG"))
 		if image.selector != nil {
 			if !image.selector(nil, walker.Clone().Pos(OfsMainImageOffset)) {
 				os.Exit(1)
@@ -152,16 +179,15 @@ func NewImage(path string, debug bool, echo bool, sort bool, sel func(*IFDEntry,
 	image.mainDirOffset = uint32(walker.Pos(OfsMainImageOffset).BytesToUint(walker.Bytes(4)))
 
 	mainTiffDir := OfsMainImageOffset + image.mainDirOffset - uint32(4)
-	image.readDirectory(mainTiffDir, walker, 0)
-
+	image.readDirectory(mainTiffDir, walker, "Main IFD", 0)
+	image.logWriteLn("Done RD")
 	if image.sort {
 		image.sortEntries()
 	}
 
 	if image.echo {
 		for _, ifd := range image.IFDdata {
-			os.Stdout.WriteString(ifd.Output())
-			os.Stdout.WriteString("\n")
+			image.logWriteLn(ifd.Output())
 		}
 	}
 	return image, nil
@@ -266,7 +292,7 @@ func (p *image) GetIDFData(ifd *IFDEntry) string {
 	return line.String()
 }
 
-func (p *image) readDirectory(base uint32, walker *Walker, dirId uint32) {
+func (p *image) readDirectory(base uint32, walker *Walker, dirName string, depth int) {
 	dirCount := int(walker.Pos(base).BytesToUint(walker.Bytes(2)))
 	if dirCount <= 0 || dirCount > 200 {
 		panic(fmt.Sprintf("Image TIFF data count is invalid. Expected[1..200]. Actual=[%d]", dirCount))
@@ -274,32 +300,46 @@ func (p *image) readDirectory(base uint32, walker *Walker, dirId uint32) {
 	for i := 0; i < dirCount; i++ {
 		current := walker.posit
 		ne := newIFDEntry(walker)
-		ne.Value = p.GetIDFData(ne)
-		if ne.TagData.TagNum == TagExifSubIFD || ne.TagData.TagNum == TagGPSIFD || ne.TagData.TagNum == TagInteroperabilityIFD {
+		if ne.isSubDir() {
 			ofs := walker.BytesToUint(ne.location)
-			p.readDirectory(uint32(ofs+12), walker.Clone(), ne.TagData.TagNum)
-		} else {
 			if p.debug {
-				var n string
-				n, ok := dirTagNames[dirId]
-				if ok {
-					os.Stdout.WriteString(ne.Diagnostics(fmt.Sprintf("[%d]%s", i, n)))
-				} else {
-					os.Stdout.WriteString(ne.Diagnostics(fmt.Sprintf("[%d]%d", i, ne.TagData.TagNum)))
-				}
-				os.Stdout.WriteString("\n")
+				wc := walker.Clone()
+				dc := wc.Pos(uint32(ofs + 12)).BytesToUint(wc.Bytes(2))
+				p.logWriteLn(fmt.Sprintf("IFD:[%s of %s :%d] %s ENTRIES[%d] DIR[%s]", pad0(uint32(i), 2), pad0(uint32(dirCount), 2), depth, dirName, dc, ne.TagData.Name))
 			}
+			p.readDirectory(uint32(ofs+12), walker.Clone(), ne.TagData.Name, depth+1)
+		} else {
+			ne.Value = p.GetIDFData(ne)
 			if (p.selector != nil && p.selector(ne, walker.Clone().Pos(current))) || p.selector == nil {
+				if p.debug {
+					p.logWriteLn(ne.Diagnostics(fmt.Sprintf("[%s of %s :%d] %s ", pad0(uint32(i), 2), pad0(uint32(dirCount), 2), depth, dirName)))
+				}
 				p.IFDdata = append(p.IFDdata, ne)
 			}
 		}
 	}
 }
 
-func pad(i uint32, n int) string {
+func (p *image) logWriteLn(m string) {
+	if p.logOutput == nil {
+		os.Stdout.WriteString(m)
+		os.Stdout.WriteString("\n")
+	} else {
+		p.logOutput.WriteString(m)
+		p.logOutput.WriteString("\n")
+	}
+}
+
+func pad0(i uint32, n int) string {
 	s := fmt.Sprintf("%d", i)
 	if len(s) >= n {
 		return s
 	}
-	return "00000000000"[0:n-len(s)] + s
+	return "00000000000000000"[0:n-len(s)] + s
+}
+
+func logClose(l *os.File) {
+	if l != nil {
+		l.Close()
+	}
 }

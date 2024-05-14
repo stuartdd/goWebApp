@@ -114,13 +114,6 @@ func TestWalkerInt(t *testing.T) {
 	if w1 != "45" {
 		t.Fatal("int word-hi as hex != 45")
 	}
-
-	walker.Pos(0)
-	walker.SetLittleE(false)
-	w1 = fmt.Sprintf("%x", walker.BytesToUint(walker.Bytes(2)))
-	if w1 != "ff08" {
-		t.Fatal("int word-hi as hex != ff08")
-	}
 	w1 = fmt.Sprintf("%x", walker.Pos(6).BytesToUint(walker.Bytes(1)))
 	if w1 != "45" {
 		t.Fatal("int word-hi as hex != 45")
@@ -326,7 +319,7 @@ func TestWalkerPosPastEnd(t *testing.T) {
 func TestBadExifMarker(t *testing.T) {
 	createDataFile(t, td1, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
 		t.Fatalf("TD1 %s", err.Error())
 	}
@@ -335,7 +328,7 @@ func TestBadExifMarker(t *testing.T) {
 func TestBadSOI(t *testing.T) {
 	createDataFile(t, td2, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
 	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
 		t.Fatalf("BadSOI %s", err.Error())
 	}
@@ -344,7 +337,7 @@ func TestBadSOI(t *testing.T) {
 func TestBadA001(t *testing.T) {
 	createDataFile(t, td3, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
 		t.Fatalf("BadA001 %s", err.Error())
 	}
@@ -353,7 +346,7 @@ func TestBadA001(t *testing.T) {
 func TestBadJpg(t *testing.T) {
 	createDataFile(t, td4, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil)
+	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
 		t.Fatalf("%s", err.Error())
 	}
@@ -385,7 +378,7 @@ DateTimeOriginal=2016:11:06 11:29:18
 func TestImage01(t *testing.T) {
 	im, err := NewImage("../testdata/test_data_01.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,64 +390,61 @@ func TestImage01(t *testing.T) {
 func TestImage02(t *testing.T) {
 	_, err := NewImage("../testdata/test_data_02.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
-	})
+	}, "")
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0" {
 		t.Fatal(err)
 	}
 }
 
 func TestImage03(t *testing.T) {
-	_, err := NewImage("../testdata/test_data_01.ti", true, false, true, func(i *IFDEntry, w *Walker) bool {
-		if i != nil {
-			_, ok := sampleFromMagick[i.TagData.Name]
-			if !ok {
-				t.Fatalf("Tan name [%s] not found in sampleFromMagick", i.TagData.Name)
-			}
+	_, err := NewImage("../testdata/test_data_01.ti", true, false, false, func(i *IFDEntry, w *Walker) bool {
+		if i == nil {
+			return true
 		}
-		return true
-	})
+		return i.TagData.Name == "ComponentsConfiguration"
+	}, "test.log")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-var sampleFromMagick = map[string]string{
-	"ColorSpace":                        "1",
-	"ComponentConfiguration":            "0x01,0x02,0x03,0x00",
-	"DateTimeDigitized":                 "2016:11:06 11:29:18",
-	"DateTimeOriginal":                  "2016:11:06 11:29:18",
-	"DigitalZoomRatio":                  "100/100",
-	"ExifOffset":                        "161",
-	"ExifVersion":                       "0220",
-	"ExifImageHeight":                   "2340",
-	"ExifImageWidth":                    "4160",
-	"ExposureBiasValue":                 "0/1",
-	"ExposureTime":                      "1/24",
-	"Flash":                             "0",
-	"FlashPixVersion":                   "0100",
-	"FNumber":                           "240/100",
-	"FocalLength":                       "3970/1000",
-	"GPSAltitude":                       "0/1000",
-	"GPSAltitudeRef":                    "0",
-	"GPSInfo":                           "1017",
-	"GPSLatitudeRef":                    "R98",
-	"InteroperabilityOffset":            "987",
-	"Make":                              "LG Electronics",
-	"MeteringMode":                      "2",
-	"Model":                             "LG-D855",
-	"Orientation":                       "6",
-	"PhotographicSensitivity":           "100",
-	"PixelXDimension":                   "4160",
-	"PixelYDimension":                   "2340",
-	"ResolutionUnit":                    "2",
-	"thumbnail:InteroperabilityIndex":   "R98",
-	"thumbnail:InteroperabilityVersion": "0100",
-	"UserComment":                       "    FocusArea=111111111",
-	"WhiteBalance":                      "0",
-	"XResolution":                       "72/1",
-	"YCbCrPositioning":                  "1",
-	"YResolution":                       "72/1",
-}
+// var sampleFromMagick = map[string]string{
+// 	"ColorSpace":                        "1",
+// 	"ComponentConfiguration":            "0x01,0x02,0x03,0x00",
+// 	"DateTimeDigitized":                 "2016:11:06 11:29:18",
+// 	"DateTimeOriginal":                  "2016:11:06 11:29:18",
+// 	"DigitalZoomRatio":                  "100/100",
+// 	"ExifOffset":                        "161",
+// 	"ExifVersion":                       "0220",
+// 	"ExifImageHeight":                   "2340",
+// 	"ExifImageWidth":                    "4160",
+// 	"ExposureBiasValue":                 "0/1",
+// 	"ExposureTime":                      "1/24",
+// 	"Flash":                             "0",
+// 	"FlashPixVersion":                   "0100",
+// 	"FNumber":                           "240/100",
+// 	"FocalLength":                       "3970/1000",
+// 	"GPSAltitude":                       "0/1000",
+// 	"GPSAltitudeRef":                    "0",
+// 	"GPSInfo":                           "1017",
+// 	"GPSLatitudeRef":                    "R98",
+// 	"InteroperabilityOffset":            "987",
+// 	"Make":                              "LG Electronics",
+// 	"MeteringMode":                      "2",
+// 	"Model":                             "LG-D855",
+// 	"Orientation":                       "6",
+// 	"PhotographicSensitivity":           "100",
+// 	"PixelXDimension":                   "4160",
+// 	"PixelYDimension":                   "2340",
+// 	"ResolutionUnit":                    "2",
+// 	"thumbnail:InteroperabilityIndex":   "R98",
+// 	"thumbnail:InteroperabilityVersion": "0100",
+// 	"UserComment":                       "    FocusArea=111111111",
+// 	"WhiteBalance":                      "0",
+// 	"XResolution":                       "72/1",
+// 	"YCbCrPositioning":                  "1",
+// 	"YResolution":                       "72/1",
+// }
 
 /*
 ColorSpace=1

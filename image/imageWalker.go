@@ -28,20 +28,20 @@ func NewExtendBuffer(reader *bufio.Reader, extendBy uint32) *ExtendBuffer {
 		length:   0,
 		extendBy: extendBy,
 	}
-	eb.extend(0)
+	eb.extend(0, 0)
 	return eb
 }
 
-func (p *ExtendBuffer) extend(required uint32) {
+func (p *ExtendBuffer) extend(required uint32, pos uint32) {
 	buffer := make([]byte, required+p.extendBy)
 	lenRead, err := p.reader.Read(buffer)
 	if err != nil {
 		if required > uint32(lenRead) || lenRead == 0 {
-			panic(fmt.Sprintf("Failed to extend buffer by %d. Only able to read %d. Error: %s", required, lenRead, err.Error()))
+			panic(fmt.Sprintf("Failed to extend buffer. Required %d. Current %d, Only able to read %d. Error: %s", required, pos, lenRead, err.Error()))
 		}
 	}
 	if required > uint32(lenRead) {
-		panic(fmt.Sprintf("Failed to extend buffer by %d. Only able to read %d.", required, lenRead))
+		panic(fmt.Sprintf("Failed to extend buffer. Required %d. Current %d, Only able to read %d.", required, pos, lenRead))
 	}
 	p.buff = append(p.buff, buffer[:lenRead]...)
 	p.length = p.length + uint32(lenRead)
@@ -165,7 +165,7 @@ func (p *Walker) Pos(n uint32) *Walker {
 func (p *Walker) ensurePos(pos uint32) {
 	if pos >= p.data.length {
 		required := pos - (p.data.length - 1)
-		p.data.extend(required)
+		p.data.extend(required, p.posit)
 	}
 }
 
@@ -203,6 +203,14 @@ func (q *Walker) LinePrint(start uint32, count int, lines int) string {
 		line.WriteString("\n")
 	}
 	return line.String()
+}
+
+func pad(i uint32, n int) string {
+	s := fmt.Sprintf("%d", i)
+	if len(s) >= n {
+		return s
+	}
+	return "00000000000000000"[0:n-len(s)] + s
 }
 
 /*
