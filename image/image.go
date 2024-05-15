@@ -306,6 +306,7 @@ func (p *image) readDirectory(base uint32, walker *Walker, dirName string, depth
 				wc := walker.Clone()
 				dc := wc.Pos(uint32(ofs + 12)).BytesToUint(wc.Bytes(2))
 				p.logWriteLn(fmt.Sprintf("IFD:[%s of %s :%d] %s ENTRIES[%d] DIR[%s]", pad0(uint32(i), 2), pad0(uint32(dirCount), 2), depth, dirName, dc, ne.TagData.Name))
+				p.logWriteLn(p.walker.LinePrint(ne.DataAddress-8, 12, 1))
 			}
 			p.readDirectory(uint32(ofs+12), walker.Clone(), ne.TagData.Name, depth+1)
 		} else {
@@ -313,6 +314,7 @@ func (p *image) readDirectory(base uint32, walker *Walker, dirName string, depth
 			if (p.selector != nil && p.selector(ne, walker.Clone().Pos(current))) || p.selector == nil {
 				if p.debug {
 					p.logWriteLn(ne.Diagnostics(fmt.Sprintf("[%s of %s :%d] %s ", pad0(uint32(i), 2), pad0(uint32(dirCount), 2), depth, dirName)))
+					p.logWriteLn(p.walker.LinePrint(ne.DataAddress-8, 12, 1))
 				}
 				p.IFDdata = append(p.IFDdata, ne)
 			}

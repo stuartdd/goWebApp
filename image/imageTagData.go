@@ -142,9 +142,9 @@ var mapTiffFormats = map[uint16]*TagFormat{
 Map of tags to tag,name and a long desc.
 */
 var mapTags = map[uint32]*Tag{
-	TagExifSubIFD:          newExifTagData(true, TagExifSubIFD, "Exif IFD", []TiffFormat{FormatUint32, FormatString}, "1", 1, ""),
-	TagInteroperabilityIFD: newExifTagData(true, TagInteroperabilityIFD, "Interoperability IFD", []TiffFormat{FormatString, FormatUint32}, "1", 1, "*AltName(ExifInteroperabilityOffset) Extension of 'ExifR98', detail is unknown. This value is offset to IFD format data. Currently there are 2 directory entries, first one is Tag0x0001, value is 'R98', next is Tag0x0002, value is '0100'. "),
-	TagGPSIFD:              newExifTagData(true, TagGPSIFD, "GPS IFD", []TiffFormat{FormatString, FormatUint32}, "1", 1, ""),
+	TagExifSubIFD:          newExifTagData(true, TagExifSubIFD, "Exif IFD", []TiffFormat{FormatUndefined}, "4", 4, ""),
+	TagInteroperabilityIFD: newExifTagData(true, TagInteroperabilityIFD, "Interoperability IFD", []TiffFormat{FormatUndefined}, "4", 4, "*AltName(ExifInteroperabilityOffset) Extension of 'ExifR98', detail is unknown. This value is offset to IFD format data. Currently there are 2 directory entries, first one is Tag0x0001, value is 'R98', next is Tag0x0002, value is '0100'. "),
+	TagGPSIFD:              newExifTagData(true, TagGPSIFD, "GPS IFD", []TiffFormat{FormatUndefined}, "4", 4, ""),
 
 	50829: newExifTagData(false, 50829, "ActiveArea", []TiffFormat{FormatUint32, FormatUint16}, "4", 4, ""),
 	50784: newExifTagData(false, 50784, "Alias Layer Metadata", []TiffFormat{FormatString}, "N", -1, ""),
