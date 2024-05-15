@@ -80,7 +80,7 @@ func (p *Walker) Zstring(max int) string {
 		}
 		count++
 	}
-	return ""
+	return line.String()
 }
 
 func (p *Walker) ZstringEquals(s string) bool {
@@ -96,7 +96,7 @@ func (p *Walker) Bytes(n uint32) []byte {
 }
 
 func (p *Walker) Hex(b []byte, pre string) string {
-	return pre + bytesToHex(b)
+	return pre + bytesToHex(b, 0)
 }
 
 func (p *Walker) BytesToUint(b []byte) uint64 {
@@ -219,10 +219,13 @@ Because I want to see hev values in upper case!
 
 var hexDigits = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'}
 
-func bytesToHex(b []byte) string {
+func bytesToHex(b []byte, delim rune) string {
 	var line bytes.Buffer
 	for i := 0; i < len(b); i++ {
 		line.WriteString(byteToHex(b[i]))
+		if delim > 32 && i < (len(b)-1) {
+			line.WriteRune(delim)
+		}
 	}
 	return line.String()
 }

@@ -290,7 +290,7 @@ func TestReadDir(t *testing.T) {
 	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
 		t.Fatalf("Respons body does not equal..3")
 	}
-	AssertLogContains(t, logger, []string{"Server Running", ":8083.", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 
@@ -316,7 +316,7 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("Respons body does not contain 'Is not a file'")
 	}
 
-	AssertLogContains(t, logger, []string{"Server Running", ":8083.", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  /files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 

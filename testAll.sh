@@ -35,6 +35,13 @@ if [ $? -eq 1 ]; then
   exit 1
 fi
 
+cd ../image
+echo "--------------------------------------- $PWD"
+go test
+if [ $? -eq 1 ]; then
+  exit 1
+fi
+
 cd ..
 echo "--------------------------------------- $PWD"
 go test

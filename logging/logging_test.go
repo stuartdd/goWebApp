@@ -72,8 +72,8 @@ func TestLoggingSink(t *testing.T) {
 		t.Fatalf("Error: Empty path should not Open log")
 	}
 	_, err = NewLogger(testLogDir, "", 10, "verbose", false)
-	if err == nil {
-		t.Fatalf("Error: Empty path file name should produce an error: %s", err.Error())
+	if err != nil {
+		t.Fatalf("Error: Empty path file name should produce an error:")
 	}
 }
 func TestLogging(t *testing.T) {

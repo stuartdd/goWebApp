@@ -13,28 +13,29 @@ const OfsSOI = 0
 const OfsAPP1Marker = 2
 const OfsAPP1Size = 4
 const OfsExifHeader = 6
-const OfsEndianDef = 12
+const OfsTiffHeader = 12
 const OfsMainImageOffset = 16
 
 const TiffRecordSize = 12
 
 type IFDEntry struct {
-	itemCount   uint32
-	location    []byte
-	Value       string
-	TagData     *Tag
-	tagFormat   *TagFormat
-	DataAddress uint32
-	ByteCount   uint32
+	IFDAddress   uint32
+	TagData      *Tag
+	TagFormat    *TagFormat
+	ByteCount    uint32
+	Value        string
+	itemCount    uint32
+	dataOrOffset []byte
 }
 
 func newIFDEntry(walker *Walker) *IFDEntry {
 	// Do these in the right order!
+	address := walker.posit
 	tagNumber := uint32(walker.BytesToUint(walker.Bytes(2)))
 	formatId := uint16(walker.BytesToUint(walker.Bytes(2)))
 	itemCount := uint32(walker.BytesToUint(walker.Bytes(4)))
-	locationOfDataIsAt := walker.posit
-	loc := walker.Bytes(4)
+
+	doo := walker.Bytes(4)
 
 	// Get the tag data from the tagNumber
 	tagData := lookUpTagData(tagNumber)
@@ -46,31 +47,27 @@ func newIFDEntry(walker *Walker) *IFDEntry {
 		tagFmt = lookUpTagFormat(uint16(tagData.validFormats[0]))
 	}
 	byteCount := itemCount * tagFmt.byteLen
-	if byteCount > 4 {
-		locationOfDataIsAt = uint32(walker.BytesToUint(loc) + TiffRecordSize)
-	}
-
 	return &IFDEntry{
-		itemCount:   itemCount,
-		location:    loc,
-		Value:       "",
-		TagData:     tagData,
-		tagFormat:   tagFmt,
-		DataAddress: locationOfDataIsAt,
-		ByteCount:   byteCount,
+		IFDAddress:   address,
+		TagData:      tagData,
+		TagFormat:    tagFmt,
+		ByteCount:    byteCount,
+		Value:        "",
+		itemCount:    itemCount,
+		dataOrOffset: doo,
 	}
 
 }
 
 func (p *IFDEntry) Diagnostics(m string) string {
-	len := p.itemCount * p.tagFormat.byteLen
+	len := p.itemCount * p.TagFormat.byteLen
 	var loc string
 	if len <= 4 {
-		loc = fmt.Sprintf("VALUE[%s:%s]", bytesToHex(p.location), p.Value)
+		loc = fmt.Sprintf("VALUE[%s:%s]", bytesToHex(p.dataOrOffset, ','), p.Value)
 	} else {
-		loc = fmt.Sprintf("OFFSET[%s] VALUE[%s]", bytesToHex(p.location), p.Value)
+		loc = fmt.Sprintf("OFFSET[%s] VALUE[%s]", bytesToHex(p.dataOrOffset, ','), p.Value)
 	}
-	return fmt.Sprintf("IFD:%s TAG[%d:%s] ITEM_COUNT[%d*%d] FORMAT[%s] %s TAG_DESC[%s]", m, p.TagData.TagNum, p.TagData.Name, p.itemCount, p.tagFormat.byteLen, p.tagFormat, loc, p.TagData.LongDesc)
+	return fmt.Sprintf("IFD:%s TAG[%d:%s] ITEM_COUNT[%d*%d] FORMAT[%s] %s TAG_DESC[%s]", m, p.TagData.TagNum, p.TagData.Name, p.itemCount, p.TagFormat.byteLen, p.TagFormat, loc, p.TagData.LongDesc)
 }
 
 func (p *IFDEntry) Output() string {
@@ -82,22 +79,19 @@ func (p *IFDEntry) isSubDir() bool {
 }
 
 type image struct {
-	name          string
-	walker        *Walker
-	soi           string
-	exif          bool
-	app1Marker    string
-	app1Size      uint32 // APP1 data size
-	mainDirOffset uint32
-	IFDdata       []*IFDEntry
-	debug         bool
-	echo          bool
-	sort          bool
-	selector      func(*IFDEntry, *Walker) bool
-	logOutput     *os.File
+	name       string
+	walker     *Walker
+	soi        string
+	exif       bool
+	app1Marker string
+	app1Size   uint32 // APP1 data size
+	IFDdata    []*IFDEntry
+	debug      bool
+	selector   func(*IFDEntry, *Walker) bool
+	logOutput  *os.File
 }
 
-func NewImage(imagePath string, debug bool, echo bool, sort bool, sel func(*IFDEntry, *Walker) bool, log string) (img *image, err error) {
+func NewImage(imagePath string, debug bool, sel func(*IFDEntry, *Walker) bool, log string) (img *image, err error) {
 	var logOutput *os.File
 	if log != "" {
 		logOutput, err = os.Create(log)
@@ -135,12 +129,11 @@ func NewImage(imagePath string, debug bool, echo bool, sort bool, sel func(*IFDE
 		panic(fmt.Sprintf("Failed to read file: %v", err))
 	}
 	image := &image{
-		debug:      debug,
-		echo:       echo,
-		sort:       sort,
-		selector:   sel,
-		name:       imagePath,
-		walker:     walker,
+		debug:    debug,
+		selector: sel,
+		name:     imagePath,
+		walker:   walker,
+
 		soi:        walker.Pos(OfsSOI).Hex(walker.Bytes(2), ""),
 		app1Marker: walker.Pos(OfsAPP1Marker).Hex(walker.Bytes(2), ""),
 		// Always Big Endian
@@ -159,6 +152,9 @@ func NewImage(imagePath string, debug bool, echo bool, sort bool, sel func(*IFDE
 			}
 		}
 	}
+	if debug {
+		image.logWriteLn(walker.LinePrint(0, 12, 3))
+	}
 
 	if image.soi != "FFD8" {
 		panic(fmt.Sprintf("Jpeg marker 'FFD8' is missing (Offset %d) found %s", OfsSOI, image.soi))
@@ -170,22 +166,39 @@ func NewImage(imagePath string, debug bool, echo bool, sort bool, sel func(*IFDE
 		panic(fmt.Sprintf("Jpeg 'Exif' data marker is missing (Offset %d) found %s", OfsExifHeader, bytesToZString(walker.Pos(OfsExifHeader).Bytes(6))))
 	}
 
-	image.walker.littleE = (walker.Pos(OfsEndianDef).ZstringEquals("II*"))
+	tiffHeader := walker.Pos(OfsTiffHeader).Zstring(2)
+	if tiffHeader == "II" {
+		image.walker.littleE = true
+	} else {
+		if tiffHeader != "MM" {
+			panic("Tiff Header 'II' or 'MM' is missing")
+		}
+		image.walker.littleE = false
+	}
 	/*
 		The rest of the image data needs to know the littleE setting to work
 
 		Calc the start if the tags Using TIFF Header offset
 	*/
-	image.mainDirOffset = uint32(walker.Pos(OfsMainImageOffset).BytesToUint(walker.Bytes(4)))
-
-	mainTiffDir := OfsMainImageOffset + image.mainDirOffset - uint32(4)
-	image.readDirectory(mainTiffDir, walker, "Main IFD", 0)
-	image.logWriteLn("Done RD")
-	if image.sort {
-		image.sortEntries()
+	mainTiffDir := image.OffsetToAbs(walker.Pos(OfsMainImageOffset).BytesToUint(walker.Bytes(4)))
+	if debug {
+		image.logWriteLn(fmt.Sprintf("DEBUG: MainIFD ABS[0x%x (%d)]", mainTiffDir, mainTiffDir))
 	}
 
-	if image.echo {
+	var following uint64 = 1
+	count := 0
+	dirName := "Main IFD"
+	for following > 0 {
+		image.readDirectory(uint32(mainTiffDir), walker, dirName, 0)
+		following = image.walker.BytesToUint(image.walker.Bytes(4))
+		mainTiffDir = image.OffsetToAbs(following)
+		count++
+		dirName = fmt.Sprintf("Dir%d IFD", count)
+	}
+
+	image.sortEntries()
+
+	if !image.debug {
 		for _, ifd := range image.IFDdata {
 			image.logWriteLn(ifd.Output())
 		}
@@ -193,8 +206,12 @@ func NewImage(imagePath string, debug bool, echo bool, sort bool, sel func(*IFDE
 	return image, nil
 }
 
+func (p *image) OffsetToAbs(offset uint64) uint64 {
+	return OfsTiffHeader + offset
+}
+
 func (p *image) Diagnostics(m string) string {
-	return fmt.Sprintf("DEBUG:%s SOI[%s]  APP1 Mark[%s] APP1 Size[%d] FileLen[%d]Name[%s] LittleE[%t] EXIF[%t] OffsetToMainDir[%d] Entries[%d]", m, p.soi, p.app1Marker, p.app1Size, p.walker.data.length, p.name, p.walker.littleE, p.IsExif(), p.mainDirOffset, len(p.IFDdata))
+	return fmt.Sprintf("DEBUG:%s SOI[%s]  APP1 Mark[%s] APP1 Size[%d] FileLen[%d]Name[%s] LittleE[%t] EXIF[%t]", m, p.soi, p.app1Marker, p.app1Size, p.walker.data.length, p.name, p.walker.littleE, p.IsExif())
 }
 
 func (p *image) Output() string {
@@ -234,15 +251,23 @@ func (p *image) IsExif() bool {
 }
 
 func (p *image) getValueBytes(ifd *IFDEntry) []byte {
-	byteCount := ifd.itemCount * ifd.tagFormat.byteLen
+	defer func() {
+		if r := recover(); r != nil {
+			msg := fmt.Sprintf("%s %s", r, ifd.Diagnostics(""))
+			panic(msg)
+		}
+	}()
+
+	byteCount := ifd.itemCount * ifd.TagFormat.byteLen
 	if (byteCount) > 4 {
 		// Location is a pointer from the IDFBase
 		// Clone the walker so we can use it to get the bytes without effecting the parser
 		w := p.walker.Clone()
-		return w.Pos(uint32(w.BytesToUint(ifd.location)) + TiffRecordSize).Bytes(byteCount)
+		pos := p.OffsetToAbs(w.BytesToUint(ifd.dataOrOffset))
+		return w.Pos(uint32(pos)).Bytes(byteCount)
 	} else {
 		// Location is the value
-		return ifd.location
+		return ifd.dataOrOffset
 	}
 }
 
@@ -250,9 +275,9 @@ func (p *image) GetIDFData(ifd *IFDEntry) string {
 	var line bytes.Buffer
 	bytes := p.getValueBytes(ifd)
 	items := int(ifd.itemCount)
-	tagFormat := ifd.tagFormat
+	tagFormat := ifd.TagFormat
 
-	if tagFormat.tiffFormat == FormatString || ifd.TagData.TagNum == TagExifVersion {
+	if tagFormat.tiffFormat == FormatString {
 		return bytesToZString(bytes)
 	}
 
@@ -293,6 +318,16 @@ func (p *image) GetIDFData(ifd *IFDEntry) string {
 }
 
 func (p *image) readDirectory(base uint32, walker *Walker, dirName string, depth int) {
+	defer func() {
+		if r := recover(); r != nil {
+			msg := fmt.Sprintf("PANIC:%s\n", r)
+			if p.logOutput == nil {
+				os.Stderr.WriteString(msg)
+			} else {
+				p.logOutput.WriteString(msg)
+			}
+		}
+	}()
 	dirCount := int(walker.Pos(base).BytesToUint(walker.Bytes(2)))
 	if dirCount <= 0 || dirCount > 200 {
 		panic(fmt.Sprintf("Image TIFF data count is invalid. Expected[1..200]. Actual=[%d]", dirCount))
@@ -301,20 +336,18 @@ func (p *image) readDirectory(base uint32, walker *Walker, dirName string, depth
 		current := walker.posit
 		ne := newIFDEntry(walker)
 		if ne.isSubDir() {
-			ofs := walker.BytesToUint(ne.location)
+			absSubDir := uint32(p.OffsetToAbs(walker.BytesToUint(ne.dataOrOffset)))
 			if p.debug {
 				wc := walker.Clone()
-				dc := wc.Pos(uint32(ofs + 12)).BytesToUint(wc.Bytes(2))
-				p.logWriteLn(fmt.Sprintf("IFD:[%s of %s :%d] %s ENTRIES[%d] DIR[%s]", pad0(uint32(i), 2), pad0(uint32(dirCount), 2), depth, dirName, dc, ne.TagData.Name))
-				p.logWriteLn(p.walker.LinePrint(ne.DataAddress-8, 12, 1))
+				dc := wc.Pos(absSubDir).BytesToUint(wc.Bytes(2))
+				p.logWriteLn(fmt.Sprintf("IFD:[%s of %s :%d] %s ENTRIES[%d] DIR[%s] ABS[0x%x (%d)]", pad0(uint32(i+1), 2), pad0(uint32(dirCount), 2), depth, dirName, dc, ne.TagData.Name, absSubDir, absSubDir))
 			}
-			p.readDirectory(uint32(ofs+12), walker.Clone(), ne.TagData.Name, depth+1)
+			p.readDirectory(absSubDir, walker.Clone(), ne.TagData.Name, depth+1)
 		} else {
 			ne.Value = p.GetIDFData(ne)
 			if (p.selector != nil && p.selector(ne, walker.Clone().Pos(current))) || p.selector == nil {
 				if p.debug {
-					p.logWriteLn(ne.Diagnostics(fmt.Sprintf("[%s of %s :%d] %s ", pad0(uint32(i), 2), pad0(uint32(dirCount), 2), depth, dirName)))
-					p.logWriteLn(p.walker.LinePrint(ne.DataAddress-8, 12, 1))
+					p.logWriteLn(ne.Diagnostics(fmt.Sprintf("[%s of %s :%d] %s ", pad0(uint32(i+1), 2), pad0(uint32(dirCount), 2), depth, dirName)))
 				}
 				p.IFDdata = append(p.IFDdata, ne)
 			}

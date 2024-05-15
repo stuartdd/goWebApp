@@ -44,7 +44,7 @@ var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
 
 var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
-var getServerTimeMatch = NewUrlRequestMatcher("/servcd ..er/time", "GET")
+var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
 var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET")
 

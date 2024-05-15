@@ -131,7 +131,7 @@ func TestWalkerInt(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "Failed to extend buffer by 1. Only able to read 0. Error: EOF" {
+			if r != "Failed to extend buffer. Required 1. Current 4, Only able to read 0. Error: EOF" {
 				t.Fatalf("SetPos(8) Did not panic with correct message")
 			}
 		}
@@ -192,7 +192,7 @@ func TestWalkerHex(t *testing.T) {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "Failed to extend buffer by 1. Only able to read 0. Error: EOF" {
+			if r != "Failed to extend buffer. Required 1. Current 8, Only able to read 0. Error: EOF" {
 				t.Fatalf("Hex(2) Did not panic with correct message")
 			}
 		}
@@ -252,7 +252,7 @@ func TestWalkerRead10(t *testing.T) {
 func TestWalkerAdvanceOffEnd(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "Failed to extend buffer by 1. Only able to read 0. Error: EOF" {
+			if r != "Failed to extend buffer. Required 1. Current 50, Only able to read 0. Error: EOF" {
 				t.Fatalf("Advance(1) Did not panic with correct message")
 			}
 		}
@@ -299,7 +299,7 @@ func TestWalkerLastByted(t *testing.T) {
 func TestWalkerPosPastEnd(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			if r != "Failed to extend buffer by 4. Only able to read 2." {
+			if r != "Failed to extend buffer. Required 4. Current 37, Only able to read 2." {
 				t.Fatalf("w.Pos(51) Did not panic with correct message")
 			}
 		}
@@ -319,7 +319,7 @@ func TestWalkerPosPastEnd(t *testing.T) {
 func TestBadExifMarker(t *testing.T) {
 	createDataFile(t, td1, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
+	_, err := NewImage(tdFileJpeg, true, nil, "")
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
 		t.Fatalf("TD1 %s", err.Error())
 	}
@@ -328,7 +328,7 @@ func TestBadExifMarker(t *testing.T) {
 func TestBadSOI(t *testing.T) {
 	createDataFile(t, td2, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
+	_, err := NewImage(tdFileJpeg, true, nil, "")
 	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
 		t.Fatalf("BadSOI %s", err.Error())
 	}
@@ -337,7 +337,7 @@ func TestBadSOI(t *testing.T) {
 func TestBadA001(t *testing.T) {
 	createDataFile(t, td3, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
+	_, err := NewImage(tdFileJpeg, true, nil, "")
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
 		t.Fatalf("BadA001 %s", err.Error())
 	}
@@ -346,7 +346,7 @@ func TestBadA001(t *testing.T) {
 func TestBadJpg(t *testing.T) {
 	createDataFile(t, td4, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
-	_, err := NewImage(tdFileJpeg, true, true, true, nil, "")
+	_, err := NewImage(tdFileJpeg, true, nil, "")
 	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
 		t.Fatalf("%s", err.Error())
 	}
@@ -376,7 +376,7 @@ DateTimeOriginal=2016:11:06 11:29:18
 `
 
 func TestImage01(t *testing.T) {
-	im, err := NewImage("../testdata/test_data_01.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
+	im, err := NewImage("../testdata/test_data_01.ti", false, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
 	}, "")
 	if err != nil {
@@ -388,7 +388,7 @@ func TestImage01(t *testing.T) {
 }
 
 func TestImage02(t *testing.T) {
-	_, err := NewImage("../testdata/test_data_02.ti", false, false, true, func(ifd *IFDEntry, w *Walker) bool {
+	_, err := NewImage("../testdata/test_data_02.ti", false, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
 	}, "")
 	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0" {
@@ -397,12 +397,7 @@ func TestImage02(t *testing.T) {
 }
 
 func TestImage03(t *testing.T) {
-	_, err := NewImage("../testdata/test_data_01.ti", true, false, false, func(i *IFDEntry, w *Walker) bool {
-		if i == nil {
-			return true
-		}
-		return i.TagData.Name == "ComponentsConfiguration"
-	}, "test.log")
+	_, err := NewImage("../testdata/test_data_01.ti", false, nil, "test.log")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -521,4 +516,44 @@ Format 				undefined 		signed short 	signed long 	signed rational single float 	
 Bytes/component 	1 				2 				4 				8 				4 					8
 
 magick testImage.jpg -print "%[EXIF:*]\n" info:
+
+
+0000: 49 49
+0002: 2A 00
+0004: 08 00 00 00
+0008: 02 00 		number of directory entry of IFD0 is '2'
+
+000a: 1A 01 		XResolution(0x011A) Tag
+000c: 05 00			Format
+000e: 01 00	00 00	Count (Data len = count * Format size)
+0010: 26 00 00 00	XResolution Data - Offset
+
+0016: 69 87			ExifOffset offset to Exif SubIFD
+0018: 04 00 		Format
+001a: 01 00 00 00 	Count (Data len = count * Format size)
+001e: 11 02 00 00 	Exif SubIFD starts from address '0x0211'.
+
+0022: 40 00 00 00 	Next IFD
+
+0026: 48 00-00 00 01 00 00 00
+
+If the first part of TIFF data is above, it can read as;
+
+    The first 2bytes are "I I", byte align is 'Intel'.
+    Address 0x0004~0x0007 is 0x08000000, IFD0 starts from address '0x0008'
+    Address 0x0008~0x0009 is 0x0200, number of directory entry of IFD0 is '2'.
+    Address 0x000a~0x000b is 0x1A01, it means this is a XResolution(0x011A) Tag, it contains a horizontal resolution of image.
+    Address 0x000c~0x000d is 0x0500, format of this value is unsigned rational(0x0005).
+    Address 0x000e~0x0011 is 0x01000000, number of components is '1'. Unsigned rational's data size is 8bytes/components, so total data length is 1x8=8bytes.
+    Total data length is larger than 4bytes, so next 4bytes contains an offset to data.
+    Address 0x0012~0x0015 is 0x26000000, XResolution data is stored to address 0x0026
+    Address 0x0026~0x0029 is 0x48000000, numerator is 72, address 0x002a~0x002d is 0x0100000000, denominator is '1'. So the value of XResoultion is 72/1.
+    Address0x0016~0x0017 is 0x6987, next Tag is ExifOffset(0x8769). Its value is an offset to Exif SubIFD
+    Data format is 0x0004, unsigned long integer.
+    This Tag has one component. Unsigned long integer's data size is 4bytes/components, so total data size is 4bytes.
+    Total data size is equal to 4bytes, next 4bytes contains the value of Exif SubIFD offset.
+    Address 0x001e~0x0021 is 0x11020000, Exif SubIFD starts from address '0x0211'.
+    This is the last directory entry, next 4bytes shows an offset to next IFD.
+    Address 0x0022~0x0025 is 0x40000000, next IFD starts from address '0x0040'
+
 */
