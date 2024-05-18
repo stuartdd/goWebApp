@@ -11,14 +11,143 @@ import (
 
 const tdFileJson = "td1.json"
 const tdFileJpeg = "td1.jpg"
+const originals = "/home/stuart/git/originals"
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
 
-func TestWalker(t *testing.T) {
-	m := map[string]string{}
+func TestPictureInAnotB(t *testing.T) {
+	AA, err := WalkDir(originals, func(p string, n string) bool {
+		return strings.HasSuffix(n, ".jpg") || strings.HasSuffix(n, ".JPG")
+	})
+	if err != nil {
+		t.Fatalf("Failed to walk %v", err)
+	}
+	// AA.VisitEachFile(func(pp *PicPath, s string) bool {
+	// 	fmt.Printf("%s/%s\n", pp, s)
+	// 	return true
+	// })
+	err = AA.Save(tdFileJson, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeDataFile(tdFileJson)
 
+	BB, err := newPicDir("Root").Load(tdFileJson)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	InAnotB(AA, BB, func(pp *PicPath) {
+		t.Fatalf("Find should find %s", pp)
+	})
+
+	pFromB := removeFileFromPic(t, BB, "bob/WhatsApp/2018_12_31_11_17_19_IMG-20190102-WA0000.jpg.jpg")
+	notInB := false
+	InAnotB(AA, BB, func(pp *PicPath) {
+		if pp.Last() == pFromB.Last() {
+			notInB = true
+		}
+	})
+	if !notInB {
+		t.Fatalf("InAnotB should report file %s is not in B", pFromB)
+	}
+
+	InAnotB(BB, AA, func(pp *PicPath) {
+		t.Fatalf("InAnotB should NOT report file %s is not in A", pFromB)
+	})
+
+	pFromA := removeFileFromPic(t, AA, "stuart/Stuart_Phone/Images/Image(174).jpg")
+	notInA := false
+	InAnotB(BB, AA, func(pp *PicPath) {
+		if pp.Last() == pFromA.Last() {
+			notInA = true
+		}
+	})
+	if !notInA {
+		t.Fatalf("InAnotB should report file %s is not in A", pFromA)
+	}
+
+}
+
+func removeFileFromPic(t *testing.T, pic *PicDir, file string) *PicPath {
+	path := newPicPathFromFile(file)
+	dir, fil := pic.Find(path)
+	if dir == nil || fil == nil {
+		t.Fatalf("Find should find file %s in pic", path)
+	}
+	nf := []*PicFile{}
+	for _, fn := range dir.Files {
+		if fn.N != path.Last() {
+			nf = append(nf, fn)
+		}
+	}
+	dir.Files = nf
+
+	_, f1 := pic.Find(path)
+	if f1 != nil {
+		t.Fatalf("Find should NOT find file %s", path.Last())
+	}
+	return path
+}
+
+func TestPicPath(t *testing.T) {
+	pp1 := newPicPathFromFile("A")
+	if pp1.Len() != 1 || pp1.paths[0] != "A" {
+		t.Fatalf("pp1 newPicPathFromFile 'A' failed")
+	}
+	pp2 := newPicPathFromFile("A/B")
+	if pp2.Len() != 2 || pp2.paths[0] != "A" || pp2.paths[1] != "B" {
+		t.Fatalf("pp2 newPicPathFromFile 'A/B' failed")
+	}
+	pp3 := newPicPathFromFile("A")
+	if pp3.Len() != 1 || pp3.paths[0] != "A" || !pp1.Equal(pp3) {
+		t.Fatalf("pp1 newPicPathFromFile 'A=A' failed")
+	}
+	pp4 := newPicPathFromFile("B")
+	if pp4.Len() != 1 || pp4.paths[0] != "B" || pp4.Equal(pp3) {
+		t.Fatalf("pp1 newPicPathFromFile 'A=B' failed")
+	}
+	if !newPicPathFromFile("").Equal(newPicPath()) {
+		t.Fatalf("pp1 newPicPathFromFile != newPicPath")
+	}
+	pp3.push("B")
+	if !pp2.Equal(pp3) {
+		t.Fatalf("pp2 != pp3 after push B")
+	}
+	pp2.push("X")
+	if pp2.Equal(pp3) {
+		t.Fatalf("pp3 == pp3 after push X")
+	}
+
+	if pp3.String() != "A/B" {
+		t.Fatalf("pp3 string expected 'A/B' actual '%s'", pp3.String())
+	}
+	pp3.pop()
+	if pp3.String() != "A" {
+		t.Fatalf("pp3 string expected 'A' actual '%s'", pp3.String())
+	}
+	pp3.pop()
+	if pp3.String() != "" {
+		t.Fatalf("pp3.pop 1 string expected '' actual '%s'", pp3.String())
+	}
+	pp3.pop()
+	if pp3.String() != "" {
+		t.Fatalf("pp3.pop 2 string expected '' actual '%s'", pp3.String())
+	}
+	pp3.push("X")
+	if pp3.String() != "X" {
+		t.Fatalf("pp3.push(X) 1 string expected 'X' actual '%s'", pp3.String())
+	}
+	pp3.push("X")
+	if pp3.String() != "X/X" {
+		t.Fatalf("pp3.push(X) 2string expected 'X/X' actual '%s'", pp3.String())
+	}
+}
+
+func TestPictureWalker(t *testing.T) {
+	m := map[string]string{}
 	c := 0
-	l, err := WalkDir("/home/stuart/git/originals", func(p string, n string) bool {
+	l, err := WalkDir(originals, func(p string, n string) bool {
 		_, ok := m[p]
 		if ok {
 			t.Fatalf("Duplicate of walk! %s", p)
@@ -33,15 +162,15 @@ func TestWalker(t *testing.T) {
 	}
 	fmt.Println(c)
 
-	err = l.Save(tdFileJson)
+	err = l.Save(tdFileJson, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer removeDataFile(tdFileJson)
 
 	count := 0
-	l.VisitEachFile(func(p *PicPath, s string) {
-		fn := fmt.Sprintf("/home/stuart/git/originals/%s%s", p, s)
+	l.VisitEachFile(func(p *PicPath, s string) bool {
+		fn := fmt.Sprintf("%s/%s/%s", originals, p, s)
 		_, err = os.Stat(fn)
 		if err != nil {
 			t.Fatal(err)
@@ -51,6 +180,7 @@ func TestWalker(t *testing.T) {
 			t.Fatalf("Node is NOT in the map! %s", fn)
 		}
 		count++
+		return true
 	})
 	if count != c {
 		t.Fatalf("Number of nodes added (%d) != nodes visited (%d)", c, count)
@@ -60,8 +190,8 @@ func TestWalker(t *testing.T) {
 	ll, err := newPicDir("Root").Load(tdFileJson)
 
 	count = 0
-	ll.VisitEachFile(func(p *PicPath, s string) {
-		fn := fmt.Sprintf("/home/stuart/git/originals/%s%s", p, s)
+	ll.VisitEachFile(func(p *PicPath, s string) bool {
+		fn := fmt.Sprintf("%s/%s/%s", originals, p, s)
 		_, err = os.Stat(fn)
 		if err != nil {
 			t.Fatal(err)
@@ -71,6 +201,7 @@ func TestWalker(t *testing.T) {
 			t.Fatalf("Node is NOT in the map! %s", fn)
 		}
 		count++
+		return true
 	})
 	if count != c {
 		t.Fatalf("Number of nodes added (%d) != nodes visited (%d)", c, count)
