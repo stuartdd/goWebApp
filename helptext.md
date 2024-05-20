@@ -19,7 +19,7 @@ Usage:
 
 <appName> create
     This will load the configuration file and create any user directories required
-    to run. It will only create user directories (Locations in the config data).
+    to run. It will only create user directories ('Locations' in the config data).
 
     Can be used with the "config=" parameter.
 

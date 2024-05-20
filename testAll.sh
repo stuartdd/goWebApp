@@ -7,6 +7,13 @@ if [ $? -eq 1 ]; then
   exit 1
 fi
 
+cd ../pictures
+echo "--------------------------------------- $PWD"
+go test
+if [ $? -eq 1 ]; then
+  exit 1
+fi
+
 cd ../controllers
 echo "--------------------------------------- $PWD"
 go test
@@ -48,4 +55,6 @@ go test
 if [ $? -eq 1 ]; then
   exit 1
 fi
+
+echo "*********************************** ALL PASS ****************************************"
 

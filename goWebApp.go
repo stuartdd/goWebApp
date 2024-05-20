@@ -27,10 +27,17 @@ func main() {
 	configFileName, _ := getArg("config=")
 	s, _ := getArg("create")
 	createLocationsFlag := s != ""
-	s, pos := getArg("add")
+	s, addPos := getArg("add")
 	addUserFlag := s != ""
+	s, scanPos := getArg("scan")
+	scanDirFlag := s != ""
 
-	if addUserFlag && pos == 0 {
+	if scanDirFlag && scanPos == 0 {
+		//	code := pictures.ScanDirectory("")
+		os.Exit(1)
+	}
+
+	if addUserFlag && addPos == 0 {
 		// add was the last parameter!
 		osExitWithMessage(1, "Add user. Name not found")
 	}
@@ -41,7 +48,7 @@ func main() {
 			osExitWithMessage(1, "Cannot use Add and Create at the same time")
 		}
 		dontResolveConfig = true
-		addUserName = os.Args[pos]
+		addUserName = os.Args[addPos]
 	}
 
 	if createLocationsFlag {

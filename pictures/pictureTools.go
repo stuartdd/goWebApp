@@ -1,4 +1,4 @@
-package image
+package pictures
 
 import (
 	"bytes"
@@ -9,6 +9,17 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+type ScannedData struct {
+	OldState          *PicDir
+	OldStateCount     int
+	NewState          *PicDir
+	NewStateCount     int
+	NeedToCreate      *PicDir
+	NeedToCreateCount int
+	NeedToDelete      *PicDir
+	NeedToDeleteCount int
+}
 
 type PicFile struct {
 	N string
@@ -56,7 +67,6 @@ func (p *PicPath) Len() int {
 func (p *PicPath) Last() string {
 	return p.paths[len(p.paths)-1]
 }
-
 func (p *PicPath) Equal(pp *PicPath) bool {
 	if p.Len() != pp.Len() {
 		return false
@@ -224,6 +234,10 @@ func (p *PicDir) Add(path string) {
 	p.addParts(strings.Split(path, "/"))
 }
 
+func (p *PicDir) AddPath(path *PicPath) {
+	p.addParts(path.paths)
+}
+
 func (p *PicDir) addParts(parts []string) {
 	l := len(parts)
 	if l > 0 {
@@ -294,4 +308,98 @@ func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 		return nil
 	})
 	return dir, nil
+}
+
+func ScanDirectory(dir string, ext []string) (*ScannedData, error) {
+	dataDir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := os.Stat(dataDir)
+	if err != nil {
+		return nil, err
+	}
+	if !stat.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", dataDir)
+	}
+
+	dataFile := filepath.Join(dataDir, "dirScanData.json")
+	stat, err = os.Stat(dataFile)
+	if err != nil {
+		firstData, count, err := createScanData(dataDir, ext)
+		if err != nil {
+			return nil, err
+		}
+		err = firstData.Save(dataFile, true)
+		if err != nil {
+			return nil, err
+		}
+		return &ScannedData{
+			OldState:          firstData,
+			OldStateCount:     count,
+			NewState:          nil,
+			NewStateCount:     0,
+			NeedToCreate:      nil,
+			NeedToCreateCount: 0,
+			NeedToDelete:      nil,
+			NeedToDeleteCount: 0,
+		}, nil
+	} else {
+		if stat.IsDir() {
+			return nil, fmt.Errorf("%s is a directory", dataFile)
+		}
+	}
+
+	oldData, err := newPicDir("").Load(dataFile)
+	if err != nil {
+		return nil, err
+	}
+	newData, count, err := createScanData(dataDir, ext)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ScannedData{
+		OldState:          oldData,
+		OldStateCount:     0,
+		NewState:          newData,
+		NewStateCount:     count,
+		NeedToCreate:      newPicDir("Create"),
+		NeedToCreateCount: 0,
+		NeedToDelete:      newPicDir("Delete"),
+		NeedToDeleteCount: 0,
+	}
+	result.compare()
+	return result, nil
+}
+
+func (p *ScannedData) compare() {
+	InAnotB(p.OldState, p.NewState, func(pp *PicPath) {
+		p.NeedToDelete.AddPath(pp)
+		p.NeedToDeleteCount++
+	})
+	InAnotB(p.NewState, p.OldState, func(pp *PicPath) {
+		p.NeedToCreate.AddPath(pp)
+		p.NeedToCreateCount++
+	})
+}
+
+func createScanData(dir string, ext []string) (*PicDir, int, error) {
+	count := 0
+	sd, err := WalkDir(dir, func(p string, n string) bool {
+		if n == "dirScanData.json" {
+			return false // dont include the data file in the data
+		}
+		for _, ex := range ext {
+			if !strings.HasSuffix(n, ex) {
+				return false
+			}
+		}
+		count++
+		return true
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return sd, count, nil
 }
