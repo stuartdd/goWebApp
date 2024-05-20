@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -11,21 +12,18 @@ import (
 
 const tdFileJson = "td1.json"
 const tdFileJpeg = "td1.jpg"
-const originals = "/home/stuart/git/originals"
+const originals = "../testdata"
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
 
 func TestPictureInAnotB(t *testing.T) {
 	AA, err := WalkDir(originals, func(p string, n string) bool {
-		return strings.HasSuffix(n, ".jpg") || strings.HasSuffix(n, ".JPG")
+		return !strings.Contains(n, ".json") && !strings.Contains(n, ".log")
 	})
 	if err != nil {
 		t.Fatalf("Failed to walk %v", err)
 	}
-	// AA.VisitEachFile(func(pp *PicPath, s string) bool {
-	// 	fmt.Printf("%s/%s\n", pp, s)
-	// 	return true
-	// })
+
 	err = AA.Save(tdFileJson, false)
 	if err != nil {
 		t.Fatal(err)
@@ -38,10 +36,10 @@ func TestPictureInAnotB(t *testing.T) {
 	}
 
 	InAnotB(AA, BB, func(pp *PicPath) {
-		t.Fatalf("Find should find %s", pp)
+		t.Fatalf("There should not be differences %s", pp)
 	})
 
-	pFromB := removeFileFromPic(t, BB, "bob/WhatsApp/2018_12_31_11_17_19_IMG-20190102-WA0000.jpg.jpg")
+	pFromB := removeFileFromPic(t, BB, "admin/diskSize.sh")
 	notInB := false
 	InAnotB(AA, BB, func(pp *PicPath) {
 		if pp.Last() == pFromB.Last() {
@@ -56,7 +54,7 @@ func TestPictureInAnotB(t *testing.T) {
 		t.Fatalf("InAnotB should NOT report file %s is not in A", pFromB)
 	})
 
-	pFromA := removeFileFromPic(t, AA, "stuart/Stuart_Phone/Images/Image(174).jpg")
+	pFromA := removeFileFromPic(t, AA, "bob/b-pics/favicon.ico")
 	notInA := false
 	InAnotB(BB, AA, func(pp *PicPath) {
 		if pp.Last() == pFromA.Last() {
@@ -66,7 +64,6 @@ func TestPictureInAnotB(t *testing.T) {
 	if !notInA {
 		t.Fatalf("InAnotB should report file %s is not in A", pFromA)
 	}
-
 }
 
 func removeFileFromPic(t *testing.T, pic *PicDir, file string) *PicPath {
@@ -154,7 +151,7 @@ func TestPictureWalker(t *testing.T) {
 		}
 		m[p] = "."
 		c++
-		return strings.HasSuffix(n, ".jpg") || strings.HasSuffix(n, ".JPG")
+		return true
 	})
 
 	if err != nil {
@@ -170,7 +167,8 @@ func TestPictureWalker(t *testing.T) {
 
 	count := 0
 	l.VisitEachFile(func(p *PicPath, s string) bool {
-		fn := fmt.Sprintf("%s/%s/%s", originals, p, s)
+		fn := fmt.Sprintf("%s/%s%s", originals, p, s)
+		fn, _ = filepath.Abs(fn)
 		_, err = os.Stat(fn)
 		if err != nil {
 			t.Fatal(err)

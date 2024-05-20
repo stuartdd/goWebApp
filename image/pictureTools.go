@@ -35,8 +35,17 @@ func newPicPathFromFile(s string) *PicPath {
 	if strings.TrimSpace(s) == "" {
 		return newPicPath()
 	}
+	sList := strings.Split(s, "/")
+	if len(sList) == 0 {
+		return newPicPath()
+	}
+	if sList[0] == "" {
+		return &PicPath{
+			paths: sList[1:],
+		}
+	}
 	return &PicPath{
-		paths: strings.Split(s, "/"),
+		paths: sList,
 	}
 }
 
@@ -61,6 +70,9 @@ func (p *PicPath) Equal(pp *PicPath) bool {
 }
 func (p *PicPath) String() string {
 	var line bytes.Buffer
+	if p.Len() == 0 {
+		return ""
+	}
 	for i, pa := range p.paths {
 		line.WriteString(pa)
 		if i < (len(p.paths) - 1) {
