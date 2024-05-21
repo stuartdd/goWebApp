@@ -11,14 +11,15 @@ import (
 )
 
 type ScannedData struct {
+	DataFile          string
 	OldState          *PicDir
 	OldStateCount     int
 	NewState          *PicDir
 	NewStateCount     int
-	NeedToCreate      *PicDir
-	NeedToCreateCount int
-	NeedToDelete      *PicDir
-	NeedToDeleteCount int
+	FilesDeleted      *PicDir
+	FilesDeletedCount int
+	FilesAdded        *PicDir
+	FilesAddedCount   int
 }
 
 type PicFile struct {
@@ -67,6 +68,7 @@ func (p *PicPath) Len() int {
 func (p *PicPath) Last() string {
 	return p.paths[len(p.paths)-1]
 }
+
 func (p *PicPath) Equal(pp *PicPath) bool {
 	if p.Len() != pp.Len() {
 		return false
@@ -78,6 +80,7 @@ func (p *PicPath) Equal(pp *PicPath) bool {
 	}
 	return true
 }
+
 func (p *PicPath) String() string {
 	var line bytes.Buffer
 	if p.Len() == 0 {
@@ -151,7 +154,7 @@ func (p *PicDir) FindFile(N string) *PicFile {
 	return nil
 }
 
-func (p *PicDir) Load(fil string) (*PicDir, error) {
+func (p *PicDir) load(fil string) (*PicDir, error) {
 	dd, err := os.ReadFile(fil)
 	if err != nil {
 		return nil, err
@@ -163,7 +166,7 @@ func (p *PicDir) Load(fil string) (*PicDir, error) {
 	return p, nil
 }
 
-func (p *PicDir) Save(fil string, indent bool) error {
+func (p *PicDir) save(fil string, indent bool) error {
 	jData, err := p.toJson(indent)
 	if err != nil {
 		return err
@@ -310,7 +313,7 @@ func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 	return dir, nil
 }
 
-func ScanDirectory(dir string, ext []string) (*ScannedData, error) {
+func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData, error) {
 	dataDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -323,26 +326,27 @@ func ScanDirectory(dir string, ext []string) (*ScannedData, error) {
 		return nil, fmt.Errorf("%s is not a directory", dataDir)
 	}
 
-	dataFile := filepath.Join(dataDir, "dirScanData.json")
+	dataFile := filepath.Join(dataDir, dataFileName)
 	stat, err = os.Stat(dataFile)
 	if err != nil {
-		firstData, count, err := createScanData(dataDir, ext)
+		firstData, count, err := createScanData(dataDir, ext, dataFileName)
 		if err != nil {
 			return nil, err
 		}
-		err = firstData.Save(dataFile, true)
+		err = firstData.save(dataFile, true)
 		if err != nil {
 			return nil, err
 		}
 		return &ScannedData{
+			DataFile:          dataFile,
 			OldState:          firstData,
 			OldStateCount:     count,
 			NewState:          nil,
 			NewStateCount:     0,
-			NeedToCreate:      nil,
-			NeedToCreateCount: 0,
-			NeedToDelete:      nil,
-			NeedToDeleteCount: 0,
+			FilesDeleted:      nil,
+			FilesDeletedCount: 0,
+			FilesAdded:        nil,
+			FilesAddedCount:   0,
 		}, nil
 	} else {
 		if stat.IsDir() {
@@ -350,44 +354,49 @@ func ScanDirectory(dir string, ext []string) (*ScannedData, error) {
 		}
 	}
 
-	oldData, err := newPicDir("").Load(dataFile)
+	oldData, err := newPicDir("").load(dataFile)
 	if err != nil {
 		return nil, err
 	}
-	newData, count, err := createScanData(dataDir, ext)
+	newData, count, err := createScanData(dataDir, ext, dataFileName)
 	if err != nil {
 		return nil, err
 	}
 
 	result := &ScannedData{
+		DataFile:          dataFile,
 		OldState:          oldData,
 		OldStateCount:     0,
 		NewState:          newData,
 		NewStateCount:     count,
-		NeedToCreate:      newPicDir("Create"),
-		NeedToCreateCount: 0,
-		NeedToDelete:      newPicDir("Delete"),
-		NeedToDeleteCount: 0,
+		FilesDeleted:      newPicDir("Deleted"),
+		FilesDeletedCount: 0,
+		FilesAdded:        newPicDir("Added"),
+		FilesAddedCount:   0,
 	}
 	result.compare()
 	return result, nil
 }
 
+func (p *ScannedData) Commit(indent bool) error {
+	return p.NewState.save(p.DataFile, indent)
+}
+
 func (p *ScannedData) compare() {
-	InAnotB(p.OldState, p.NewState, func(pp *PicPath) {
-		p.NeedToDelete.AddPath(pp)
-		p.NeedToDeleteCount++
-	})
 	InAnotB(p.NewState, p.OldState, func(pp *PicPath) {
-		p.NeedToCreate.AddPath(pp)
-		p.NeedToCreateCount++
+		p.FilesAdded.AddPath(pp)
+		p.FilesAddedCount++
+	})
+	InAnotB(p.OldState, p.NewState, func(pp *PicPath) {
+		p.FilesDeleted.AddPath(pp)
+		p.FilesDeletedCount++
 	})
 }
 
-func createScanData(dir string, ext []string) (*PicDir, int, error) {
+func createScanData(dir string, ext []string, dataFileName string) (*PicDir, int, error) {
 	count := 0
 	sd, err := WalkDir(dir, func(p string, n string) bool {
-		if n == "dirScanData.json" {
+		if n == dataFileName {
 			return false // dont include the data file in the data
 		}
 		for _, ex := range ext {

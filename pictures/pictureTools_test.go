@@ -11,106 +11,203 @@ import (
 const tdFileJson = "td1.json"
 const originals = "../testdata"
 const x1DataFileName = "xxx-1.log"
+const x2DataFileName = "xxx-2.log"
+const dirDataScanFileName = "dirScanData.json"
+const tdCount = 90
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
 
 func TestPictureScan(t *testing.T) {
-	_, err := ScanDirectory("../tostdata", []string{})
+	dirDataScanFile, _ := filepath.Abs(filepath.Join(originals, dirDataScanFileName))
+	x1DataFile, _ := filepath.Abs(filepath.Join(originals, x1DataFileName))
+	x2DataFile, _ := filepath.Abs(filepath.Join(originals, x2DataFileName))
+
+	_, err := ScanDirectory("../tostdata", []string{}, dirDataScanFileName)
 	AssertErrContains(t, "TestPictureScan 1", err, []string{"no such file or directory"})
-	_, err = ScanDirectory("../testdata/favicon.ico", []string{})
+	_, err = ScanDirectory("../testdata/favicon.ico", []string{}, dirDataScanFileName)
 	AssertErrContains(t, "TestPictureScan 2", err, []string{"is not a directory"})
 
-	removeDataFile(filepath.Join(originals, "dirScanData.json"))
-	x1DataFile, _ := filepath.Abs(filepath.Join(originals, x1DataFileName))
+	removeDataFile(t, dirDataScanFile)
+	removeDataFile(t, x2DataFile)
+	removeDataFile(t, x1DataFile)
+	defer removeDataFile(t, dirDataScanFile)
+	defer removeDataFile(t, x2DataFile)
+	defer removeDataFile(t, x1DataFile)
 
 	createDataFile(t, td, x1DataFile)
-	defer removeDataFile(x1DataFile)
 
 	// Initial scan crerates the dta file.
 	// Current size is 65 with x1DataFile added
 	// The data file is saved for next time
-	sd3, err := ScanDirectory(originals, []string{})
+	sd1, err := ScanDirectory(originals, []string{}, dirDataScanFileName)
 	if err != nil {
-		t.Fatalf("ScanDirectory 3 %v", err)
+		t.Fatalf("ScanDirectory 1 %v", err)
 	}
-	if sd3.OldStateCount != 65 {
-		t.Fatalf("ScanDirectory 3 OldStateCount is %d. Should be 65", sd3.OldStateCount)
-	}
-	if sd3.NewStateCount != 0 {
-		t.Fatalf("ScanDirectory 3 NewStateCount is %d. Should be 0", sd3.NewStateCount)
-	}
-	if sd3.NeedToCreate != nil {
-		t.Fatalf("ScanDirectory 3 NeedToCreate Should be nil")
-	}
-	if sd3.NeedToCreateCount != 0 {
-		t.Fatalf("ScanDirectory 3 NeedToCreateCount is %d. Should be 0", sd3.NeedToCreateCount)
-	}
-	if sd3.NeedToDelete != nil {
-		t.Fatalf("ScanDirectory 3 NeedToDelete Should be nil")
-	}
-	if sd3.NeedToDeleteCount != 0 {
-		t.Fatalf("ScanDirectory 3 NeedToDeleteCount is %d. Should be 0", sd3.NeedToDeleteCount)
-	}
-
+	asserrtExpected(t, "Scan 1", sd1, tdCount, 0, 0, 0, "", "")
 	// Second scan should read datafile in to OldState
 	// New State is the new scan.
 	// Should be nothing to do!
-	sd4, err := ScanDirectory(originals, []string{})
+	sd2, err := ScanDirectory(originals, []string{}, dirDataScanFileName)
 	if err != nil {
-		t.Fatalf("ScanDirectory 4 %v", err)
+		t.Fatalf("ScanDirectory 2 %v", err)
 	}
-	if sd4.OldStateCount != 0 {
-		t.Fatalf("ScanDirectory 4 OldStateCount is %d. Should be 0", sd3.OldStateCount)
-	}
-	if sd4.NewStateCount != 65 {
-		t.Fatalf("ScanDirectory 4 NewStateCount is %d. Should be 65", sd3.NewStateCount)
-	}
-	if sd4.NeedToCreate == nil {
-		t.Fatalf("ScanDirectory 4 NeedToCreate Should not be nil")
-	}
-	if sd4.NeedToCreateCount != 0 {
-		t.Fatalf("ScanDirectory 4 NeedToCreateCount is %d. Should be 0", sd3.NeedToCreateCount)
-	}
-	if sd4.OldStateCount != 0 {
-		t.Fatalf("ScanDirectory 4 OldStateCount is %d. Should be 0", sd3.OldStateCount)
-	}
-	if sd4.NeedToDelete == nil {
-		t.Fatalf("ScanDirectory 4 NeedToDelete Should not be nil")
-	}
-	if sd4.NeedToDeleteCount != 0 {
-		t.Fatalf("ScanDirectory 4 NeedToDeleteCount is %d. Should be 0", sd3.NeedToDeleteCount)
-	}
-	if sd3.OldStateCount != sd4.NewStateCount {
-		t.Fatalf("ScanDirectory 3 OldStateCount Should equal ScanDirectory 4 NewStateCount")
-	}
+	asserrtExpected(t, "Scan 2", sd2, -1, tdCount, 0, 0, "", "")
 
 	// remove a file
-	removeDataFile(x1DataFile)
+	removeDataFile(t, x1DataFile)
 
-	sd5, err := ScanDirectory(originals, []string{})
+	sd3, err := ScanDirectory(originals, []string{}, dirDataScanFileName)
+	if err != nil {
+		t.Fatalf("ScanDirectory 3 %v", err)
+	}
+	asserrtExpected(t, "Scan 3", sd3, -1, tdCount-1, 0, 1, "", x1DataFileName)
+	assertContains(t, "Scan 3, OldState", sd3.OldState, x1DataFileName)
+	assertNotContains(t, "Scan 3, NewState", sd3.NewState, x1DataFileName, false)
+
+	err = sd3.Commit(true)
+	if err != nil {
+		t.Fatalf("ScanDirectory 3 %v", err)
+	}
+
+	sd4, err := ScanDirectory(originals, []string{}, dirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 4 %v", err)
 	}
+	asserrtExpected(t, "Scan 4", sd4, -1, tdCount-1, 0, 0, "", "")
+	assertNotContains(t, "Scan 4, OldState", sd4.OldState, x1DataFileName, false)
+	assertNotContains(t, "Scan 4, NewState", sd4.NewState, x1DataFileName, false)
 
-	if sd5.NeedToDeleteCount != 1 {
-		t.Fatalf("ScanDirectory 5 NeedToDeleteCount is %d. Should be 0", sd5.NeedToDeleteCount)
+	createDataFile(t, td, x2DataFile)
+
+	sd5, err := ScanDirectory(originals, []string{}, dirDataScanFileName)
+	if err != nil {
+		t.Fatalf("ScanDirectory 3 %v", err)
 	}
-	sd5.NeedToDelete.VisitEachFile(func(pp *PicPath, s string) bool {
-		if s != x1DataFileName {
-			t.Fatalf("ScanDirectory 5 File deleted was %s. Should be %s", s, x1DataFileName)
+	asserrtExpected(t, "Scan 5", sd5, -1, tdCount, 1, 0, x2DataFileName, "")
+	assertNotContains(t, "Scan 5, OldState", sd5.OldState, x2DataFileName, false)
+	assertContains(t, "Scan 5, NewState", sd5.NewState, x2DataFileName)
+	assertNotContains(t, "Scan 5, OldState", sd5.OldState, x1DataFileName, false)
+	assertNotContains(t, "Scan 5, NewState", sd5.NewState, x1DataFileName, false)
+
+	err = sd5.Commit(true)
+	if err != nil {
+		t.Fatalf("ScanDirectory 5 %v", err)
+	}
+
+	sd6, err := ScanDirectory(originals, []string{}, dirDataScanFileName)
+	if err != nil {
+		t.Fatalf("ScanDirectory 6 %v", err)
+	}
+	asserrtExpected(t, "Scan 6", sd6, -1, tdCount, 0, 0, "", "")
+	assertContains(t, "Scan 6, OldState", sd6.OldState, x2DataFileName)
+	assertContains(t, "Scan 6, NewState", sd6.NewState, x2DataFileName)
+	assertNotContains(t, "Scan 6, OldState", sd6.OldState, x1DataFileName, false)
+	assertNotContains(t, "Scan 6, NewState", sd6.NewState, x1DataFileName, false)
+
+}
+
+func assertContains(t *testing.T, info string, state *PicDir, file string) {
+	if state.FindFile(file) != nil {
+		return
+	}
+	t.Fatalf("ScanDirectory (%s). File %s was not found", info, file)
+}
+
+func assertNotContains(t *testing.T, info string, state *PicDir, file string, echo bool) {
+	if echo {
+		s, _ := state.toJson(true)
+		fmt.Println(string(s))
+	}
+	if state.FindFile(file) == nil {
+		return
+	}
+	t.Fatalf("ScanDirectory (%s). File %s was found", info, file)
+}
+
+func asserrtExpected(t *testing.T, info string, sd *ScannedData, oldCount, newCount, addedCount, deletedCount int, addedFile string, deletedFile string) {
+	if sd.OldStateCount != oldCount && oldCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) OldStateCount is %d. Should be %d", info, sd.OldStateCount, oldCount)
+	}
+	sc := countScannedFiles(sd.OldState)
+	if sd.OldStateCount != sc && oldCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) OldStateCount is %d does not equal actual OldStateCount count %d", info, sd.OldStateCount, sc)
+	}
+
+	if sd.NewStateCount != newCount && newCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) NewStateCount is %d. Should be %d", info, sd.NewStateCount, newCount)
+	}
+	sc = countScannedFiles(sd.NewState)
+	if sd.NewStateCount != sc && newCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) NewStateCount is %d does not equal actual NewStateCount count %d", info, sd.NewStateCount, sc)
+	}
+
+	if sd.FilesDeletedCount != deletedCount && deletedCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) FilesDeletedCount is %d. Should be %d", info, sd.FilesDeletedCount, deletedCount)
+	}
+	sc = countScannedFiles(sd.FilesDeleted)
+	if sd.FilesDeletedCount != sc && deletedCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) FilesDeletedCount is %d does not equal actual FilesDeletedCount count %d", info, sd.FilesDeletedCount, sc)
+	}
+
+	if sd.FilesAddedCount != addedCount && addedCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) FilesAddedCount is %d. Should be %d", info, sd.FilesAddedCount, addedCount)
+	}
+	sc = countScannedFiles(sd.FilesAdded)
+	if sd.FilesAddedCount != sc && addedCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) FilesAddedCount is %d does not equal actual FilesAddedCount count %d", info, sd.FilesAddedCount, sc)
+	}
+
+	if sd.FilesDeleted != nil {
+		count := 0
+		sd.FilesDeleted.VisitEachFile(func(pp *PicPath, s string) bool {
+			if s != deletedFile {
+				t.Fatalf("ScanDirectory (%s) File deleted is %s. Should be %s", info, s, deletedFile)
+			}
+			count++
+			return true
+		})
+		if deletedFile == "" {
+			if count > 0 {
+				t.Fatalf("ScanDirectory (%s) File deleted should not be found", info)
+			}
+		} else {
+			if count == 0 {
+				t.Fatalf("ScanDirectory (%s) File deleted '%s' should be found", info, deletedFile)
+			}
 		}
-		return true
-	})
-	sd5.NeedToCreate.VisitEachFile(func(pp *PicPath, s string) bool {
-		t.Fatalf("ScanDirectory 5 File created was %s. Should be none", s)
-		return true
-	})
-
-	if sd5.NeedToCreateCount != 0 {
-		t.Fatalf("ScanDirectory 5 NeedToCreateCount is %d. Should be 0", sd5.NeedToCreateCount)
 	}
 
-	defer removeDataFile(filepath.Join(originals, "dirScanData.json"))
+	if sd.FilesAdded != nil {
+		count := 0
+		sd.FilesAdded.VisitEachFile(func(pp *PicPath, s string) bool {
+			if s != addedFile {
+				t.Fatalf("ScanDirectory (%s) File added is %s. Should be %s", info, s, addedFile)
+			}
+			count++
+			return true
+		})
+		if addedFile == "" {
+			if count > 0 {
+				t.Fatalf("ScanDirectory (%s) File added should not be found", info)
+			}
+		} else {
+			if count == 0 {
+				t.Fatalf("ScanDirectory (%s) File added '%s' should be found", info, addedFile)
+			}
+		}
+	}
+
+}
+
+func countScannedFiles(state *PicDir) int {
+	count := 0
+	if state != nil {
+		state.VisitEachFile(func(pp *PicPath, s string) bool {
+			count++
+			return true
+		})
+	}
+	return count
 }
 
 func TestPictureInAnotB(t *testing.T) {
@@ -121,13 +218,13 @@ func TestPictureInAnotB(t *testing.T) {
 		t.Fatalf("Failed to walk %v", err)
 	}
 
-	err = AA.Save(tdFileJson, false)
+	err = AA.save(tdFileJson, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer removeDataFile(tdFileJson)
+	defer removeDataFile(t, tdFileJson)
 
-	BB, err := newPicDir("Root").Load(tdFileJson)
+	BB, err := newPicDir("Root").load(tdFileJson)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,11 +356,11 @@ func TestPictureWalker(t *testing.T) {
 		t.Fatalf("Failed to walk %v", err)
 	}
 
-	err = l.Save(tdFileJson, false)
+	err = l.save(tdFileJson, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer removeDataFile(tdFileJson)
+	defer removeDataFile(t, tdFileJson)
 
 	count := 0
 	l.VisitEachFile(func(p *PicPath, n string) bool {
@@ -283,7 +380,7 @@ func TestPictureWalker(t *testing.T) {
 		t.Fatalf("Number of nodes added (%d) != nodes visited (%d)", c, count)
 	}
 
-	ll, err := newPicDir("Root").Load(tdFileJson)
+	ll, err := newPicDir("Root").load(tdFileJson)
 
 	count = 0
 	ll.VisitEachFile(func(p *PicPath, s string) bool {
@@ -305,8 +402,20 @@ func TestPictureWalker(t *testing.T) {
 	}
 }
 
-func removeDataFile(fil string) {
-	os.Remove(fil)
+func removeDataFile(t *testing.T, fil string) {
+	_, err := os.Stat(fil)
+	if err != nil {
+		return
+	}
+	err = os.Remove(fil)
+	if err != nil {
+		t.Fatalf("File %s was not deleted. Error:%s", fil, err.Error())
+	}
+	_, err = os.Stat(fil)
+	for err == nil {
+		_, err = os.Stat(fil)
+	}
+
 }
 
 func createDataFile(t *testing.T, data []byte, fil string) {
@@ -314,6 +423,11 @@ func createDataFile(t *testing.T, data []byte, fil string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = os.Stat(fil)
+	for err != nil {
+		_, err = os.Stat(fil)
+	}
+
 }
 
 func AssertContains(t *testing.T, note string, actual string, expectedList []string) {
