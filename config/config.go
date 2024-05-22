@@ -121,8 +121,8 @@ Users Data. Derived from JSON!
 */
 type UserData struct {
 	Hidden    *bool
-	Name      string
-	Home      string
+	Name      string ""
+	Home      string ""
 	Locations map[string]string
 	Exec      map[string]*ExecInfo
 	Env       map[string]string
@@ -656,14 +656,6 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
 	}
 	return locData, nil
 }
-
-// func (p *ConfigData) GetUserLocFilePath(user string, loc string, fileName string) (string, error) {
-// 	userData, err := p.GetUserLocPath(user, loc)
-// 	if err != nil {
-// 		return "", fmt.Errorf("user not found")
-// 	}
-// 	return filepath.Join(userData, fileName), nil
-// }
 
 func (p *ConfigData) GetUserExecInfo(user, execid string) (*ExecInfo, error) {
 	userData, ok := p.internal.Users[user]

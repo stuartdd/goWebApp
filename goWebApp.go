@@ -2,14 +2,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"stuartdd.com/config"
 	"stuartdd.com/logging"
+	"stuartdd.com/pictures"
 	"stuartdd.com/server"
 )
 
@@ -31,11 +34,6 @@ func main() {
 	addUserFlag := s != ""
 	s, scanPos := getArg("scan")
 	scanDirFlag := s != ""
-
-	if scanDirFlag && scanPos == 0 {
-		//	code := pictures.ScanDirectory("")
-		os.Exit(1)
-	}
 
 	if addUserFlag && addPos == 0 {
 		// add was the last parameter!
@@ -65,6 +63,16 @@ func main() {
 	}
 	if cfg == nil {
 		osExitWithMessage(1, "Config not loaded. Cannot continue")
+	}
+
+	if scanDirFlag {
+		if scanPos == 0 {
+			osExitWithMessage(1, "Scan: requires a user name.")
+		}
+		user := os.Args[scanPos]
+		output := scanUserOriginals(user, cfg)
+		os.Stdout.WriteString(output)
+		os.Exit(0)
 	}
 
 	if createLocationsFlag {
@@ -164,8 +172,13 @@ func getArg(name string) (string, int) {
 }
 
 func osExitWithMessage(rc int, message string) {
-	os.Stdout.WriteString(message)
-	os.Stdout.WriteString("\n")
+	if rc > 0 {
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString("\n")
+	} else {
+		os.Stdout.WriteString(message)
+		os.Stdout.WriteString("\n")
+	}
 	if rc >= 0 {
 		os.Exit(rc)
 	}
@@ -187,4 +200,43 @@ func osReader(message string, chars string) string {
 		return s
 	}
 	return ""
+}
+
+func scanUserOriginals(user string, cfg *config.ConfigData) string {
+	path, err := cfg.GetUserLocPath(user, "original")
+	if err != nil {
+		osExitWithMessage(1, fmt.Sprintf("Scan: User '%s' Location 'original' not found.", user))
+	}
+	sd, err := pictures.ScanDirectory(path, []string{"jpg", "jpeg"}, pictures.DirDataScanFileName)
+	if err != nil {
+		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))
+	}
+	var buff bytes.Buffer
+	if sd.NewState == nil && sd.OldState != nil && sd.OldStateCount > 0 {
+		sd.OldState.VisitEachFile(func(pp *pictures.PicPath, s string) bool {
+			buff.WriteString(fmt.Sprintf("NEW:%s", filepath.Join(pp.String(), s)))
+			buff.WriteString("\n")
+			return true
+		})
+	} else {
+		if sd.FilesAdded != nil {
+			sd.FilesAdded.VisitEachFile(func(pp *pictures.PicPath, s string) bool {
+				buff.WriteString(fmt.Sprintf("ADD:%s", filepath.Join(pp.String(), s)))
+				buff.WriteString("\n")
+				return true
+			})
+		}
+		if sd.FilesDeleted != nil {
+			sd.FilesDeleted.VisitEachFile(func(pp *pictures.PicPath, s string) bool {
+				buff.WriteString(fmt.Sprintf("DEL:%s", filepath.Join(pp.String(), s)))
+				buff.WriteString("\n")
+				return true
+			})
+		}
+	}
+	err = sd.Commit(true)
+	if err != nil {
+		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))
+	}
+	return buff.String()
 }
