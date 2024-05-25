@@ -11,8 +11,8 @@ replace github.com/stuartdd/goWebApp/controllers => ../controllers
 replace github.com/stuartdd/goWebApp/runCommand => ../runCommand
 
 require (
-	github.com/stuartdd/goWebApp/config v0.0.0
-	github.com/stuartdd/goWebApp/controllers v0.0.0
-	github.com/stuartdd/goWebApp/logging v0.0.0
-	github.com/stuartdd/goWebApp/runCommand v0.0.0
+	github.com/stuartdd/goWebApp/config v1.0.0
+	github.com/stuartdd/goWebApp/controllers v1.0.0
+	github.com/stuartdd/goWebApp/logging v1.0.0
+	github.com/stuartdd/goWebApp/runCommand v1.0.0
 )

@@ -6,6 +6,6 @@ replace github.com/stuartdd/goWebApp/runCommand => ../runCommand
 
 replace github.com/stuartdd/goWebApp/config => ../config
 
-require github.com/stuartdd/goWebApp/runCommand v0.0.0
+require github.com/stuartdd/goWebApp/runCommand v1.0.0
 
-require github.com/stuartdd/goWebApp/config v0.0.0
+require github.com/stuartdd/goWebApp/config v1.0.0
