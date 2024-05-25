@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"stuartdd.com/config"
-	"stuartdd.com/logging"
+	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/logging"
 )
 
 type TLog struct {

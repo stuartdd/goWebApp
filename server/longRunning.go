@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"stuartdd.com/runCommand"
+	"github.com/stuartdd/goWebApp/runCommand"
 )
 
 type LongRunningProcess struct {

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"stuartdd.com/config"
-	"stuartdd.com/controllers"
-	"stuartdd.com/logging"
+	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/controllers"
+	"github.com/stuartdd/goWebApp/logging"
 )
 
 type ActionId int

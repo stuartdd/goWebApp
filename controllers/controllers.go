@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"stuartdd.com/config"
-	"stuartdd.com/runCommand"
+	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/runCommand"
 )
 
 type Handler interface {

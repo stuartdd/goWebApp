@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"stuartdd.com/config"
-	"stuartdd.com/logging"
-	"stuartdd.com/pictures"
-	"stuartdd.com/server"
+	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/logging"
+	"github.com/stuartdd/goWebApp/pictures"
+	"github.com/stuartdd/goWebApp/server"
 )
 
 func main() {

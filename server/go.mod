@@ -1,19 +1,18 @@
-module stuartdd.com/server
+module github.com/stuartdd/goWebApp/server
 
 go 1.22.0
 
-replace stuartdd.com/config => ../config
+replace github.com/stuartdd/goWebApp/config => ../config
 
-replace stuartdd.com/logging => ../logging
+replace github.com/stuartdd/goWebApp/logging => ../logging
 
-replace stuartdd.com/controllers => ../controllers
+replace github.com/stuartdd/goWebApp/controllers => ../controllers
 
-replace stuartdd.com/runCommand => ../runCommand
+replace github.com/stuartdd/goWebApp/runCommand => ../runCommand
 
 require (
-	stuartdd.com/config v0.0.0-00010101000000-000000000000
-	stuartdd.com/controllers v0.0.0
-	stuartdd.com/logging v0.0.0
+	github.com/stuartdd/goWebApp/config v0.0.0
+	github.com/stuartdd/goWebApp/controllers v0.0.0
+	github.com/stuartdd/goWebApp/logging v0.0.0
+	github.com/stuartdd/goWebApp/runCommand v0.0.0
 )
-
-require stuartdd.com/runCommand v0.0.0 // indirect

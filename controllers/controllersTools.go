@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"stuartdd.com/config"
+	"github.com/stuartdd/goWebApp/config"
 )
 
 const UserParam = "user"

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"stuartdd.com/config"
+	"github.com/stuartdd/goWebApp/config"
 )
 
 func TestToJson(t *testing.T) {
