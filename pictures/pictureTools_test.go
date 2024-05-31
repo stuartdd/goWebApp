@@ -62,8 +62,8 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
 	asserrtExpected(t, "Scan 3", sd3, -1, referenceCount-1, 0, 1, "", x1DataFileName)
-	assertContains(t, "Scan 3, OldState", sd3.OldState, x1DataFileName)
-	assertNotContains(t, "Scan 3, NewState", sd3.NewState, x1DataFileName, false)
+	assertContains(t, "Scan 3, OldState", sd3.DataFileState, x1DataFileName)
+	assertNotContains(t, "Scan 3, NewState", sd3.ScanState, x1DataFileName, false)
 
 	err = sd3.Commit(true)
 	if err != nil {
@@ -75,8 +75,8 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 4 %v", err)
 	}
 	asserrtExpected(t, "Scan 4", sd4, -1, referenceCount-1, 0, 0, "", "")
-	assertNotContains(t, "Scan 4, OldState", sd4.OldState, x1DataFileName, false)
-	assertNotContains(t, "Scan 4, NewState", sd4.NewState, x1DataFileName, false)
+	assertNotContains(t, "Scan 4, OldState", sd4.DataFileState, x1DataFileName, false)
+	assertNotContains(t, "Scan 4, NewState", sd4.ScanState, x1DataFileName, false)
 
 	createDataFile(t, td, x2DataFile)
 
@@ -85,10 +85,10 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
 	asserrtExpected(t, "Scan 5", sd5, -1, referenceCount, 1, 0, x2DataFileName, "")
-	assertNotContains(t, "Scan 5, OldState", sd5.OldState, x2DataFileName, false)
-	assertContains(t, "Scan 5, NewState", sd5.NewState, x2DataFileName)
-	assertNotContains(t, "Scan 5, OldState", sd5.OldState, x1DataFileName, false)
-	assertNotContains(t, "Scan 5, NewState", sd5.NewState, x1DataFileName, false)
+	assertNotContains(t, "Scan 5, OldState", sd5.DataFileState, x2DataFileName, false)
+	assertContains(t, "Scan 5, NewState", sd5.ScanState, x2DataFileName)
+	assertNotContains(t, "Scan 5, OldState", sd5.DataFileState, x1DataFileName, false)
+	assertNotContains(t, "Scan 5, NewState", sd5.ScanState, x1DataFileName, false)
 
 	err = sd5.Commit(true)
 	if err != nil {
@@ -100,10 +100,10 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 6 %v", err)
 	}
 	asserrtExpected(t, "Scan 6", sd6, -1, referenceCount, 0, 0, "", "")
-	assertContains(t, "Scan 6, OldState", sd6.OldState, x2DataFileName)
-	assertContains(t, "Scan 6, NewState", sd6.NewState, x2DataFileName)
-	assertNotContains(t, "Scan 6, OldState", sd6.OldState, x1DataFileName, false)
-	assertNotContains(t, "Scan 6, NewState", sd6.NewState, x1DataFileName, false)
+	assertContains(t, "Scan 6, OldState", sd6.DataFileState, x2DataFileName)
+	assertContains(t, "Scan 6, NewState", sd6.ScanState, x2DataFileName)
+	assertNotContains(t, "Scan 6, OldState", sd6.DataFileState, x1DataFileName, false)
+	assertNotContains(t, "Scan 6, NewState", sd6.ScanState, x1DataFileName, false)
 
 }
 
@@ -126,20 +126,20 @@ func assertNotContains(t *testing.T, info string, state *PicDir, file string, ec
 }
 
 func asserrtExpected(t *testing.T, info string, sd *ScannedData, oldCount, newCount, addedCount, deletedCount int, addedFile string, deletedFile string) {
-	if sd.OldStateCount != oldCount && oldCount >= 0 {
-		t.Fatalf("ScanDirectory (%s) OldStateCount is %d. Should be %d", info, sd.OldStateCount, oldCount)
+	if sd.DataFileStateCount != oldCount && oldCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) OldStateCount is %d. Should be %d", info, sd.DataFileStateCount, oldCount)
 	}
-	sc := countScannedFiles(sd.OldState)
-	if sd.OldStateCount != sc && oldCount >= 0 {
-		t.Fatalf("ScanDirectory (%s) OldStateCount is %d does not equal actual OldStateCount count %d", info, sd.OldStateCount, sc)
+	sc := countScannedFiles(sd.DataFileState)
+	if sd.DataFileStateCount != sc && oldCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) OldStateCount is %d does not equal actual OldStateCount count %d", info, sd.DataFileStateCount, sc)
 	}
 
-	if sd.NewStateCount != newCount && newCount >= 0 {
-		t.Fatalf("ScanDirectory (%s) NewStateCount is %d. Should be %d", info, sd.NewStateCount, newCount)
+	if sd.ScanStateCount != newCount && newCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) NewStateCount is %d. Should be %d", info, sd.ScanStateCount, newCount)
 	}
-	sc = countScannedFiles(sd.NewState)
-	if sd.NewStateCount != sc && newCount >= 0 {
-		t.Fatalf("ScanDirectory (%s) NewStateCount is %d does not equal actual NewStateCount count %d", info, sd.NewStateCount, sc)
+	sc = countScannedFiles(sd.ScanState)
+	if sd.ScanStateCount != sc && newCount >= 0 {
+		t.Fatalf("ScanDirectory (%s) NewStateCount is %d does not equal actual NewStateCount count %d", info, sd.ScanStateCount, sc)
 	}
 
 	if sd.FilesDeletedCount != deletedCount && deletedCount >= 0 {

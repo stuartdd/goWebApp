@@ -13,15 +13,15 @@ import (
 const DirDataScanFileName = "dirScanData.json"
 
 type ScannedData struct {
-	DataFile          string
-	OldState          *PicDir
-	OldStateCount     int
-	NewState          *PicDir
-	NewStateCount     int
-	FilesDeleted      *PicDir
-	FilesDeletedCount int
-	FilesAdded        *PicDir
-	FilesAddedCount   int
+	DataFile           string
+	DataFileState      *PicDir
+	DataFileStateCount int
+	ScanState          *PicDir
+	ScanStateCount     int
+	FilesDeleted       *PicDir
+	FilesDeletedCount  int
+	FilesAdded         *PicDir
+	FilesAddedCount    int
 }
 
 type PicFile struct {
@@ -156,16 +156,21 @@ func (p *PicDir) FindFile(N string) *PicFile {
 	return nil
 }
 
-func (p *PicDir) load(fil string) (*PicDir, error) {
+func (p *PicDir) load(fil string) (*PicDir, int, error) {
 	dd, err := os.ReadFile(fil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	err = json.Unmarshal(dd, p)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return p, nil
+	count := 0
+	p.VisitEachFile(func(pp *PicPath, s string) bool {
+		count++
+		return true
+	})
+	return p, count, nil
 }
 
 func (p *PicDir) save(fil string, indent bool) error {
@@ -328,58 +333,61 @@ func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData,
 		return nil, fmt.Errorf("%s is not a directory", dataDir)
 	}
 
-	dataFile := filepath.Join(dataDir, dataFileName)
-	stat, err = os.Stat(dataFile)
+	dataFilePath := filepath.Join(dataDir, dataFileName)
+	stat, err = os.Stat(dataFilePath)
 	if err != nil {
-		firstData, count, err := CreateScanData(dataDir, ext, dataFileName)
+		//
+		// No existing file state data json
+		//
+		scanData, scanDataCount, err := CreateScanData(dataDir, ext, dataFileName)
 		if err != nil {
 			return nil, err
 		}
 		return &ScannedData{
-			DataFile:          dataFile,
-			OldState:          firstData,
-			OldStateCount:     count,
-			NewState:          nil,
-			NewStateCount:     0,
-			FilesDeleted:      nil,
-			FilesDeletedCount: 0,
-			FilesAdded:        nil,
-			FilesAddedCount:   0,
+			DataFile:           dataFilePath,
+			DataFileState:      nil,
+			DataFileStateCount: 0,
+			ScanState:          scanData,
+			ScanStateCount:     scanDataCount,
+			FilesDeleted:       nil,
+			FilesDeletedCount:  0,
+			FilesAdded:         nil,
+			FilesAddedCount:    0,
 		}, nil
 	} else {
 		if stat.IsDir() {
-			return nil, fmt.Errorf("%s is a directory", dataFile)
+			return nil, fmt.Errorf("%s is a directory", dataFilePath)
 		}
 	}
-	oldData, err := newPicDir("").load(dataFile)
+	dataFileState, dataFileStateCount, err := newPicDir("").load(dataFilePath)
 	if err != nil {
 		return nil, err
 	}
-	newData, count, err := CreateScanData(dataDir, ext, dataFileName)
+	scanData, scanDataCount, err := CreateScanData(dataDir, ext, dataFileName)
 	if err != nil {
 		return nil, err
 	}
 	result := &ScannedData{
-		DataFile:          dataFile,
-		OldState:          oldData,
-		OldStateCount:     0,
-		NewState:          newData,
-		NewStateCount:     count,
-		FilesDeleted:      newPicDir("Deleted"),
-		FilesDeletedCount: 0,
-		FilesAdded:        newPicDir("Added"),
-		FilesAddedCount:   0,
+		DataFile:           dataFilePath,
+		DataFileState:      dataFileState,
+		DataFileStateCount: dataFileStateCount,
+		ScanState:          scanData,
+		ScanStateCount:     scanDataCount,
+		FilesDeleted:       newPicDir("Deleted"),
+		FilesDeletedCount:  0,
+		FilesAdded:         newPicDir("Added"),
+		FilesAddedCount:    0,
 	}
 	result.compare()
 	return result, nil
 }
 
 func (p *ScannedData) Commit(indent bool) error {
-	if p.NewState != nil {
-		return p.NewState.save(p.DataFile, indent)
+	if p.ScanState != nil {
+		return p.ScanState.save(p.DataFile, indent)
 	} else {
-		if p.OldState != nil {
-			return p.OldState.save(p.DataFile, indent)
+		if p.DataFileState != nil {
+			return p.DataFileState.save(p.DataFile, indent)
 		}
 	}
 	return fmt.Errorf("no data to scan data to Commit")
@@ -415,11 +423,11 @@ func CreateScanData(dir string, ext []string, dataFileName string) (*PicDir, int
 }
 
 func (p *ScannedData) compare() {
-	InAnotB(p.NewState, p.OldState, func(pp *PicPath) {
+	InAnotB(p.ScanState, p.DataFileState, func(pp *PicPath) {
 		p.FilesAdded.AddPath(pp)
 		p.FilesAddedCount++
 	})
-	InAnotB(p.OldState, p.NewState, func(pp *PicPath) {
+	InAnotB(p.DataFileState, p.ScanState, func(pp *PicPath) {
 		p.FilesDeleted.AddPath(pp)
 		p.FilesDeletedCount++
 	})
