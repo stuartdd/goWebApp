@@ -27,6 +27,25 @@ Usage:
 
     The application will terminate after the data is created.
 
+<appName> scan <userName>
+    This will scan the users 'original' path defined in config json file.
+    
+    For example 'scan bob'
+
+    Where user 'bob' is defined as follows:
+
+      "bob": {
+        "Home": "",
+        "Locations": {
+          "home": "",
+          "original": "bobPictures"
+        },
+        "Exec": null,
+        "Env": null
+      } 
+
+  Will scan the 'bobPictures' directory for changes to the file structure.
+
 <appName> add <userName>
     This will add user data to the configuration file. The parameter after the 'add'
     is the user id of the user.

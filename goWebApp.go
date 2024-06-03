@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -212,28 +211,17 @@ func scanUserOriginals(user string, cfg *config.ConfigData) string {
 		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))
 	}
 	var buff bytes.Buffer
-	if sd.NewState == nil && sd.OldState != nil && sd.OldStateCount > 0 {
-		sd.OldState.VisitEachFile(func(pp *pictures.PicPath, s string) bool {
-			buff.WriteString(fmt.Sprintf("NEW:%s", filepath.Join(pp.String(), s)))
-			buff.WriteString("\n")
-			return true
-		})
-	} else {
-		if sd.FilesAdded != nil {
-			sd.FilesAdded.VisitEachFile(func(pp *pictures.PicPath, s string) bool {
-				buff.WriteString(fmt.Sprintf("ADD:%s", filepath.Join(pp.String(), s)))
-				buff.WriteString("\n")
-				return true
-			})
+	sd.ListNewAddDel(func(fct pictures.FileChangeType, s string) {
+		switch fct {
+		case pictures.FileAdd:
+			buff.WriteString(fmt.Sprintf("ADD:%s", s))
+		case pictures.FileNew:
+			buff.WriteString(fmt.Sprintf("NEW:%s", s))
+		case pictures.FileDel:
+			buff.WriteString(fmt.Sprintf("DEL:%s", s))
 		}
-		if sd.FilesDeleted != nil {
-			sd.FilesDeleted.VisitEachFile(func(pp *pictures.PicPath, s string) bool {
-				buff.WriteString(fmt.Sprintf("DEL:%s", filepath.Join(pp.String(), s)))
-				buff.WriteString("\n")
-				return true
-			})
-		}
-	}
+		buff.WriteString("\n")
+	})
 	err = sd.Commit(true)
 	if err != nil {
 		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))

@@ -12,6 +12,14 @@ import (
 
 const DirDataScanFileName = "dirScanData.json"
 
+type FileChangeType uint16
+
+const (
+	FileNew FileChangeType = iota + 1
+	FileAdd
+	FileDel
+)
+
 type ScannedData struct {
 	DataFile           string
 	DataFileState      *PicDir
@@ -431,4 +439,26 @@ func (p *ScannedData) compare() {
 		p.FilesDeleted.AddPath(pp)
 		p.FilesDeletedCount++
 	})
+}
+
+func (p *ScannedData) ListNewAddDel(onFile func(FileChangeType, string)) {
+	if p.ScanState == nil && p.DataFileState != nil && p.DataFileStateCount > 0 {
+		p.DataFileState.VisitEachFile(func(pp *PicPath, s string) bool {
+			onFile(FileNew, filepath.Join(pp.String(), s))
+			return true
+		})
+	} else {
+		if p.FilesAdded != nil {
+			p.FilesAdded.VisitEachFile(func(pp *PicPath, s string) bool {
+				onFile(FileAdd, filepath.Join(pp.String(), s))
+				return true
+			})
+		}
+		if p.FilesDeleted != nil {
+			p.FilesDeleted.VisitEachFile(func(pp *PicPath, s string) bool {
+				onFile(FileDel, filepath.Join(pp.String(), s))
+				return true
+			})
+		}
+	}
 }
