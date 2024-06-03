@@ -282,24 +282,6 @@ func (p *PicDir) hasSub(name string) *PicDir {
 	return nil
 }
 
-func InAnotB(a *PicDir, b *PicDir, notInB func(*PicPath)) {
-	if notInB == nil {
-		panic("InAnotB requires a callback function!")
-	}
-	a.VisitEachFile(func(pp *PicPath, s string) bool {
-		path := newPicPathFromFile(fmt.Sprintf("%s/%s", pp.String(), s))
-		dir, fil := b.Find(path)
-		if dir == nil {
-			notInB(path)
-		} else {
-			if fil == nil {
-				notInB(path)
-			}
-		}
-		return true
-	})
-}
-
 func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 	f, err := filepath.Abs(file)
 	if err != nil {
@@ -347,7 +329,7 @@ func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData,
 		//
 		// No existing file state data json
 		//
-		scanData, scanDataCount, err := CreateScanData(dataDir, ext, dataFileName)
+		scanData, scanDataCount, err := createScanData(dataDir, ext, dataFileName)
 		if err != nil {
 			return nil, err
 		}
@@ -371,7 +353,7 @@ func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData,
 	if err != nil {
 		return nil, err
 	}
-	scanData, scanDataCount, err := CreateScanData(dataDir, ext, dataFileName)
+	scanData, scanDataCount, err := createScanData(dataDir, ext, dataFileName)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +383,7 @@ func (p *ScannedData) Commit(indent bool) error {
 	return fmt.Errorf("no data to scan data to Commit")
 }
 
-func CreateScanData(dir string, ext []string, dataFileName string) (*PicDir, int, error) {
+func createScanData(dir string, ext []string, dataFileName string) (*PicDir, int, error) {
 	lcExt := make([]string, len(ext))
 	for i, e := range ext {
 		lcExt[i] = strings.ToLower(e)
@@ -430,20 +412,9 @@ func CreateScanData(dir string, ext []string, dataFileName string) (*PicDir, int
 	return sd, count, nil
 }
 
-func (p *ScannedData) compare() {
-	InAnotB(p.ScanState, p.DataFileState, func(pp *PicPath) {
-		p.FilesAdded.AddPath(pp)
-		p.FilesAddedCount++
-	})
-	InAnotB(p.DataFileState, p.ScanState, func(pp *PicPath) {
-		p.FilesDeleted.AddPath(pp)
-		p.FilesDeletedCount++
-	})
-}
-
 func (p *ScannedData) ListNewAddDel(onFile func(FileChangeType, string)) {
-	if p.ScanState == nil && p.DataFileState != nil && p.DataFileStateCount > 0 {
-		p.DataFileState.VisitEachFile(func(pp *PicPath, s string) bool {
+	if p.DataFileState == nil && (p.ScanState != nil && p.ScanStateCount > 0) {
+		p.ScanState.VisitEachFile(func(pp *PicPath, s string) bool {
 			onFile(FileNew, filepath.Join(pp.String(), s))
 			return true
 		})
@@ -461,4 +432,33 @@ func (p *ScannedData) ListNewAddDel(onFile func(FileChangeType, string)) {
 			})
 		}
 	}
+}
+
+func inAnotB(a *PicDir, b *PicDir, notInB func(*PicPath)) {
+	if notInB == nil {
+		panic("InAnotB requires a callback function!")
+	}
+	a.VisitEachFile(func(pp *PicPath, s string) bool {
+		path := newPicPathFromFile(fmt.Sprintf("%s/%s", pp.String(), s))
+		dir, fil := b.Find(path)
+		if dir == nil {
+			notInB(path)
+		} else {
+			if fil == nil {
+				notInB(path)
+			}
+		}
+		return true
+	})
+}
+
+func (p *ScannedData) compare() {
+	inAnotB(p.ScanState, p.DataFileState, func(pp *PicPath) {
+		p.FilesAdded.AddPath(pp)
+		p.FilesAddedCount++
+	})
+	inAnotB(p.DataFileState, p.ScanState, func(pp *PicPath) {
+		p.FilesDeleted.AddPath(pp)
+		p.FilesDeletedCount++
+	})
 }

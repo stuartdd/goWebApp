@@ -1,6 +1,7 @@
 package pictures
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ func TestPictureScan(t *testing.T) {
 	defer removeDataFile(t, x1DataFile)
 
 	createDataFile(t, td, x1DataFile)
-	_, referenceCount, _ := CreateScanData(originals, nil, DirDataScanFileName)
+	_, referenceCount, _ := createScanData(originals, nil, DirDataScanFileName)
 
 	// Initial scan crerates the dta file.
 	// Current size is 65 with x1DataFile added
@@ -43,7 +44,7 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 1 %v", err)
 	}
 	asserrtExpected(t, "Scan 1", sd1, 0, referenceCount, 0, 0, "", "")
-
+	assertDiff(t, "ListNewAddDel 1", sd1, "NEW:xxx-1.log")
 	sd1.Commit(true)
 	// Second scan should read datafile in to OldState
 	// New State is the new scan.
@@ -53,6 +54,7 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 2 %v", err)
 	}
 	asserrtExpected(t, "Scan 2", sd2, referenceCount, referenceCount, 0, 0, "", "")
+	assertDiff(t, "ListNewAddDel 2", sd2, "!")
 
 	// remove a file
 	removeDataFile(t, x1DataFile)
@@ -64,6 +66,7 @@ func TestPictureScan(t *testing.T) {
 	asserrtExpected(t, "Scan 3", sd3, referenceCount, referenceCount-1, 0, 1, "", x1DataFileName)
 	assertContains(t, "Scan 3, OldState", sd3.DataFileState, x1DataFileName)
 	assertNotContains(t, "Scan 3, NewState", sd3.ScanState, x1DataFileName, false)
+	assertDiff(t, "ListNewAddDel 3", sd3, "DEL:xxx-1.log")
 
 	err = sd3.Commit(true)
 	if err != nil {
@@ -77,6 +80,7 @@ func TestPictureScan(t *testing.T) {
 	asserrtExpected(t, "Scan 4", sd4, referenceCount-1, referenceCount-1, 0, 0, "", "")
 	assertNotContains(t, "Scan 4, OldState", sd4.DataFileState, x1DataFileName, false)
 	assertNotContains(t, "Scan 4, NewState", sd4.ScanState, x1DataFileName, false)
+	assertDiff(t, "ListNewAddDel 4", sd4, "!")
 
 	createDataFile(t, td, x2DataFile)
 
@@ -89,6 +93,7 @@ func TestPictureScan(t *testing.T) {
 	assertContains(t, "Scan 5, NewState", sd5.ScanState, x2DataFileName)
 	assertNotContains(t, "Scan 5, OldState", sd5.DataFileState, x1DataFileName, false)
 	assertNotContains(t, "Scan 5, NewState", sd5.ScanState, x1DataFileName, false)
+	assertDiff(t, "ListNewAddDel 5", sd5, "ADD:xxx-2.log")
 
 	err = sd5.Commit(true)
 	if err != nil {
@@ -104,6 +109,7 @@ func TestPictureScan(t *testing.T) {
 	assertContains(t, "Scan 6, NewState", sd6.ScanState, x2DataFileName)
 	assertNotContains(t, "Scan 6, OldState", sd6.DataFileState, x1DataFileName, false)
 	assertNotContains(t, "Scan 6, NewState", sd6.ScanState, x1DataFileName, false)
+	assertDiff(t, "ListNewAddDel 5", sd6, "!")
 
 }
 
@@ -112,6 +118,31 @@ func assertContains(t *testing.T, info string, state *PicDir, file string) {
 		return
 	}
 	t.Fatalf("ScanDirectory (%s). File %s was not found", info, file)
+}
+
+func assertDiff(t *testing.T, info string, sd *ScannedData, contains string) {
+	var buff bytes.Buffer
+	sd.ListNewAddDel(func(fct FileChangeType, s string) {
+		switch fct {
+		case FileAdd:
+			buff.WriteString(fmt.Sprintf("ADD:%s", s))
+		case FileNew:
+			buff.WriteString(fmt.Sprintf("NEW:%s", s))
+		case FileDel:
+			buff.WriteString(fmt.Sprintf("DEL:%s", s))
+		}
+		buff.WriteString("\n")
+	})
+	if contains == "!" {
+		if strings.TrimSpace(buff.String()) != "" {
+			t.Fatalf("ScanDirectory (%s). List Shoulkd be empty\nActual:'%s'", info, buff.String())
+		}
+		return
+	}
+	if strings.Contains(buff.String(), contains) {
+		return
+	}
+	t.Fatalf("ScanDirectory (%s). List does not contain'%s'\nActual:'%s'", info, contains, buff.String())
 }
 
 func assertNotContains(t *testing.T, info string, state *PicDir, file string, echo bool) {
@@ -230,13 +261,13 @@ func TestPictureInAnotB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	InAnotB(AA, BB, func(pp *PicPath) {
+	inAnotB(AA, BB, func(pp *PicPath) {
 		t.Fatalf("There should not be differences %s", pp)
 	})
 
 	pFromB := removeFileFromPic(t, BB, "admin/diskSize.sh")
 	notInB := false
-	InAnotB(AA, BB, func(pp *PicPath) {
+	inAnotB(AA, BB, func(pp *PicPath) {
 		if pp.Last() == pFromB.Last() {
 			notInB = true
 		}
@@ -245,13 +276,13 @@ func TestPictureInAnotB(t *testing.T) {
 		t.Fatalf("InAnotB should report file %s is not in B", pFromB)
 	}
 
-	InAnotB(BB, AA, func(pp *PicPath) {
+	inAnotB(BB, AA, func(pp *PicPath) {
 		t.Fatalf("InAnotB should NOT report file %s is not in A", pFromB)
 	})
 
 	pFromA := removeFileFromPic(t, AA, "bob/b-pics/favicon.ico")
 	notInA := false
-	InAnotB(BB, AA, func(pp *PicPath) {
+	inAnotB(BB, AA, func(pp *PicPath) {
 		if pp.Last() == pFromA.Last() {
 			notInA = true
 		}
