@@ -15,15 +15,16 @@ const x1DataFileName = "xxx-1.log"
 const x2DataFileName = "xxx-2.log"
 
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
+var ext = []string{"json", "LOG", "KeepMe"}
 
 func TestPictureScan(t *testing.T) {
 	dirDataScanFile, _ := filepath.Abs(filepath.Join(originals, DirDataScanFileName))
 	x1DataFile, _ := filepath.Abs(filepath.Join(originals, x1DataFileName))
 	x2DataFile, _ := filepath.Abs(filepath.Join(originals, x2DataFileName))
 
-	_, err := ScanDirectory("../tostdata", []string{}, DirDataScanFileName)
+	_, err := ScanDirectory("../tostdata", ext, DirDataScanFileName)
 	AssertErrContains(t, "TestPictureScan 1", err, []string{"no such file or directory"})
-	_, err = ScanDirectory("../testdata/favicon.ico", []string{}, DirDataScanFileName)
+	_, err = ScanDirectory("../testdata/favicon.ico", ext, DirDataScanFileName)
 	AssertErrContains(t, "TestPictureScan 2", err, []string{"is not a directory"})
 
 	removeDataFile(t, dirDataScanFile)
@@ -34,22 +35,28 @@ func TestPictureScan(t *testing.T) {
 	defer removeDataFile(t, x1DataFile)
 
 	createDataFile(t, td, x1DataFile)
-	_, referenceCount, _ := createScanData(originals, nil, DirDataScanFileName)
+	_, referenceCount, _ := createScanData(originals, ext, DirDataScanFileName)
 
 	// Initial scan crerates the dta file.
 	// Current size is 65 with x1DataFile added
 	// The data file is saved for next time
-	sd1, err := ScanDirectory(originals, []string{}, DirDataScanFileName)
+	sd1, err := ScanDirectory(originals, ext, DirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 1 %v", err)
 	}
+
+	// sd1.ScanState.VisitEachFile(func(pp *PicPath, s string) bool {
+	// 	fmt.Printf("File:%s\n", s)
+	// 	return true
+	// })
+
 	asserrtExpected(t, "Scan 1", sd1, 0, referenceCount, 0, 0, "", "")
 	assertDiff(t, "ListNewAddDel 1", sd1, "NEW:xxx-1.log")
 	sd1.Commit(true)
 	// Second scan should read datafile in to OldState
 	// New State is the new scan.
 	// Should be nothing to do!
-	sd2, err := ScanDirectory(originals, []string{}, DirDataScanFileName)
+	sd2, err := ScanDirectory(originals, ext, DirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 2 %v", err)
 	}
@@ -59,7 +66,7 @@ func TestPictureScan(t *testing.T) {
 	// remove a file
 	removeDataFile(t, x1DataFile)
 
-	sd3, err := ScanDirectory(originals, []string{}, DirDataScanFileName)
+	sd3, err := ScanDirectory(originals, ext, DirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
@@ -73,7 +80,7 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
 
-	sd4, err := ScanDirectory(originals, []string{}, DirDataScanFileName)
+	sd4, err := ScanDirectory(originals, ext, DirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 4 %v", err)
 	}
@@ -84,7 +91,7 @@ func TestPictureScan(t *testing.T) {
 
 	createDataFile(t, td, x2DataFile)
 
-	sd5, err := ScanDirectory(originals, []string{}, DirDataScanFileName)
+	sd5, err := ScanDirectory(originals, ext, DirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
@@ -100,7 +107,7 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 5 %v", err)
 	}
 
-	sd6, err := ScanDirectory(originals, []string{}, DirDataScanFileName)
+	sd6, err := ScanDirectory(originals, ext, DirDataScanFileName)
 	if err != nil {
 		t.Fatalf("ScanDirectory 6 %v", err)
 	}

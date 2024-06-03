@@ -227,7 +227,6 @@ func (p *PicDir) visitEachFile(path *PicPath, cont *bool, onFile func(*PicPath, 
 			if !*cont {
 				return
 			}
-
 		}
 	}
 }
@@ -393,7 +392,7 @@ func createScanData(dir string, ext []string, dataFileName string) (*PicDir, int
 		if n == dataFileName {
 			return false // dont include the data file in the data
 		}
-
+		n = strings.ToLower(n)
 		found := len(ext) == 0
 		for _, ex := range lcExt {
 			if strings.HasSuffix(strings.ToLower(n), ex) {
