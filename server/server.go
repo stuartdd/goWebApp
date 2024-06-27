@@ -55,6 +55,7 @@ var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET")
 var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET")
 var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST")
+var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST")
 
 var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET")
 var execUserCmdMatch = NewUrlRequestMatcher("/exec/user/*/exec/*", "GET")
@@ -160,6 +161,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
+
+		p, ok = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		if ok {
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc).Submit())
+			return
+		}
+		
 		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
 			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc).Submit())
