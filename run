@@ -1,0 +1,4 @@
+#!/bin/bash
+
+go run goWebApp.go goWebApp.cfg
+ 

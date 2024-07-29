@@ -172,13 +172,14 @@ type ConfigData struct {
 	NextLoadTime     int64
 	LocationsCreated []string
 	UpSince          time.Time
+	Verbose          bool
 }
 
 /*
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*ConfigData, *ConfigErrorData) {
+func NewConfigData(configFileName string, createDir bool, dontResolve bool, verbose bool) (*ConfigData, *ConfigErrorData) {
 	environ := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
@@ -202,6 +203,10 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*Co
 	wd, _ := os.Getwd()
 	fn, _ := filepath.Abs(configFileName + configFileExtension)
 
+	if verbose {
+		fmt.Printf("Config file name is %s\n", fn)
+	}
+
 	configDataExtternal := &ConfigData{
 		Debugging:        debugging,
 		CurrentPath:      wd,
@@ -210,6 +215,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*Co
 		Environment:      environ,
 		NextLoadTime:     0,
 		LocationsCreated: []string{},
+		Verbose:          verbose,
 	}
 
 	configDataInternal := &ConfigDataInternal{
@@ -261,6 +267,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool) (*Co
 			configDataInternal.FilterFiles[i] = fmt.Sprintf(".%s", f)
 		}
 	}
+
 	return configDataExtternal.resolveLocations(createDir)
 }
 
@@ -388,10 +395,19 @@ func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]str
 	if rootPath == "" {
 		return "", fmt.Errorf("path is empty")
 	}
+	if p.Verbose {
+		fmt.Printf("checkRootPathExists: %s\n", rootPath)
+	}
 	absPathSub := p.SubstituteFromMap([]byte(rootPath), userEnv)
+	if p.Verbose {
+		fmt.Printf("checkRootPathExists:SubstituteFromMap: %s\n", absPathSub)
+	}
 	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
-		return absPathPath, fmt.Errorf("path [%s] is invalid", rootPath)
+		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathPath)
+	}
+	if p.Verbose {
+		fmt.Printf("checkRootPathExists:Abs: %s\n", absPathPath)
 	}
 	stats, err := os.Stat(absPathPath)
 	if err != nil {

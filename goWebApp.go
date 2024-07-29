@@ -16,6 +16,11 @@ import (
 )
 
 func main() {
+	verbose := false
+	vb, _ := getArg("-v")
+	if vb != "" {
+		verbose = true
+	}
 	help, _ := getArg("help")
 	if help != "" {
 		h, err := os.ReadFile("helptext.md")
@@ -55,7 +60,11 @@ func main() {
 		}
 	}
 
-	cfg, errorList := config.NewConfigData(configFileName, createLocationsFlag, dontResolveConfig)
+	if verbose {
+		fmt.Printf("Config arg is '%s'. createLocationsFlag=%t dontResolveConfig=%t\n", configFileName, createLocationsFlag, dontResolveConfig)
+	}
+
+	cfg, errorList := config.NewConfigData(configFileName, createLocationsFlag, dontResolveConfig, verbose)
 	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
 		osExitWithMessage(1, "Config Errors: Cannot continue")
@@ -76,7 +85,7 @@ func main() {
 
 	if createLocationsFlag {
 		if len(cfg.LocationsCreated) == 0 {
-			osExitWithMessage(0, "No user Locations could be crreated:"+s)
+			osExitWithMessage(0, "No user Locations could be created:"+s)
 		} else {
 			for _, s := range cfg.LocationsCreated {
 				osExitWithMessage(-1, s)
