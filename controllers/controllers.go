@@ -25,13 +25,15 @@ type StaticFileHandler struct {
 	filePath   []string
 	configData *config.ConfigData
 	log        func(string)
+	verbose    func(string)
 }
 
-func NewStaticFileHandler(file []string, configData *config.ConfigData, logFunc func(string)) *StaticFileHandler {
+func NewStaticFileHandler(file []string, configData *config.ConfigData, logFunc func(string), verboseFunc func(string)) *StaticFileHandler {
 	return &StaticFileHandler{
 		filePath:   file,
 		configData: configData,
 		log:        logFunc,
+		verbose:    verboseFunc,
 	}
 }
 
@@ -68,14 +70,16 @@ type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
 	log        func(string)
+	verbose    func(string)
 	addLrp     func(string, string, int, bool) bool
 }
 
-func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
+func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string), verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
 	return &ReadFileHandler{
 		parameters: urlParts,
 		configData: configData,
 		log:        logFunc,
+		verbose:    verboseFunc,
 		addLrp:     addFunc,
 	}
 }
@@ -96,7 +100,7 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 			if p.log != nil {
 				p.log(fmt.Sprintf("ReadFileHandler:Redirect as:%s", exec.String()))
 			}
-			return NewExecHandler(p.parameters.WithParam("exec", p.parameters.GetName()), p.configData, nil, p.log, p.addLrp).Submit()
+			return NewExecHandler(p.parameters.WithParam("exec", p.parameters.GetName()), p.configData, nil, p.log, p.verbose, p.addLrp).Submit()
 		}
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
@@ -114,13 +118,15 @@ type DirHandler struct {
 	parameters *UrlRequestParts
 	listFiles  bool
 	log        func(string)
+	verbose    func(string)
 }
 
-func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, logFunc func(string)) Handler {
+func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, logFunc func(string), verboseFunc func(string)) Handler {
 	return &DirHandler{
 		parameters: urlRequestData,
 		listFiles:  listFiles,
 		log:        logFunc,
+		verbose:    verboseFunc,
 	}
 }
 
@@ -155,12 +161,14 @@ func (p *DirHandler) Submit() *ResponseData {
 type TreeHandler struct {
 	parameters *UrlRequestParts
 	log        func(string)
+	verbose    func(string)
 }
 
-func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string)) Handler {
+func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string), verboseFunc func(string)) Handler {
 	return &TreeHandler{
 		parameters: urlParts,
 		log:        logFunc,
+		verbose:    verboseFunc,
 	}
 }
 
@@ -201,13 +209,15 @@ type PostFileHandler struct {
 	parameters *UrlRequestParts
 	request    *http.Request
 	log        func(string)
+	verbose    func(string)
 }
 
-func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, logFunc func(string)) Handler {
+func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, logFunc func(string), verboseFunc func(string)) Handler {
 	return &PostFileHandler{
 		parameters: urlParts,
 		request:    r,
 		log:        logFunc,
+		verbose:    verboseFunc,
 	}
 }
 
@@ -246,14 +256,16 @@ type ExecHandler struct {
 	parameters *UrlRequestParts
 	createMap  func([]byte, []byte, int) map[string]interface{}
 	log        func(string)
+	verbose    func(string)
 	addLrp     func(string, string, int, bool) bool
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
 		log:        logFunc,
+		verbose:    verboseFunc,
 		addLrp:     addFunc,
 	}
 }

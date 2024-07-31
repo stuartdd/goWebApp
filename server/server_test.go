@@ -26,6 +26,11 @@ func (l *TLog) Log(s string) {
 	l.B.WriteString(s)
 	l.B.WriteString("\n")
 }
+func (l *TLog) Verbose(s string) {
+	l.B.WriteString("Verbose:")
+	l.B.WriteString(s)
+	l.B.WriteString("\n")
+}
 func (l *TLog) Get() string {
 	return l.B.String()
 }

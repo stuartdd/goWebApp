@@ -96,7 +96,7 @@ func (h *ServerHandler) close() {
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.config.IsTimeToReloadConfig() {
 		ts := time.Now().UnixMicro()
-		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.Verbose)
+		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.IsVerbose)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d micro seconds)", h.config.ConfigName, (time.Now().UnixMicro() - ts)))
@@ -106,6 +106,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	logFunc := h.logger.Log
+	verboseFunv := h.logger.Verbose
 	h.Log(fmt.Sprintf("Req:  %s", r.RequestURI))
 	urlPath := strings.TrimSpace(r.URL.Path)
 
@@ -123,54 +124,54 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
-			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc, verboseFunv).Submit())
 			return
 		}
 		p, ok := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunv).Submit())
 			return
 		}
 		p, ok = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunv).Submit())
 			return
 		}
 		p, ok = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, logFunc).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, logFunc, verboseFunv).Submit())
 			return
 		}
 		p, ok = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, logFunc).Submit())
+			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunv).Submit())
 			return
 		}
 		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 
 		p, ok = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc).Submit())
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunv).Submit())
 			return
 		}
 
 		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc).Submit())
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunv).Submit())
 			return
 		}
 		/*
@@ -180,13 +181,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		*/
 		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 
 		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
 			return
 		}
 	}
@@ -235,7 +236,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
-		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.Verbose)
+		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.IsVerbose)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))

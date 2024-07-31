@@ -70,7 +70,6 @@ type LogData struct {
 	FileNameMask   string
 	Path           string
 	MonitorSeconds int
-	LogLevel       string
 	ConsoleOut     bool
 }
 
@@ -79,7 +78,6 @@ func NewLogData() *LogData {
 		FileNameMask:   "",
 		Path:           "",
 		MonitorSeconds: -1,
-		LogLevel:       "quiet",
 		ConsoleOut:     false,
 	}
 }
@@ -172,7 +170,7 @@ type ConfigData struct {
 	NextLoadTime     int64
 	LocationsCreated []string
 	UpSince          time.Time
-	Verbose          bool
+	IsVerbose        bool
 }
 
 /*
@@ -215,7 +213,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		Environment:      environ,
 		NextLoadTime:     0,
 		LocationsCreated: []string{},
-		Verbose:          verbose,
+		IsVerbose:        verbose,
 	}
 
 	configDataInternal := &ConfigDataInternal{
@@ -227,7 +225,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		ServerName:          moduleName,
 		FilterFiles:         []string{},
 		PanicResponseCode:   500,
-		ServerDataRoot:      "~/",
+		ServerDataRoot:      "",
 		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
 		ThumbnailTrim:       []int{0, 0},
@@ -268,7 +266,22 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		}
 	}
 
-	return configDataExtternal.resolveLocations(createDir)
+	if verbose {
+		ret, cfgErr := configDataExtternal.resolveLocations(createDir)
+		fmt.Println("Config Error Data -------")
+		fmt.Print(strings.TrimSpace(cfgErr.String()))
+		fmt.Println("Final Config Data -------")
+		s, err := ret.String()
+		if err != nil {
+			fmt.Printf("Config data String() returned this error: %s", err.Error())
+		} else {
+			fmt.Println(s)
+		}
+		fmt.Println("Final Config Data -------")
+		return ret, cfgErr
+	} else {
+		return configDataExtternal.resolveLocations(createDir)
+	}
 }
 
 /*
@@ -395,20 +408,14 @@ func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]str
 	if rootPath == "" {
 		return "", fmt.Errorf("path is empty")
 	}
-	if p.Verbose {
-		fmt.Printf("checkRootPathExists: %s\n", rootPath)
-	}
+	p.Verbose(fmt.Sprintf("checkRootPathExists: %s", rootPath))
 	absPathSub := p.SubstituteFromMap([]byte(rootPath), userEnv)
-	if p.Verbose {
-		fmt.Printf("checkRootPathExists:SubstituteFromMap: %s\n", absPathSub)
-	}
+	p.Verbose(fmt.Sprintf("checkRootPathExists:SubstituteFromMap: %s", absPathSub))
 	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathPath)
 	}
-	if p.Verbose {
-		fmt.Printf("checkRootPathExists:Abs: %s\n", absPathPath)
-	}
+	p.Verbose(fmt.Sprintf("checkRootPathExists:Abs: %s", absPathPath))
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
@@ -442,6 +449,7 @@ func (p *ConfigData) checkPathExists(userPath string, relPath string, userId str
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
 		if createDir {
+			p.Verbose(fmt.Sprintf("createFullDirectory:%s", absPathPath))
 			err = p.createFullDirectory(absPathPath, userId)
 			if err != nil {
 				return absPathPath, err
@@ -489,6 +497,12 @@ func (p *ConfigData) SaveMe() error {
 		return err
 	}
 	return nil
+}
+
+func (l *ConfigData) Verbose(s string) {
+	if l.IsVerbose {
+		fmt.Println(s)
+	}
 }
 
 func (p *ConfigData) getNextReloadConfigMillis() int64 {

@@ -13,6 +13,7 @@ import (
 
 type Logger interface {
 	Log(string)
+	Verbose(string)
 	IsOpen() bool
 	Close()
 	LogFileName() string
@@ -83,7 +84,6 @@ type logger struct {
 	fileNameMask   string
 	path           string
 	monitorSeconds int
-	level          string
 	logFileData    *logFileData
 	datePrefix     string
 	nextFileCheck  time.Time
@@ -92,11 +92,12 @@ type logger struct {
 	mu1            sync.Mutex
 	mu2            sync.Mutex
 	noMoreCalls    bool
+	verboseLog     bool
 }
 
 const padding0 = "000000000000"
 
-func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel string, consoleOut bool) (Logger, error) {
+func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, consoleOut bool, isVerbose bool) (Logger, error) {
 	if pPath == "" || pFileNameMask == "" {
 		return &logger{
 			logFileData: &logFileData{
@@ -108,22 +109,29 @@ func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, pLevel s
 			noMoreCalls:  true,
 			path:         pPath,
 			datePrefix:   newDatePrefix(time.Now()),
+			verboseLog:   isVerbose,
 		}, nil
 	}
 	l := &logger{
 		fileNameMask:   pFileNameMask,
 		path:           pPath,
 		monitorSeconds: pMonitorSeconds,
-		level:          pLevel,
 		logFileData:    newLogFileData(pPath, pFileNameMask, time.Now()),
 		datePrefix:     newDatePrefix(time.Now()),
 		nextFileCheck:  getNextMonitorTime(pMonitorSeconds),
 		consoleOut:     consoleOut,
 		queue:          make(chan string, 20),
 		noMoreCalls:    false,
+		verboseLog:     isVerbose,
 	}
 	go l.deQueue()
 	return l, l.logFileData.err
+}
+
+func (l *logger) Verbose(s string) {
+	if l.verboseLog {
+		fmt.Println(s)
+	}
 }
 
 func (l *logger) Close() {
@@ -177,7 +185,7 @@ func (l *logger) deQueue() {
 			l.logFileData.logFile.WriteString(out)
 			if l.consoleOut {
 				os.Stderr.WriteString(out)
-			}	
+			}
 		} else {
 			os.Stderr.WriteString(out)
 		}

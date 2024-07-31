@@ -60,7 +60,7 @@ func TestLoggingFunctions(t *testing.T) {
 }
 
 func TestLoggingSink(t *testing.T) {
-	l, err := NewLogger("", "goWebServer-test.log", 10, "verbose", false)
+	l, err := NewLogger("", "goWebServer-test.log", 10, false, false)
 	if err != nil {
 		t.Fatalf("Error: Empty path should not produce an error: %s", err.Error())
 	}
@@ -71,7 +71,7 @@ func TestLoggingSink(t *testing.T) {
 	if l.IsOpen() {
 		t.Fatalf("Error: Empty path should not Open log")
 	}
-	_, err = NewLogger(testLogDir, "", 10, "verbose", false)
+	_, err = NewLogger(testLogDir, "", 10, false, false)
 	if err != nil {
 		t.Fatalf("Error: Empty path file name should produce an error:")
 	}
@@ -79,7 +79,7 @@ func TestLoggingSink(t *testing.T) {
 func TestLogging(t *testing.T) {
 	cleanLogs(t)
 
-	l, err := NewLogger(testLogDir, "goWebServer-test.log", 10, "verbose", false)
+	l, err := NewLogger(testLogDir, "goWebServer-test.log", 10, false, false)
 	if err != nil {
 		t.Fatalf("Error: %s", err.Error())
 	}
@@ -89,7 +89,7 @@ func TestLogging(t *testing.T) {
 	l.Log("1")
 	l.Log("2")
 	l.Close()
-	l, err = NewLogger(testLogDir, "goWebServer-test.log", 10, "verbose", false)
+	l, err = NewLogger(testLogDir, "goWebServer-test.log", 10, false, false)
 	if err != nil {
 		t.Fatalf("Error: %s", err.Error())
 	}

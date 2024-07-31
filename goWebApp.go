@@ -119,7 +119,7 @@ func main() {
 
 	ld := cfg.GetLogData()
 
-	logger, err := logging.NewLogger(ld.Path, ld.FileNameMask, ld.MonitorSeconds, ld.LogLevel, ld.ConsoleOut)
+	logger, err := logging.NewLogger(ld.Path, ld.FileNameMask, ld.MonitorSeconds, ld.ConsoleOut, verbose)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
