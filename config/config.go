@@ -312,7 +312,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 
 	f, e := p.checkRootPathExists(p.GetServerDataRoot(), userConfigEnv) // Will check GetServerDataRoot
 	if e != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find UserDataRoot:%s. Cause:%s", f, e.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find ServerDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerDataRoot(f)
 	}

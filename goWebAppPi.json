@@ -17,12 +17,11 @@
     "stuart": {
       "Hidden": null,
       "Name": "Stuart",
-      "Home": "***/home/stuart",
+      "Home": "***/media/USBHDD1/shares/stuart",
       "Locations": {
-        "dev": "dev/%{id}",
-        "base": "",
-        "abs":"***/home/andrew"
-      }
+        "dev": "Repository",
+        "base": ""
+     }
     }
   },
   "ContentTypeCharset": "utf-8",
@@ -43,7 +42,7 @@
     ".info",
     ".log"
   ],
-  "ServerDataRoot": "/home/stuart/git/golang/goWebApp/testdata",
-  "ServerStaticRoot": "/home/stuart/git/golang/goWebApp/static",
-  "FaviconIcoPath": "favicon1.ico"
+  "ServerDataRoot": "/home/pi/server/goWebApp/testdata",
+  "ServerStaticRoot": "/home/pi/server/goWebApp/static",
+  "FaviconIcoPath": "favicon.ico"
 }
