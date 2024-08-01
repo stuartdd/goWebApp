@@ -308,6 +308,11 @@ func (p *WebAppServer) Close(rc int) int {
 	return rc
 }
 func (p *WebAppServer) Start() int {
+	p.Log(fmt.Sprintf("Server Config     :%s.", p.Handler.config.ConfigName))
+	if p.Handler.config.IsVerbose {
+		s, _ := p.Handler.config.String()
+		fmt.Println(s)
+	}
 	p.Log(fmt.Sprintf("Server Started    :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
 	if p.Handler.logger.IsOpen() {
 		p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
