@@ -90,10 +90,10 @@ func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 		v = p.GetQueryAsString(key, "false")
 	}
 	s := strings.ToLower(v)
-	if s == "true" {
+	if s == "true" || strings.HasPrefix(s, "y") {
 		return true
 	}
-	if s == "false" {
+	if s == "false" || strings.HasPrefix(s, "n") {
 		return false
 	}
 	return fallback
@@ -183,7 +183,7 @@ func (p *UrlRequestParts) ToThumbnail(filename string) string {
 	return filename[tnt[0] : len(filename)-tnt[1]]
 }
 
-func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool) (path string, err error) {
+func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase64 bool) (path string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
@@ -196,11 +196,26 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool) (path 
 	}
 	if p.HasParam(PathParam) {
 		pat := p.GetParam(PathParam)
-		ulp = filepath.Join(ulp, pat)
+		if isBase64 {
+			patBytes, err := base64.StdEncoding.DecodeString(pat)
+			if err != nil {
+				ulp = filepath.Join(ulp, pat)
+			} else {
+				ulp = filepath.Join(ulp, string(patBytes))
+			}
+		} else {
+			ulp = filepath.Join(ulp, pat)
+		}
 	}
 	if withName {
 		if p.HasParam(NameParam) {
 			np := p.GetParam(NameParam)
+			if isBase64 {
+				npBytes, err := base64.StdEncoding.DecodeString(np)
+				if err == nil {
+					np = string(npBytes)
+				}
+			}
 			if asThumbnail {
 				ulp = filepath.Join(ulp, p.ToThumbnail(np))
 			} else {

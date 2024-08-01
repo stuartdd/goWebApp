@@ -85,7 +85,7 @@ func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 }
 
 func (p *ReadFileHandler) Submit() *ResponseData {
-	file, err := p.parameters.GetUserLocPath(true, p.parameters.GetQueryAsBool("thumbnail", false))
+	file, err := p.parameters.GetUserLocPath(true, p.parameters.GetQueryAsBool("thumbnail", false), p.parameters.GetQueryAsBool("base64", false))
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File not found", true)
 	}
@@ -133,7 +133,7 @@ func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigDat
 func (p *DirHandler) Submit() *ResponseData {
 	var err error
 
-	file, err := p.parameters.GetUserLocPath(false, false)
+	file, err := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -173,7 +173,7 @@ func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, lo
 }
 
 func (p *TreeHandler) Submit() *ResponseData {
-	file, err := p.parameters.GetUserLocPath(false, false)
+	file, err := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -222,7 +222,7 @@ func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 }
 
 func (p *PostFileHandler) Submit() *ResponseData {
-	dir, err := p.parameters.GetUserLocPath(false, false)
+	dir, err := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
 	}
@@ -240,7 +240,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if err != nil {
 		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to read input", true)
 	}
-	file, err := p.parameters.GetUserLocPath(true, false)
+	file, err := p.parameters.GetUserLocPath(true, false, p.parameters.GetQueryAsBool("base64", false))
 	if err != nil {
 		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("File name not found", true)
 	}
