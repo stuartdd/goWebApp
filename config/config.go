@@ -297,6 +297,10 @@ func (p *ConfigData) resolvePaths(userHome string, location string) string {
 	if strings.HasPrefix(location, AbsolutePathPrefix) {
 		return location[len(AbsolutePathPrefix):]
 	}
+	if strings.HasPrefix(userHome, AbsolutePathPrefix) {
+		userHome = userHome[len(AbsolutePathPrefix):]
+		return filepath.Join(userHome, location)
+	}
 	if location == "" {
 		return filepath.Join(p.GetServerDataRoot(), userHome)
 	}
