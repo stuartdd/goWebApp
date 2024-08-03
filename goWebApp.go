@@ -17,7 +17,7 @@ import (
 
 func main() {
 	verbose := false
-	doNotConnect := false
+	doNotRun := false
 	killServer := false
 	vbr, _ := getArg("-vr")
 	if vbr != "" {
@@ -30,12 +30,12 @@ func main() {
 	vb, _ := getArg("-v")
 	if vb != "" {
 		verbose = true
-		doNotConnect = true
+		doNotRun = true
 	}
 	ksx, _ := getArg("-k")
 	if ksx != "" {
 		killServer = true
-		doNotConnect = true
+		doNotRun = true
 	}
 
 	help, _ := getArg("help")
@@ -175,8 +175,8 @@ func main() {
 			}
 		}
 	}()
-	if doNotConnect {
-		fmt.Print("Do Not Connect")
+	if doNotRun {
+		fmt.Print("Do Not Run Server")
 		os.Exit(0)
 	}
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, lrm, logger)
@@ -192,13 +192,15 @@ func getArg(name string) (string, int) {
 			if i < (len(os.Args) - 1) {
 				return nl, i + 1
 			}
-			return nl, 0
+			return al, 0
 		}
-		if strings.HasPrefix(al, nl) {
-			if i < (len(os.Args) - 1) {
-				return a[len(name):], i + 1
+		if strings.HasSuffix(nl, "=") {
+			if strings.HasPrefix(al, nl) {
+				if i < (len(os.Args) - 1) {
+					return al[len(name):], i + 1
+				}
+				return al[len(name):], 0
 			}
-			return a[len(name):], 0
 		}
 	}
 	return "", 0

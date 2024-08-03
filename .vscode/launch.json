@@ -11,7 +11,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "goWebApp.go",
-            "args": ["config=goWebAppPi.json", "-vx"]
+            "args": ["config=goWebAppPi.json", "-k"]
         }
     ]
 }
