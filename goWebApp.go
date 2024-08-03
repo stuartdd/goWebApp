@@ -17,10 +17,27 @@ import (
 
 func main() {
 	verbose := false
+	doNotConnect := false
+	killServer := false
+	vbr, _ := getArg("-vr")
+	if vbr != "" {
+		verbose = true
+	}
+	ksr, _ := getArg("-kr")
+	if ksr != "" {
+		killServer = true
+	}
 	vb, _ := getArg("-v")
 	if vb != "" {
 		verbose = true
+		doNotConnect = true
 	}
+	ksx, _ := getArg("-k")
+	if ksx != "" {
+		killServer = true
+		doNotConnect = true
+	}
+
 	help, _ := getArg("help")
 	if help != "" {
 		h, err := os.ReadFile("helptext.md")
@@ -71,6 +88,11 @@ func main() {
 	}
 	if cfg == nil {
 		osExitWithMessage(1, "Config not loaded. Cannot continue")
+	}
+
+	if killServer {
+		server.SendToHost(cfg.GetPortString(), "server/exit")
+		time.Sleep(999 * time.Millisecond)
 	}
 
 	if scanDirFlag {
@@ -153,7 +175,10 @@ func main() {
 			}
 		}
 	}()
-
+	if doNotConnect {
+		fmt.Print("Do Not Connect")
+		os.Exit(0)
+	}
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, lrm, logger)
 	os.Exit(webAppServer.Start())
 }

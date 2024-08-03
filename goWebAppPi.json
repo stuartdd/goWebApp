@@ -11,7 +11,8 @@
       "Name": "Admin",
       "Home": "",
       "Locations": {
-        "cache": "cache"
+        "cache": "cache",
+        "logs" : "logs"
       }
     },
     "stuart": {
@@ -27,9 +28,9 @@
   "ContentTypeCharset": "utf-8",
   "LogData": {
     "FileNameMask": "goWebServer-%y-%m-%d.log",
-    "Path": "logs",
+    "Path": "admin/logs",
     "MonitorSeconds": 30,
-    "ConsoleOut": true
+    "ConsoleOut": false
   },
   "ServerName": "NePiServer",
   "PanicResponseCode": 500,

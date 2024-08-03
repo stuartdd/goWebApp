@@ -38,7 +38,6 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 }
 
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
-var getExitMatch = NewUrlRequestMatcher("/exit", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
 var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
 
@@ -47,6 +46,7 @@ var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
 var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET")
+var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET")
 
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET")
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
@@ -199,7 +199,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapJson(map[string]interface{}{"Status": "RESTARTED"}))
 		return
 	}
-	_, ok = getExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok = getServerExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a

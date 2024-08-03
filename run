@@ -1,4 +1,27 @@
 #!/bin/bash
+CONTROL_DIR=$(realpath $(dirname "$0"))
+echo "########################################################"
+echo "Running in: $CONTROL_DIR"
+cd $CONTROL_DIR
 
-go run goWebApp.go goWebApp.cfg
- 
+while true
+do
+  ./goWebApp config=goWebAppPi.json
+  RESP=$?
+  echo "########################################################"
+  echo "Response: $RESP"
+  if [ $RESP -eq 11 ]; then
+    echo "Server stopped"
+    exit 1
+  fi
+  if [ $RESP -eq 10 ]; then
+    echo "Server already running"
+    exit 1
+  fi
+  if [ $RESP -eq 1 ]; then
+    echo "Server error"
+    exit 1
+  fi
+  echo "Server restarted"
+done
+
