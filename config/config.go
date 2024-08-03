@@ -553,8 +553,8 @@ func (p *ConfigData) AddUser(user string) error {
 	ud := UserData{
 		Hidden:    nil,
 		Name:      strings.ToUpper(user[0:1]) + user[1:],
-		Home:      user,
-		Locations: map[string]string{"home": "", "data": "stateData"},
+		Home:      "",
+		Locations: map[string]string{"data": "stateData"},
 		Exec:      map[string]*ExecInfo{},
 		Env:       map[string]string{},
 	}

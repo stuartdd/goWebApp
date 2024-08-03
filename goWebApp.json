@@ -14,22 +14,6 @@
         "cache": "cache"
       },
       "Exec": {
-        "lr1": {
-          "Cmd": [
-            "./longRun.sh", "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Detached":true
-        },
-        "lr2": {
-          "Cmd": [
-            "./longRun.sh", "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Detached":true
-        },
         "ds": {
           "Cmd": [
             "./diskSize.sh"
@@ -39,7 +23,34 @@
           "Log": "",
           "LogOut": "",
           "LogErr": "",
-          "NzCodeReturns": 200
+          "NzCodeReturns": 200,
+          "Detached": false
+        },
+        "lr1": {
+          "Cmd": [
+            "./longRun.sh",
+            "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 0,
+          "Detached": true
+        },
+        "lr2": {
+          "Cmd": [
+            "./longRun.sh",
+            "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 0,
+          "Detached": true
         },
         "ufs": {
           "Cmd": [
@@ -51,7 +62,8 @@
           "Log": "",
           "LogOut": "",
           "LogErr": "",
-          "NzCodeReturns": 200
+          "NzCodeReturns": 200,
+          "Detached": false
         }
       },
       "Env": {
@@ -66,8 +78,8 @@
         "data": "stateData",
         "home": "",
         "original": "***%{WebServerPictures}/originals/%{id}",
-        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "pics": "b-pics",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "usr": "b-testfolder"
       },
       "Exec": null,
@@ -80,12 +92,12 @@
       "Locations": {
         "cache": "cache",
         "data": "stateData",
+        "dev": "***%{WebServerPictures}/dev/%{id}",
         "home": "",
         "logs": "logs",
+        "original": "***%{WebServerPictures}/originals/%{id}",
         "pics": "s-pics",
         "testtree": "***%{WebServerPictures}",
-        "dev": "***%{WebServerPictures}/dev/%{id}",
-        "original": "***%{WebServerPictures}/originals/%{id}",
         "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "usr": "s-testfolder"
       },
@@ -98,7 +110,6 @@
     "FileNameMask": "goWebServer-%y-%m-%d.log",
     "Path": "admin/logs",
     "MonitorSeconds": 30,
-    "LogLevel": "verbose",
     "ConsoleOut": true
   },
   "ServerName": "MyServer",
@@ -127,9 +138,9 @@
   "Env": {
     "linuxUserGit": "/home/stuart/git"
   },
-  "ExecManager":{
-    "Path" : "./testdata/admin",
-    "File" : "RunningProcs.json",
-    "TestCommand" : "./checkLrp.sh"
+  "ExecManager": {
+    "Path": "./testdata/admin",
+    "File": "RunningProcs.json",
+    "TestCommand": "./checkLrp.sh"
   }
 }

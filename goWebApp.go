@@ -16,8 +16,8 @@ import (
 )
 
 func main() {
-	verbose := false
 	doNotRun := false
+	verbose := false
 	killServer := false
 	vbr, _ := getArg("-vr")
 	if vbr != "" {
@@ -117,7 +117,7 @@ func main() {
 	}
 
 	if addUserFlag {
-		c := osReader(fmt.Sprintf("Add User with userid: '%s'", addUserName), "y/n")
+		c := osReader(fmt.Sprintf("Add User with userid: '%s' to %s", addUserName, cfg.ConfigName), "y/n")
 		if c == "y" {
 			err := cfg.AddUser(addUserName)
 			if err != nil {
@@ -175,10 +175,12 @@ func main() {
 			}
 		}
 	}()
+
 	if doNotRun {
 		fmt.Print("Do Not Run Server")
 		os.Exit(0)
 	}
+
 	webAppServer := server.NewWebAppServer(cfg, actionQueue, lrm, logger)
 	os.Exit(webAppServer.Start())
 }
@@ -197,9 +199,9 @@ func getArg(name string) (string, int) {
 		if strings.HasSuffix(nl, "=") {
 			if strings.HasPrefix(al, nl) {
 				if i < (len(os.Args) - 1) {
-					return al[len(name):], i + 1
+					return a[len(name):], i + 1
 				}
-				return al[len(name):], 0
+				return a[len(name):], 0
 			}
 		}
 	}

@@ -2,6 +2,65 @@
 
 Web app written in go for raspberry pi home server
 
+## Command line options
+
+### config=```<fileNane>```
+
+Defines the name of the configuration data (described below)
+
+```<fileName>``` is the path to the configuration file.
+
+If the file name is empty then a file name will be derives from the module name (goWebApp) with the '.json' file extension.
+
+### (verbose) -v -vr
+
+The -v options causes the resolved config data and other helpfull diagnostin data to be echoed to the console.
+
+The -v option will NOT start the server. Use -vr for verbose and run the server.
+
+### (kill) -k -kr
+
+The -k options causes the server defined in the config file to 'EXIT' with a return code 11.
+
+This can also be done with the following http request:
+
+```
+http://<hostIpAddress>:<hostPort>/server/exit
+```
+
+The -k option will NOT start the server. Use -kr for KILL and RUN the server.
+
+A 1 second delay is used after the KILL message is sent to allow the server to close cleanly before it is started.
+
+### Create locations
+
+The ```create``` command line option will create the directories listed in EACH users 'Locations' section of the config file.
+
+When the server is run it will fail to start if the paths do not exist. If the locations cannot be created the server cannot start.
+
+### add user
+
+This will add a user to the configuration file with the default values.
+
+```add userOne``` will add the following user to the config:
+
+```json
+"oneUser": {
+  "Hidden": null,
+  "Name": "OneUser",
+  "Home": "",
+  "Locations": {
+    "data": "stateData"
+  },
+  "Exec": {},
+  "Env": {}
+},
+```
+
+The directory ```<ServerDataRoot>```/oneUser/stateData will need to be created before the server will start.
+
+Use the 'create' command line option to create the required path.
+
 ## Configuration data
 
 ### Config file name
@@ -91,7 +150,7 @@ or
 /files/user/*/loc/*/name/*
 ```
 
-An additional Query parameter should be added if teh request name was a thumbnail and the response name is a picture. For example:
+An additional Query parameter should be added if the request name was a thumbnail and the response name is a picture. For example:
 
 ```
 /files/user/*/loc/*/path/*/name/*?thumbnail=true
@@ -168,7 +227,7 @@ Additional elements for User:
 
 **'Name'** The users proper name.
 
-**'Home'** The home path for the user. This is prefixed with **ServerDataRoot** on load.
+**'Home'** The home path for the user. This is prefixed with **ServerDataRoot** on load unless prefixed with '***' in which case it is an absolute path.
 
 **'Locations'** See below
 
@@ -237,7 +296,15 @@ Returned:
    }
 ```
 
-When building requests it is best to use the 'encName' values for paths and file names.
+When building requests it is best to use the 'encName' values for paths and file names. This is better if the file names have spaces or invalid characters in them. 
+
+```
+http://<ServerIpAddress>:<ServerPort>/files/user/stuart/loc/pics/name/X0Xcy10ZXN0Zm9sZGVyL3MtdGVzdGRpcjE=
+```
+
+The value 'encName' is the value 'name' base64 encoded and prefixed with 'X0X'. It is recognised by the server if prefixed with 'X0X'.
+
+If the base64 value does not have a X0X then add the query parameter '?base64=true'. If this is done then the 'path' data in any url must also be base64 encoded.
 
 ## **Exec**
 
