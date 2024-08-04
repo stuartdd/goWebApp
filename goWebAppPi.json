@@ -21,6 +21,7 @@
       "Home": "***/media/USBHDD1/shares/stuart",
       "Locations": {
         "dev": "Repository",
+        "mydb": "mydb",
         "base": ""
      }
     }

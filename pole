@@ -1,0 +1,19 @@
+#!/bin/bash
+
+while true
+do
+
+  OP=$(curl -s --max-time 1 http://localhost:8082/isup | python3 -m json.tool | grep "\"serverIsUp\": true") 
+  RESP=$?
+
+  if [ $RESP -eq 0 ]; then
+    echo "Server is UP"
+  else
+    echo "Server is DOWN"
+  fi
+  echo "########################################################"
+
+  sleep 5
+
+done
+

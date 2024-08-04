@@ -39,6 +39,7 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
+var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET")
 var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
 
 var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
@@ -209,6 +210,12 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok = getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
+		return
+	}
+
+	_, ok = getIsUpMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	if ok {
+		w.Write([]byte("{\"serverIsUp\":true}"))
 		return
 	}
 
