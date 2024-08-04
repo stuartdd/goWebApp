@@ -237,12 +237,11 @@ func (p *UrlRequestParts) GetUserExecInfo() (path *config.ExecInfo, err error) {
 }
 
 type ResponseData struct {
-	Status      int
-	content     []byte
-	Header      map[string][]string
-	MimeType    string
-	shouldLog   bool
-	suppressLog bool
+	Status    int
+	content   []byte
+	Header    map[string][]string
+	MimeType  string
+	hasErrors bool
 }
 
 func (p *ResponseData) String() string {
@@ -258,15 +257,14 @@ func (p *ResponseData) String() string {
 
 func NewResponseData(status int) *ResponseData {
 	rd := &ResponseData{
-		Status:      status,
-		Header:      make(map[string][]string),
-		content:     make([]byte, 0),
-		shouldLog:   false,
-		suppressLog: false,
-		MimeType:    "json",
+		Status:    status,
+		Header:    make(map[string][]string),
+		content:   make([]byte, 0),
+		hasErrors: false,
+		MimeType:  "json",
 	}
 	if rd.IsError() {
-		rd.SetShouldLog(true)
+		rd.SetHasErrors(true)
 	}
 	return rd
 }
@@ -298,22 +296,13 @@ func (p *ResponseData) WithContentBytes(content []byte) *ResponseData {
 	return p
 }
 
-func (p *ResponseData) SetShouldLog(should bool) *ResponseData {
-	p.shouldLog = should
+func (p *ResponseData) SetHasErrors(should bool) *ResponseData {
+	p.hasErrors = should
 	return p
 }
 
-func (p *ResponseData) GetShouldLog() bool {
-	return p.shouldLog
-}
-
-func (p *ResponseData) GetSuppressLog() bool {
-	return p.suppressLog
-}
-
-func (p *ResponseData) SuppressLog() *ResponseData {
-	p.suppressLog = true
-	return p
+func (p *ResponseData) GetHasErrors() bool {
+	return p.hasErrors
 }
 
 func (p *ResponseData) WithContentReasonAsJson(reason string, error bool) *ResponseData {

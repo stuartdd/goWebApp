@@ -13,10 +13,11 @@ type UrlRequestMatcher struct {
 	Parts          []string
 	ReqType        string
 	isAbsolutePath bool
+	shouldLog      bool
 	Len            int
 }
 
-func NewUrlRequestMatcher(templateUrl string, reqType string) *UrlRequestMatcher {
+func NewUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *UrlRequestMatcher {
 	s := strings.Split(strings.TrimSpace(templateUrl), "/")
 	if s[0] == "" {
 		s = s[1:]
@@ -25,6 +26,7 @@ func NewUrlRequestMatcher(templateUrl string, reqType string) *UrlRequestMatcher
 		Parts:          s,
 		ReqType:        strings.ToUpper(reqType),
 		isAbsolutePath: strings.HasPrefix(templateUrl, "/"),
+		shouldLog:      shouldLog,
 		Len:            len(s),
 	}
 }
@@ -41,27 +43,27 @@ func (p *UrlRequestMatcher) String() string {
 	return fmt.Sprintf("Parts: '%s:%s'", p.ReqType, buffer.String())
 }
 
-func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, reqType string) (map[string]string, bool) {
+func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, reqType string, logFunc func(string)) (map[string]string, bool, bool) {
 	params := map[string]string{}
 	if p.ReqType != strings.ToUpper(reqType) {
-		return params, false
+		return params, false, p.shouldLog
 	}
 	if p.Len != len(requestParts) {
-		return params, false
+		return params, false, p.shouldLog
 	}
 	if p.Len == 0 {
-		return params, true
+		return params, true, p.shouldLog
 	}
 	if isAbsolutePath != p.isAbsolutePath {
-		return params, false
+		return params, false, p.shouldLog
 	}
 	if p.Parts[0] != requestParts[0] {
-		return params, false
+		return params, false, p.shouldLog
 	}
 	for i := 1; i < p.Len; i++ {
 		if p.Parts[i] != "*" {
 			if p.Parts[i] != requestParts[i] {
-				return params, false
+				return params, false, p.shouldLog
 			}
 		} else {
 			if p.Parts[i-1] != "*" {
@@ -69,7 +71,10 @@ func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, re
 			}
 		}
 	}
-	return params, true
+	if p.shouldLog && logFunc != nil {
+		logFunc(fmt.Sprintf("Req: %s", requestParts))
+	}
+	return params, true, p.shouldLog
 }
 
 func SendToHost(port string, path string) (*[]byte, int, error) {

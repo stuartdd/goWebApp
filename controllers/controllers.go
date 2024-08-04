@@ -311,7 +311,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return NewResponseData(execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
 	}
 	if execInfo.StdOutType != "" && len(stdOut) > 0 {
-		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(execInfo.StdOutType).SetShouldLog(code != 0)
+		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(execInfo.StdOutType).SetHasErrors(code != 0)
 	}
 	var dataMap map[string]interface{}
 	if p.createMap != nil {
@@ -320,9 +320,9 @@ func (p *ExecHandler) Submit() *ResponseData {
 		dataMap = map[string]interface{}{"error": code > 0, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
 	}
 	if code == 0 {
-		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetShouldLog(false)
+		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetHasErrors(false)
 	} else {
-		return NewResponseData(execInfo.NzCodeReturns).WithContentMapJson(dataMap).SetShouldLog(true)
+		return NewResponseData(execInfo.NzCodeReturns).WithContentMapJson(dataMap).SetHasErrors(true)
 	}
 }
 

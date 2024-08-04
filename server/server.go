@@ -12,6 +12,9 @@ import (
 	"github.com/stuartdd/goWebApp/logging"
 )
 
+const shouldLog = true
+const shouldNotLog = false
+
 type ActionId int
 
 const (
@@ -37,29 +40,29 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 	return &ActionEvent{Id: id, Rc: i, Msg: m}
 }
 
-var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET")
-var getPingMatch = NewUrlRequestMatcher("/ping", "GET")
-var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET")
-var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET")
+var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET", shouldLog)
+var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldLog)
+var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET", shouldNotLog)
+var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET", shouldLog)
 
-var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET")
-var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET")
-var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET")
-var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET")
-var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET")
-var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET")
+var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLog)
+var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldLog)
+var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldNotLog)
+var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLog)
+var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLog)
+var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLog)
 
-var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET")
-var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET")
-var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET")
-var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET")
-var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET")
-var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET")
-var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST")
-var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST")
+var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLog)
+var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLog)
+var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLog)
+var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLog)
+var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLog)
+var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLog)
+var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLog)
+var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLog)
 
-var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET")
-var execUserCmdMatch = NewUrlRequestMatcher("/exec/user/*/exec/*", "GET")
+var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLog)
+var execUserCmdMatch = NewUrlRequestMatcher("/exec/user/*/exec/*", "GET", shouldLog)
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -107,11 +110,12 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	logFunc := h.logger.Log
-	verboseFunv := h.logger.Verbose
-	h.Log(fmt.Sprintf("Req:  %s", r.RequestURI))
+	verboseFunc := h.logger.Verbose
+
 	urlPath := strings.TrimSpace(r.URL.Path)
 
 	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
+
 	var isAbsolutePath bool
 	requestUrlparts := strings.Split(urlPath, "/")
 	if requestUrlparts[0] == "" {
@@ -123,56 +127,57 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if requestUrlparts[0] == "" {
 		requestUrlparts = requestUrlparts[1:]
 	}
+
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
-			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		p, ok := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
-		p, ok = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		p, ok = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		p, ok = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		p, ok = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		p, ok = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
-		p, ok = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
-			return
-		}
-
-		p, ok = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
-		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 
-		p, ok = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunv).Submit())
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunc).Submit(), shouldLog)
+			return
+		}
+
+		p, ok, shouldLog = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+		if ok {
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		/*
@@ -180,90 +185,89 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			  /script/*
 			  /server/restart
 		*/
-		p, ok = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 
-		p, ok = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+		p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc, verboseFunv, h.longRunning.AddLongRunningProcess).Submit())
+			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 	}
 
-	_, ok := getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog := getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
 		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "23"), 23, "Restart Requested")
 		h.actionQueue <- a
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapJson(map[string]interface{}{"Status": "RESTARTED"}))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapJson(map[string]interface{}{"Status": "RESTARTED"}), shouldLog)
 		return
 	}
-	_, ok = getServerExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getServerExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
 		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson(a.String(), false))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson(a.String(), false), shouldLog)
 		return
 	}
-	_, ok = getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping", false), shouldLog)
 		return
 	}
 
-	_, ok = getIsUpMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getIsUpMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		w.Write([]byte("{\"serverIsUp\":true}"))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("ServerIsUp", false), shouldLog)
 		return
 	}
 
-	_, ok = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
 		h.longRunning.UpdateLongRunningProcess()
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.logger.LogFileName(), h.GetUpSince(), h.longRunning.LongRunningMap())))
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.logger.LogFileName(), h.GetUpSince(), h.longRunning.LongRunningMap())), shouldLog)
 		return
 	}
-	_, ok = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetTimeAsMap()).SuppressLog())
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetTimeAsMap()), shouldLog)
+	}
+	_, ok, shouldLog = getServerUsersMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+	if ok {
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetUsersAsMap(h.config.GetUsers())), shouldLog)
 		return
 	}
-	_, ok = getServerUsersMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getFaviconMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetUsersAsMap(h.config.GetUsers())))
-		return
-	}
-	_, ok = getFaviconMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
-	if ok {
-		h.writeResponse(w, controllers.GetFaveIcon(h.config))
+		h.writeResponse(w, controllers.GetFaveIcon(h.config), shouldLog)
 		return
 	}
 
-	_, ok = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method)
+	_, ok, shouldLog = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
 		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.IsVerbose)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
-			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Config Reloaded", false))
+			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Config Reloaded", false), shouldLog)
 
 		} else {
 			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, errorList))
-			h.writeResponse(w, controllers.NewResponseData(http.StatusExpectationFailed).WithContentReasonAsJson("Config Reload Failed", true))
+			h.writeResponse(w, controllers.NewResponseData(http.StatusExpectationFailed).WithContentReasonAsJson("Config Reload Failed", true), shouldLog)
 		}
 		return
 	}
-	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true))
+	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true), shouldLog)
 }
 
-func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.ResponseData) {
+func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.ResponseData, shouldLog bool) {
 	contentType := config.LookupContentType(resp.MimeType)
-	if resp.GetShouldLog() {
+	if resp.GetHasErrors() {
 		p.Log(fmt.Sprintf("Error: Status:%d: '%s'", resp.Status, resp.ContentLimit(150)))
 	} else {
-		if !resp.GetSuppressLog() {
+		if shouldLog {
 			p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
 		}
 	}
