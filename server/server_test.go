@@ -325,6 +325,50 @@ func TestReadFile(t *testing.T) {
 	os.Stderr.WriteString(logger.Get())
 }
 
+func TestServerTime(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 176, 0)
+	if !strings.HasPrefix(trimString(resBody), "{\"time\":{") {
+		t.Fatalf("Respons body does not start with...")
+	}
+
+	if strings.Contains(logger.Get(), "/time") {
+		os.Stderr.WriteString(logger.Get())
+		t.Fatal("Log must NOT contain the time request response")
+	}
+}
+
+func TestServerIsUp(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "isup", 200, "?", 64, 0)
+	if !strings.HasPrefix(trimString(resBody), "{\"error\":false, ") {
+		t.Fatalf("Respons body does not start with...")
+	}
+	AssertContains(t, string(resBody), []string{"ServerIsUp"})
+	if strings.Contains(logger.Get(), "/isup") {
+		os.Stderr.WriteString(logger.Get())
+		t.Fatal("Log must NOT contain the isup request response")
+	}
+}
+
 func TestClient(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
