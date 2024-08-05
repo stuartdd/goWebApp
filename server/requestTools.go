@@ -72,7 +72,11 @@ func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, re
 		}
 	}
 	if p.shouldLog && logFunc != nil {
-		logFunc(p.String())
+		if isAbsolutePath {
+			logFunc(fmt.Sprintf("Req:  %s:/%s", reqType, strings.Join(requestParts, "/")))
+		} else {
+			logFunc(fmt.Sprintf("Req:  %s:%s", reqType, strings.Join(requestParts, "/")))
+		}
 	}
 	return params, true, p.shouldLog
 }

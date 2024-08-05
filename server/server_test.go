@@ -341,7 +341,7 @@ func TestClient(t *testing.T) {
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
 	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58, 0)
 	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"[11] Exit Requested\"}", 79, 0)
-	AssertLogContains(t, logger, []string{"Req:  /ABC", "Error: Status:404"})
+	AssertLogContains(t, logger, []string{"Req:  GET:/ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
 

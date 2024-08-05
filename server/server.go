@@ -259,7 +259,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	logFunc("Req:  " + urlPath)
+	logFunc(fmt.Sprintf("Req:  %s:%s", r.Method, urlPath))
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true), shouldLog)
 }
 
