@@ -369,6 +369,29 @@ func TestServerIsUp(t *testing.T) {
 	}
 }
 
+func TestQuietGetFile(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "test/user/stuart/loc/pics/name/t1.JSON", 200, "?", 251, 0)
+	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
+		t.Fatalf("Respons body does not start with...")
+	}
+
+	AssertContains(t, string(resBody), []string{"TestServer"})
+	if strings.Contains(logger.Get(), "test/user") {
+		os.Stderr.WriteString(logger.Get())
+		t.Fatal("Log must NOT contain the 'test/user' request response")
+	}
+}
+
 func TestClient(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
