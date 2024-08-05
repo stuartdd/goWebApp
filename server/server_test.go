@@ -50,21 +50,21 @@ const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
 
 func TestUrlRequestParamsMap(t *testing.T) {
-	AssertMatch(t, "0", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/x/b/1/c/4", "GET", false, "")
-	AssertMatch(t, "1", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/a/b/1/x/4", "GET", false, "b=1")
-	AssertMatch(t, "2", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/a/b/1/c", "GET", false, "")
-	AssertMatch(t, "3", NewUrlRequestMatcher("/a/b/*/c/*", "get"), "/a/b/1/c/3", "GET", true, "b=1,c=3")
-	AssertMatch(t, "4", NewUrlRequestMatcher("a", "get"), "/a", "get", false, "")
-	AssertMatch(t, "5", NewUrlRequestMatcher("a", "get"), "a", "get", true, "")
-	AssertMatch(t, "5", NewUrlRequestMatcher("/a", "get"), "/a", "get", true, "")
-	AssertMatch(t, "6", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/c/3", "post", false, "")
-	AssertMatch(t, "7", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/C/3", "GET", false, "b=1")
-	AssertMatch(t, "8", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/c/3", "get", true, "b=1,c=3")
-	AssertMatch(t, "9", NewUrlRequestMatcher("/a/b/*/*/c/*", "get"), "/a/b/1/2/c/3", "GET", true, "b=1,c=3")
-	AssertMatch(t, "10", NewUrlRequestMatcher("/a/*/b/*/c/*", "get"), "/a/1/b/2/c/3", "GET", true, "a=1,b=2,c=3")
-	AssertMatch(t, "10", NewUrlRequestMatcher("", "get"), "/a/1/b/2/c/3", "GET", false, "")
-	AssertMatch(t, "11", NewUrlRequestMatcher("", "get"), "", "GET", true, "")
-	AssertMatch(t, "12", NewUrlRequestMatcher("", "post"), "", "GET", false, "")
+	AssertMatch(t, "0", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/x/b/1/c/4", "GET", false, "")
+	AssertMatch(t, "1", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/x/4", "GET", false, "b=1")
+	AssertMatch(t, "2", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c", "GET", false, "")
+	AssertMatch(t, "3", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c/3", "GET", true, "b=1,c=3")
+	AssertMatch(t, "4", NewUrlRequestMatcher("a", "get", true), "/a", "get", false, "")
+	AssertMatch(t, "5", NewUrlRequestMatcher("a", "get", true), "a", "get", true, "")
+	AssertMatch(t, "5", NewUrlRequestMatcher("/a", "get", true), "/a", "get", true, "")
+	AssertMatch(t, "6", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "post", false, "")
+	AssertMatch(t, "7", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/C/3", "GET", false, "b=1")
+	AssertMatch(t, "8", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "get", true, "b=1,c=3")
+	AssertMatch(t, "9", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "GET", true, "b=1,c=3")
+	AssertMatch(t, "10", NewUrlRequestMatcher("/a/*/b/*/c/*", "get", true), "/a/1/b/2/c/3", "GET", true, "a=1,b=2,c=3")
+	AssertMatch(t, "10", NewUrlRequestMatcher("", "get", true), "/a/1/b/2/c/3", "GET", false, "")
+	AssertMatch(t, "11", NewUrlRequestMatcher("", "get", true), "", "GET", true, "")
+	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
 }
 
 func TestServer(t *testing.T) {
@@ -295,7 +295,7 @@ func TestReadDir(t *testing.T) {
 	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
 		t.Fatalf("Respons body does not equal..3")
 	}
-	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 
@@ -321,7 +321,7 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("Respons body does not contain 'Is not a file'")
 	}
 
-	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  /files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
 }
 
@@ -340,7 +340,7 @@ func TestClient(t *testing.T) {
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
 	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58, 0)
-	RunClientGet(t, configData, "exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"[11] Exit Requested\"}", 79, 0)
+	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"[11] Exit Requested\"}", 79, 0)
 	AssertLogContains(t, logger, []string{"Req:  /ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
@@ -477,7 +477,7 @@ func AssertMatch(t *testing.T, message string, matcher *UrlRequestMatcher, url s
 	}
 	isAbsolutePath := strings.HasPrefix(url, "/")
 
-	p, ok := matcher.Match(requestUriparts, isAbsolutePath, reqType)
+	p, ok, _ := matcher.Match(requestUriparts, isAbsolutePath, reqType, nil)
 	keys := make([]string, 0, len(p))
 	for k := range p {
 		keys = append(keys, k)

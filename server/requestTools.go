@@ -40,7 +40,7 @@ func (p *UrlRequestMatcher) String() string {
 		buffer.WriteString(v)
 		buffer.WriteRune('/')
 	}
-	return fmt.Sprintf("Parts: '%s:%s'", p.ReqType, buffer.String())
+	return fmt.Sprintf("Req:  %s:%s", p.ReqType, buffer.String())
 }
 
 func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, reqType string, logFunc func(string)) (map[string]string, bool, bool) {
@@ -72,7 +72,7 @@ func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, re
 		}
 	}
 	if p.shouldLog && logFunc != nil {
-		logFunc(fmt.Sprintf("Req: %s", requestParts))
+		logFunc(p.String())
 	}
 	return params, true, p.shouldLog
 }
