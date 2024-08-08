@@ -283,7 +283,8 @@ func (p *ExecHandler) Submit() *ResponseData {
 	}
 	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, execInfo.Detached, p.log, func(r []byte) string {
-		return p.parameters.SubstituteFromMap(r)
+		sq := p.parameters.SubstituteFromQueries(r)
+		return p.parameters.SubstituteFromMap([]byte(sq))
 	}, func(pid int) {
 		if p.addLrp != nil {
 			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
@@ -429,9 +430,23 @@ func statusAsJson(status int, reason string, error bool) []byte {
 	b.WriteString(", \"msg\":\"")
 	b.WriteString(http.StatusText(status))
 	b.WriteString("\", \"reason\":\"")
-	b.WriteString(reason)
+	b.WriteString(cleanStringForJson(reason))
 	b.WriteString("\"}")
 	return b.Bytes()
+}
+
+func cleanStringForJson(s string) string {
+	var buffer bytes.Buffer
+	for _, c := range s {
+		if c == '"' {
+			buffer.WriteRune('\'')
+		} else {
+			if c >= ' ' && c <= 127 && c != '$' {
+				buffer.WriteRune(c)
+			}
+		}
+	}
+	return buffer.String()
 }
 
 func treeAsJson(root *TreeDirNode, params *UrlRequestParts) []byte {

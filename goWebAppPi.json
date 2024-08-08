@@ -13,6 +13,14 @@
       "Locations": {
         "cache": "cache",
         "logs" : "logs"
+      },
+      "Exec": {
+       "dmesg": {
+        "StdOutType": "json",
+         "Cmd": [
+             "./execDmesg.sh", "%{find}"
+         ]
+       }
       }
     },
     "stuart": {

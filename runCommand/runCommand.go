@@ -104,7 +104,7 @@ func (p *execData) Run() ([]byte, []byte, int, error) {
 		}
 		_, ok := err.(*os.PathError)
 		if ok {
-			return nil, nil, -1, fmt.Errorf("exec failed: Invalid path to command")
+			return nil, nil, -1, fmt.Errorf("exec failed: Invalid path to command. %s", err.Error())
 		}
 		ee, ok := err.(*exec.ExitError)
 		if ok {

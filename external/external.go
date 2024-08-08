@@ -136,7 +136,7 @@ func RunMain(configFileName string) {
 
 func main() {
 	if len(os.Args) < 2 {
-		os.Stderr.WriteString(fmt.Sprintf("Args:%s\n", os.Args))
+		os.Stderr.WriteString("Requires configFileName")
 		os.Exit(1)
 	}
 	RunMain(os.Args[1])

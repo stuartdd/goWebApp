@@ -178,6 +178,16 @@ func (p *UrlRequestParts) SubstituteFromMap(cmd []byte) string {
 	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser()))
 }
 
+func (p *UrlRequestParts) SubstituteFromQueries(cmd []byte) string {
+	m := map[string]string{}
+	for n, v := range p.Query {
+		if len(v) != 0 {
+			m[n] = v[0]
+		}
+	}
+	return p.config.SubstituteFromSingleMap(cmd, m)
+}
+
 func (p *UrlRequestParts) ToThumbnail(filename string) string {
 	tnt := p.config.GetThumbnailTrim()
 	return filename[tnt[0] : len(filename)-tnt[1]]
