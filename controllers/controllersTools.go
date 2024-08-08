@@ -93,9 +93,7 @@ func (p *UrlRequestParts) GetCachedMap() *map[string]string {
 			}
 		}
 		for n, v := range p.parameters {
-			if len(v) != 0 {
-				m[n] = decodeValue(v)
-			}
+			m[n] = decodeValue(v)
 		}
 		for n, v := range p.Query {
 			if len(v) != 0 {

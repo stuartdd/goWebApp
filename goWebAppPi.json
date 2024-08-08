@@ -20,6 +20,12 @@
          "Cmd": [
              "./execDmesg.sh", "%{find}"
          ]
+       },
+       "echo": {
+        "StdOutType": "txt",
+         "Cmd": [
+             "echo", "User:%{user} Loc:%{loc} Find:%{find} PIUser:%{USER} PWD:%{PWD}"
+         ]
        }
       }
     },
