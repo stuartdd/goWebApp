@@ -206,14 +206,14 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok, shouldLog := getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "23"), 23, "Restart Requested")
+		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "23"), 23, "Restart Requested")
 		h.actionQueue <- a
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapJson(map[string]interface{}{"Status": "RESTARTED"}), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getServerExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		a := NewActionEvent(Exit, requestData.GetQueryAsString("rc", "11"), 11, "Exit Requested")
+		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson(a.String(), false), shouldLog)
 		return

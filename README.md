@@ -310,6 +310,21 @@ If the base64 value does not have a X0X then add the query parameter '?base64=tr
 
 Each user can have a set of Operating System commands that can be run on request. For example:
 
+```json
+"ds": {
+   "Cmd": [
+      "./diskSize.sh"
+    ],
+    "Dir": "",
+    "StdOutType": "json",
+    "Log": "",
+    "LogOut": "",
+    "LogErr": "",
+    "NzCodeReturns": 200,
+    "Detached": false
+},
+```
+
 ```
 http://localhost:8082/exec/user/stuart/exec/ds
 ```
@@ -318,7 +333,7 @@ This will locate the user 'stuart' and within the **Exec** section will locate t
 
 It will template the command and all of the command parameters before running the command.
 
-The working directory for the command can be defined by the **Dir** element, This will be the users home directory if undefined. Othwise it is a path within that directory .
+The working directory for the command can be defined by the **Dir** element, This will be the users home directory if undefined. Otherwise it is a path within that directory .
 
 The sysOut stream from the command can be saved in a file using the **Log+OutLog** element as a path.
 
@@ -492,7 +507,7 @@ The value **faviconIcoPath** is substituted with only the OS Environment variabl
 
 For example:
 
-``` json
+```json
 "stuart": {
    "name": "Stuart",
    "home": "stu"
@@ -510,7 +525,7 @@ For example:
 3. The 'ms', 'doy', 'year', 'month', 'day', 'hour', 'min', and 'sec' values are added for the time of substitution. 
     'doy' = Day Of Year.
     'ms' = 'Unix Style' milliseconds since the epoch.
-3. The Env name value pairs.
+4. The Env name value pairs.
 
 Each **Location** is substituted.
 
@@ -564,9 +579,3 @@ My Name is %Stuart%
 My name is %%{Name}%
 My Name is %%{Name}%
 ```
-
-
-
-
-
-

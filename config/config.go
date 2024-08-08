@@ -715,10 +715,6 @@ func (p *ConfigData) SubstituteFromMap(cmd []byte, userEnv map[string]string) st
 	return SubstituteFromMap(cmd, p.Environment, userEnv)
 }
 
-func (p *ConfigData) SubstituteFromSingleMap(cmd []byte, singleMap map[string]string) string {
-	return SubstituteFromMap(cmd, map[string]string{}, singleMap)
-}
-
 func SubstituteFromMap(cmd []byte, env1 map[string]string, env2 map[string]string) string {
 	if len(cmd) < 4 {
 		return string(cmd)

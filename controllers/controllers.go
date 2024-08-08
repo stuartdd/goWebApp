@@ -283,8 +283,8 @@ func (p *ExecHandler) Submit() *ResponseData {
 	}
 	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, execInfo.Detached, p.log, func(r []byte) string {
-		sq := p.parameters.SubstituteFromQueries(r)
-		return p.parameters.SubstituteFromMap([]byte(sq))
+		sq := p.parameters.SubstituteFromCachedMap(r)
+		return p.parameters.SubstituteFromUserEnv([]byte(sq))
 	}, func(pid int) {
 		if p.addLrp != nil {
 			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
@@ -465,7 +465,7 @@ func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts) []byte {
 	buffer.WriteRune('{')
 	writeJsonHeader(params, &buffer)
 	buffer.WriteRune(',')
-	writePathToJson(params.GetOptionalParam(PathParam), PathParam, &buffer)
+	writePathToJson(params.GetOptionalParam(PathParam, ""), PathParam, &buffer)
 	buffer.WriteString("\"files\":[")
 	bufLen := buffer.Len()
 	for i := 0; i < entLen; i++ {
@@ -568,8 +568,8 @@ func writePathToJson(pathUnencoded string, key string, buffer *bytes.Buffer) {
 
 func writeJsonHeader(param *UrlRequestParts, buffer *bytes.Buffer) {
 	writeErrorAsJsonString(false, buffer)
-	writeParamAsJsonString(UserParam, param.GetOptionalParam(UserParam), true, true, false, buffer)
-	writeParamAsJsonString(LocationParam, param.GetOptionalParam(LocationParam), true, true, false, buffer)
+	writeParamAsJsonString(UserParam, param.GetOptionalParam(UserParam, ""), true, true, false, buffer)
+	writeParamAsJsonString(LocationParam, param.GetOptionalParam(LocationParam, ""), true, true, false, buffer)
 }
 
 func writeSingleFileNameToJson(file fs.DirEntry, buffer *bytes.Buffer) {

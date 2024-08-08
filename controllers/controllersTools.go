@@ -26,6 +26,7 @@ type UrlRequestParts struct {
 	parameters map[string]string
 	Query      map[string][]string
 	Header     map[string][]string
+	cache      *map[string]string
 	config     *config.ConfigData
 }
 
@@ -34,6 +35,7 @@ func NewUrlRequestParts(config *config.ConfigData) *UrlRequestParts {
 		parameters: make(map[string]string),
 		Query:      make(map[string][]string),
 		Header:     make(map[string][]string),
+		cache:      nil,
 		config:     config,
 	}
 }
@@ -82,12 +84,35 @@ func (p *UrlRequestParts) WithFile(file string) *UrlRequestParts {
 	return p
 }
 
+func (p *UrlRequestParts) GetCachedMap() *map[string]string {
+	if p.cache == nil {
+		m := map[string]string{}
+		for n, v := range p.Header {
+			if len(v) != 0 {
+				m[n] = decodeValue(v[0])
+			}
+		}
+		for n, v := range p.parameters {
+			if len(v) != 0 {
+				m[n] = decodeValue(v)
+			}
+		}
+		for n, v := range p.Query {
+			if len(v) != 0 {
+				m[n] = decodeValue(v[0])
+			}
+		}
+		p.cache = &m
+	}
+	return p.cache
+}
+
 func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 	var v string
 	if fallback {
-		v = p.GetQueryAsString(key, "true")
+		v = p.GetOptionalQuery(key, "true")
 	} else {
-		v = p.GetQueryAsString(key, "false")
+		v = p.GetOptionalQuery(key, "false")
 	}
 	s := strings.ToLower(v)
 	if s == "true" || strings.HasPrefix(s, "y") {
@@ -99,11 +124,11 @@ func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 	return fallback
 }
 
-func (p *UrlRequestParts) GetQueryAsString(key string, fallback string) string {
+func (p *UrlRequestParts) GetOptionalQuery(key string, fallback string) string {
 	v, ok := p.Query[key]
 	if ok {
 		if len(v) > 0 {
-			return v[0]
+			return decodeValue(v[0])
 		}
 	}
 	return fallback
@@ -112,23 +137,17 @@ func (p *UrlRequestParts) GetQueryAsString(key string, fallback string) string {
 func (p *UrlRequestParts) GetParam(key string) string {
 	v, ok := p.parameters[key]
 	if ok {
-		if strings.HasPrefix(v, encodedValuePrefix) {
-			return decodeValue(v)
-		}
-		return v
+		return decodeValue(v)
 	}
 	panic(fmt.Errorf("url parameter '%s' is missing", key))
 }
 
-func (p *UrlRequestParts) GetOptionalParam(key string) string {
+func (p *UrlRequestParts) GetOptionalParam(key string, fallback string) string {
 	v, ok := p.parameters[key]
 	if ok {
-		if strings.HasPrefix(v, encodedValuePrefix) {
-			return decodeValue(v)
-		}
-		return v
+		return decodeValue(v)
 	}
-	return ""
+	return fallback
 }
 
 func (p *UrlRequestParts) HasParam(key string) bool {
@@ -174,18 +193,12 @@ func (p *UrlRequestParts) GetExecId() string {
 	return p.GetParam(ExecParam)
 }
 
-func (p *UrlRequestParts) SubstituteFromMap(cmd []byte) string {
+func (p *UrlRequestParts) SubstituteFromUserEnv(cmd []byte) string {
 	return p.config.SubstituteFromMap(cmd, p.config.GetUserEnv(p.GetUser()))
 }
 
-func (p *UrlRequestParts) SubstituteFromQueries(cmd []byte) string {
-	m := map[string]string{}
-	for n, v := range p.Query {
-		if len(v) != 0 {
-			m[n] = v[0]
-		}
-	}
-	return p.config.SubstituteFromSingleMap(cmd, m)
+func (p *UrlRequestParts) SubstituteFromCachedMap(cmd []byte) string {
+	return p.config.SubstituteFromMap(cmd, *p.GetCachedMap())
 }
 
 func (p *UrlRequestParts) ToThumbnail(filename string) string {
