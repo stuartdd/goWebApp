@@ -64,8 +64,8 @@ func (p *UrlRequestParts) WithUser(user string) *UrlRequestParts {
 	return p
 }
 
-func (p *UrlRequestParts) WithExec(exec string) *UrlRequestParts {
-	p.parameters[ExecParam] = exec
+func (p *UrlRequestParts) WithExecParam() *UrlRequestParts {
+	p.parameters[ExecParam] = ScriptParam
 	return p
 }
 

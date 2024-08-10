@@ -11,9 +11,22 @@
       "Name": "Admin",
       "Home": "",
       "Locations": {
-        "cache": "cache"
+        "cache": "cache",
+        "exec" : "cache"
       },
       "Exec": {
+        "dmesg": {
+          "StdOutType": "json",
+           "Cmd": [
+               "./execDmesg.sh", "%{find}"
+           ]
+         },
+         "echo": {
+          "StdOutType": "txt",
+           "Cmd": [
+               "echo", "User:%{user} Loc:%{loc} Find:%{find} PIUser:%{USER} PWD:%{PWD}"
+           ]
+         },
         "ds": {
           "Cmd": [
             "./diskSize.sh"

@@ -44,8 +44,9 @@ var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET", shouldLog)
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldLog)
 var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET", shouldNotLog)
 var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET", shouldLog)
+var execUserCmdMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLog)
 
-var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLog)
+var getServerStatusMatch = NewUrlRequestMatcher("/status", "GET", shouldLog)
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldLog)
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldNotLog)
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLog)
@@ -63,7 +64,6 @@ var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*"
 var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLog)
 
 var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLog)
-var execUserCmdMatch = NewUrlRequestMatcher("/exec/user/*/exec/*", "GET", shouldLog)
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -134,12 +134,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		p, ok, shouldLog := execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
-			return
-		}
-		p, ok, shouldLog = getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+		p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunc).Submit(), shouldLog)
 			return
@@ -186,25 +181,24 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
-		/*
-			Requests where user is not defined rediret to 'admin'
-			  /script/*
-			  /server/restart
-		*/
 		p, ok, shouldLog = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
-
-		p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExec(p[controllers.ScriptParam]), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
-			return
-		}
 	}
 
-	_, ok, shouldLog := getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+	_, ok, shouldLog := getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+	if ok {
+		h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExecParam(), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+		return
+	}
+	_, ok, shouldLog = execUserCmdMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+	if ok {
+		h.writeResponse(w, controllers.NewExecHandler(requestData.AsAdmin().WithExecParam(), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+		return
+	}
+	_, ok, shouldLog = getServerRestartMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
 		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "23"), 23, "Restart Requested")
 		h.actionQueue <- a
@@ -326,6 +320,7 @@ func (p *WebAppServer) Close(rc int) int {
 	p.Handler.close()
 	return rc
 }
+
 func (p *WebAppServer) Start() int {
 	p.Log(fmt.Sprintf("Server Config     :%s.", p.Handler.config.ConfigName))
 	if p.Handler.config.IsVerbose {
