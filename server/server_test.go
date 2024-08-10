@@ -209,7 +209,6 @@ func TestGetFavicon(t *testing.T) {
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
-
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
@@ -292,15 +291,12 @@ func TestReadDir(t *testing.T) {
 		"{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}",
 	})
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", 404, "?", -1, 0)
-	if resBody != "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Dir not found\"}" {
-		t.Fatalf("Respons body does not equal..3")
-	}
 	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"GET:/files/user/stuart/loc/pics", "GET:/files/user/stuart/loc/picsPlus"})
 	os.Stderr.WriteString(logger.Get())
 }
 
-func TestReadFileRedirect(t *testing.T) {
+func TestReadDirNotFound(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
@@ -312,12 +308,12 @@ func TestReadFileRedirect(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/echo", 200, "?", 12, 0)
-	if !strings.HasPrefix(trimString(resBody), "Hello World") {
-		t.Fatalf("Respons body does not start with...")
-	}
-
-	AssertLogContains(t, logger, []string{"ReadFileHandler:Redirect as:CMD", "Hello World"})
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", http.StatusNotFound, "?", -1, 0)
+	AssertContains(t, resBody, []string{
+		"\"error\":true",
+		"\"reason\":\"Dir not found\"",
+	})
+	AssertLogContains(t, logger, []string{"Dir not found:404:stat", "missingfolder: no such file or directory"})
 	os.Stderr.WriteString(logger.Get())
 }
 
@@ -333,18 +329,81 @@ func TestReadFile(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/t1.JSON", 200, "?", 251, 0)
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/t1.JSON", http.StatusOK, "?", 251, 0)
 	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
 		t.Fatalf("Respons body does not start with...")
 	}
 
-	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", 404, "?", 73, 0)
-	if !strings.Contains(trimString(resBody), "Is not a file") {
-		t.Fatalf("Respons body does not contain 'Is not a file'")
-	}
-
 	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
 	os.Stderr.WriteString(logger.Get())
+}
+
+func TestReadFileNotUser(t *testing.T) {
+
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 74, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"reason\":\"user not found\""})
+	AssertLogContains(t, logger, []string{"user not found:404:User=nouser", "\"reason\":\"user not found\""})
+}
+
+func TestReadFileNotLoc(t *testing.T) {
+
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 78, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"location not found\""})
+	AssertLogContains(t, logger, []string{"location not found:404:User=stuart Location=noloc", "\"reason\":\"location not found\""})
+}
+
+func TestReadFileNotName(t *testing.T) {
+
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 74, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"File not found\""})
+	AssertLogContains(t, logger, []string{"File not found:404:stat", "/notExist: no such file or directory"})
+}
+
+func TestReadFileIsDir(t *testing.T) {
+
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusForbidden, "?", 74, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"Is a directory\""})
+	AssertLogContains(t, logger, []string{":Is a directory:403:", "s-testfolder is a Directory"})
 }
 
 func TestServerTime(t *testing.T) {

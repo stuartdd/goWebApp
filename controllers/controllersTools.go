@@ -184,13 +184,6 @@ func (p *UrlRequestParts) GetName() string {
 	return p.GetParam(NameParam)
 }
 
-func (p *UrlRequestParts) UserAndNameAsExec() *config.ExecInfo {
-	if p.HasParam(NameParam) && p.HasParam(UserParam) {
-		return p.config.GetUserExecInfo(p.GetParam(UserParam), p.GetParam(NameParam))
-	}
-	return nil
-}
-
 func (p *UrlRequestParts) GetUserExecInfo() *config.ExecInfo {
 	return p.config.GetUserExecInfo(p.GetUser(), p.GetExecId())
 }
@@ -212,7 +205,7 @@ func (p *UrlRequestParts) ToThumbnail(filename string) string {
 	return filename[tnt[0] : len(filename)-tnt[1]]
 }
 
-func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase64 bool) (path string, err error) {
+func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase64 bool) string {
 	ulp := p.config.GetUserLocPath(p.GetUser(), p.GetLocation())
 	if p.HasParam(PathParam) {
 		pat := p.GetParam(PathParam)
@@ -243,7 +236,7 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 			}
 		}
 	}
-	return ulp, nil
+	return ulp
 }
 
 type ResponseData struct {
