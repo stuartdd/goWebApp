@@ -77,6 +77,7 @@ func TestServer(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
+
 	url := "files/user/stuart/loc/pics"
 	_, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
 	AssertContains(t, respBody, []string{
@@ -299,6 +300,27 @@ func TestReadDir(t *testing.T) {
 	os.Stderr.WriteString(logger.Get())
 }
 
+func TestReadFileRedirect(t *testing.T) {
+
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/echo", 200, "?", 12, 0)
+	if !strings.HasPrefix(trimString(resBody), "Hello World") {
+		t.Fatalf("Respons body does not start with...")
+	}
+
+	AssertLogContains(t, logger, []string{"ReadFileHandler:Redirect as:CMD", "Hello World"})
+	os.Stderr.WriteString(logger.Get())
+}
+
 func TestReadFile(t *testing.T) {
 
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
@@ -336,7 +358,7 @@ func TestServerTime(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 176, 0)
+	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 176, 5)
 	if !strings.HasPrefix(trimString(resBody), "{\"time\":{") {
 		t.Fatalf("Respons body does not start with...")
 	}

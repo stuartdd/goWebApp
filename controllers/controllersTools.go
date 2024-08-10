@@ -64,13 +64,20 @@ func (p *UrlRequestParts) WithUser(user string) *UrlRequestParts {
 	return p
 }
 
-func (p *UrlRequestParts) WithExecParam() *UrlRequestParts {
-	p.parameters[ExecParam] = ScriptParam
+func (p *UrlRequestParts) WithParameters(params map[string]string) *UrlRequestParts {
+	p.parameters = params
 	return p
 }
 
-func (p *UrlRequestParts) WithParameters(params map[string]string) *UrlRequestParts {
-	p.parameters = params
+func (p *UrlRequestParts) RenameParameter(old, new string) *UrlRequestParts {
+	v := p.GetParam(old)
+	p.RemoveParameter(old)
+	p.parameters[new] = v
+	return p
+}
+
+func (p *UrlRequestParts) RemoveParameter(name string) *UrlRequestParts {
+	delete(p.parameters, name)
 	return p
 }
 
@@ -137,7 +144,7 @@ func (p *UrlRequestParts) GetParam(key string) string {
 	if ok {
 		return decodeValue(v)
 	}
-	panic(fmt.Errorf("url parameter '%s' is missing", key))
+	panic(fmt.Errorf("url parameter not found: Name: '%s'", key))
 }
 
 func (p *UrlRequestParts) GetOptionalParam(key string, fallback string) string {
@@ -179,12 +186,13 @@ func (p *UrlRequestParts) GetName() string {
 
 func (p *UrlRequestParts) UserAndNameAsExec() *config.ExecInfo {
 	if p.HasParam(NameParam) && p.HasParam(UserParam) {
-		exec, err := p.config.GetUserExecInfo(p.GetParam(UserParam), p.GetParam(NameParam))
-		if err == nil {
-			return exec
-		}
+		return p.config.GetUserExecInfo(p.GetParam(UserParam), p.GetParam(NameParam))
 	}
 	return nil
+}
+
+func (p *UrlRequestParts) GetUserExecInfo() *config.ExecInfo {
+	return p.config.GetUserExecInfo(p.GetUser(), p.GetExecId())
 }
 
 func (p *UrlRequestParts) GetExecId() string {
@@ -205,16 +213,7 @@ func (p *UrlRequestParts) ToThumbnail(filename string) string {
 }
 
 func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase64 bool) (path string, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-			path = ""
-		}
-	}()
-	ulp, err := p.config.GetUserLocPath(p.GetUser(), p.GetLocation())
-	if err != nil {
-		return "", err
-	}
+	ulp := p.config.GetUserLocPath(p.GetUser(), p.GetLocation())
 	if p.HasParam(PathParam) {
 		pat := p.GetParam(PathParam)
 		if isBase64 {
@@ -245,16 +244,6 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 		}
 	}
 	return ulp, nil
-}
-
-func (p *UrlRequestParts) GetUserExecInfo() (path *config.ExecInfo, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-			path = nil
-		}
-	}()
-	return p.config.GetUserExecInfo(p.GetUser(), p.GetExecId())
 }
 
 type ResponseData struct {

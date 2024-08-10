@@ -18,7 +18,7 @@ func TestToJson(t *testing.T) {
 	if conf == nil {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
-	path, _ := conf.GetUserLocPath("stuart", "home")
+	path := conf.GetUserLocPath("stuart", "home")
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 
 	json := listDirectoriesAsJson(path, params)

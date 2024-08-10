@@ -66,6 +66,11 @@
                     "dir": "",
                     "log": "logs"
                 },
+                "echo": {
+                    "StdOutType": "txt",
+                    "Cmd": [
+                         "echo", "Hello World"
+                    ]},
                 "c2": {
                     "cmd": [
                         "cmd2"

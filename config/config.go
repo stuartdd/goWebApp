@@ -18,6 +18,44 @@ const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultConfigReloadTime = 3600
 
+type PanicMessage struct {
+	Status int
+	Reason string
+	Logged string
+}
+
+func NewPanicMessageFromString(message string) *PanicMessage {
+	s := strings.SplitN(message, ":", 3)
+	switch len(s) {
+	case 1:
+		return &PanicMessage{Reason: message, Status: 404, Logged: message}
+	case 2:
+		i, err := strconv.Atoi(s[1])
+		if err != nil {
+			return &PanicMessage{Reason: s[0], Status: 500, Logged: fmt.Sprintf("%s (Unable to parse status code)", message)}
+		}
+		return &PanicMessage{Reason: s[0], Status: i, Logged: message}
+	}
+	i, err := strconv.Atoi(s[1])
+	if err != nil {
+		return &PanicMessage{Reason: s[0], Status: 500, Logged: fmt.Sprintf("%s (Unable to parse status code '%s')", s[2], s[1])}
+	}
+	return &PanicMessage{Reason: s[0], Status: i, Logged: s[2]}
+}
+
+func NewPanicMessage(reason string, status int, logged string) *PanicMessage {
+	r := strings.ReplaceAll(reason, ":", ";")
+	return &PanicMessage{Reason: r, Status: status, Logged: logged}
+}
+
+func (p *PanicMessage) String() string {
+	return fmt.Sprintf("%s:%d:%s", p.Reason, p.Status, p.Logged)
+}
+
+func (p *PanicMessage) Error() string {
+	return p.String()
+}
+
 /*
 ConfigData - Read configuration data from the JSON configuration file.
 Note any undefined values are defaulted to constants defined below
@@ -308,6 +346,7 @@ func (p *ConfigData) resolvePaths(userHome string, location string) string {
 }
 
 func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigErrorData) {
+
 	userConfigEnv := p.GetUserEnv("")
 
 	f, e := p.checkRootPathExists(p.GetServerDataRoot(), userConfigEnv) // Will check GetServerDataRoot
@@ -325,6 +364,16 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	}
 
 	errorList := NewConfigErrorData()
+	defer func() {
+		if r := recover(); r != nil {
+			pm := r.(*PanicMessage)
+			if pm == nil {
+				err := r.(error)
+				pm = NewPanicMessageFromString(err.Error())
+			}
+			errorList.AddError(fmt.Sprintf("Config Error: %s", pm))
+		}
+	}()
 
 	if p.IsTemplating() {
 		templ := p.GetTemplateData()
@@ -365,10 +414,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 
 		userConfigEnv = p.GetUserEnv(userId)
 		for locName := range userData.Locations {
-			location, err := p.GetUserLocPath(userId, locName)
-			if err != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] Not found", userId, locName))
-			}
+			location := p.GetUserLocPath(userId, locName)
 			f, e := p.checkPathExists(userHome, location, userId, userConfigEnv, createDir)
 			if e != nil {
 				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] %s", userId, locName, e.Error()))
@@ -572,6 +618,7 @@ func (p *ConfigData) HasUser(user string) bool {
 	return false
 }
 
+// PANIC
 func (p *ConfigData) GetUserRoot(user string) string {
 	return p.resolvePaths(p.GetUserData(user).Home, "")
 }
@@ -679,28 +726,30 @@ func (p *ConfigData) GetPortString() string {
 	return fmt.Sprintf(":%d", p.internal.Port)
 }
 
-func (p *ConfigData) GetUserLocPath(user string, loc string) (string, error) {
+// PANIC
+func (p *ConfigData) GetUserLocPath(user string, loc string) string {
 	userData, ok := p.internal.Users[user]
 	if !ok {
-		return "", fmt.Errorf("user not found")
+		panic(&PanicMessage{Reason: "user not found", Status: 404, Logged: fmt.Sprintf("User=%s", user)})
 	}
 	locData, ok := userData.Locations[loc]
 	if !ok {
-		return "", fmt.Errorf("user location not found")
+		panic(&PanicMessage{Reason: "location not found", Status: 404, Logged: fmt.Sprintf("User=%s Location=%s", user, loc)})
 	}
-	return locData, nil
+	return locData
 }
 
-func (p *ConfigData) GetUserExecInfo(user, execid string) (*ExecInfo, error) {
+// PANIC
+func (p *ConfigData) GetUserExecInfo(user, execid string) *ExecInfo {
 	userData, ok := p.internal.Users[user]
 	if !ok {
-		return nil, fmt.Errorf("user not found")
+		panic(&PanicMessage{Reason: "user not found", Status: 404, Logged: fmt.Sprintf("User=%s", user)})
 	}
 	exec, ok := userData.Exec[execid]
 	if !ok {
-		return nil, fmt.Errorf("exec id not found")
+		panic(&PanicMessage{Reason: "exec ID not found", Status: 404, Logged: fmt.Sprintf("User=%s exec-id=%s", user, execid)})
 	}
-	return exec, nil
+	return exec
 }
 
 func (p *ConfigData) String() (string, error) {

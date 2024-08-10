@@ -135,7 +135,7 @@ func (p *DirHandler) Submit() *ResponseData {
 
 	file, err := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
+		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true)
 	}
 	stats, err := os.Stat(file)
 	if err != nil {
@@ -277,10 +277,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec already running", true)
 		}
 	}
-	execInfo, err := p.parameters.GetUserExecInfo()
-	if err != nil {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec not found", true)
-	}
+	execInfo := p.parameters.GetUserExecInfo()
 	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, execInfo.Detached, p.log, func(r []byte) string {
 		sq := p.parameters.SubstituteFromCachedMap(r)

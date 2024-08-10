@@ -240,10 +240,18 @@ func osReader(message string, chars string) string {
 }
 
 func scanUserOriginals(user string, cfg *config.ConfigData) string {
-	path, err := cfg.GetUserLocPath(user, "original")
-	if err != nil {
-		osExitWithMessage(1, fmt.Sprintf("Scan: User '%s' Location 'original' not found.", user))
-	}
+	defer func() {
+		if r := recover(); r != nil {
+			pm := r.(*config.PanicMessage)
+			if pm == nil {
+				err := r.(error)
+				pm = config.NewPanicMessageFromString(err.Error())
+			}
+			osExitWithMessage(1, fmt.Sprintf("Scan: User '%s'. %s", user, pm))
+		}
+	}()
+
+	path := cfg.GetUserLocPath(user, "original")
 	sd, err := pictures.ScanDirectory(path, []string{"jpg", "jpeg"}, pictures.DirDataScanFileName)
 	if err != nil {
 		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))

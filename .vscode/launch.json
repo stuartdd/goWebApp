@@ -11,7 +11,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "goWebApp.go",
-            "args": ["config=goWebApp.json", "-vr"]
+            "args": ["config=goWebApp.json"]
         }
     ]
 }

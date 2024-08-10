@@ -7,7 +7,7 @@ import (
 )
 
 func TestJoinPath(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, true)
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -101,49 +101,85 @@ func assertContains(t *testing.T, message string, actual string, contains []stri
 	}
 }
 
-func TestUserExec(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, true)
+func TestUserExecBadUser(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
-	pre := conf.GetServerDataRoot()
-	exec, err := conf.GetUserExecInfo("bob", "c2")
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
-	assertContains(t, "UserExec", exec.String(), []string{pre, "[cmd2]", "/bob/logs/logOut.txt"})
 
-	_, err = conf.GetUserExecInfo("bob", "X2")
-	if err == nil {
-		t.Fatal("Should NOT find exec X2")
+	defer func() {
+		if r := recover(); r != nil {
+			pm, ok := r.(*PanicMessage)
+			if !ok || pm == nil {
+				t.Fatalf("TestUserExecBadUser: Should have returned a PanicMessage")
+			}
+			if pm.String() != "user not found:404:User=notbob" {
+				t.Fatalf("TestUserExecBadUser: Should have returned a PanicMessage == user not found:404:User=notbob | actual = %s", pm.String())
+			}
+		}
+	}()
+
+	conf.GetUserExecInfo("notbob", "x2")
+	t.Fatalf("Should have panicked")
+}
+
+func TestUserExecBadExecId(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
-	if !strings.Contains(err.Error(), "not found") {
-		t.Fatalf("Error should contain 'not found'. Actual:'%s'", err.Error())
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
-	_, err = conf.GetUserExecInfo("notbob", "x2")
-	if err == nil {
-		t.Fatal("Should NOT find notbob")
+
+	defer func() {
+		if r := recover(); r != nil {
+			pm, ok := r.(*PanicMessage)
+			if !ok || pm == nil {
+				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage")
+			}
+			if pm.String() != "exec ID not found:404:User=bob exec-id=notid" {
+				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage == exec ID not found:404:User=bob exec-id=notid | actual = %s", pm.String())
+			}
+		}
+	}()
+
+	conf.GetUserExecInfo("bob", "notid")
+	t.Fatalf("Should have panicked")
+}
+
+func TestUserExec(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatalf("Config failed\n%s", errlist.String())
 	}
-	if !strings.Contains(err.Error(), "not found") {
-		t.Fatalf("Error should contain 'not found'. Actual:'%s'", err.Error())
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("TestUserExec Should not panic")
+		}
+	}()
+	pre := conf.GetServerDataRoot()
+	exec := conf.GetUserExecInfo("bob", "c2")
+	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/bob/logs/logOut.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, true)
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
 	if conf == nil {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
-	c1, err := conf.GetUserExecInfo("bob", "ls")
-	if err != nil {
-		t.Fatal(err)
-	}
+	c1 := conf.GetUserExecInfo("bob", "ls")
+
 	if c1.Cmd[0] != "ls" {
 		t.Fatal("Command should be ls -lta")
 	}
@@ -156,8 +192,8 @@ func TestGetUserExecInfo(t *testing.T) {
 
 }
 
-func TestGetUserLocPath(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, true)
+func TestGetUserLocPathBadUser(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -165,20 +201,64 @@ func TestGetUserLocPath(t *testing.T) {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 
-	_, e := conf.GetUserLocPath("fred", "home")
-	if e == nil {
-		t.Fatalf("Should have returned User error")
+	defer func() {
+		if r := recover(); r != nil {
+			pm, ok := r.(*PanicMessage)
+			if !ok || pm == nil {
+				t.Fatalf("Should have returned a PanicMessage")
+			}
+			if pm.String() != "user not found:404:User=fred" {
+				t.Fatalf("Should have returned a PanicMessage == user not found:404:User=fred | actual = %s", pm.String())
+
+			}
+		}
+	}()
+
+	conf.GetUserLocPath("fred", "home")
+	t.Fatalf("Should have panicked")
+}
+
+func TestGetUserLocPathBadLoc(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatalf("Config failed\n%s", errlist.String())
+	}
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 
-	_, e = conf.GetUserLocPath("stuart", "xxxx")
-	if e == nil {
-		t.Fatalf("Should have returned Location error")
+	defer func() {
+		if r := recover(); r != nil {
+			pm, ok := r.(*PanicMessage)
+			if !ok || pm == nil {
+				t.Fatalf("Should have returned a PanicMessage")
+			}
+			if pm.String() != "location not found:404:User=stuart Location=nothome" {
+				t.Fatalf("Should have returned a PanicMessage == location not found:404:User=stuart Location=nothome | actual = %s", pm.String())
+			}
+		}
+	}()
+
+	conf.GetUserLocPath("stuart", "nothome")
+	t.Fatalf("Should have panicked")
+}
+
+func TestGetUserLocPath(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatalf("Config failed\n%s", errlist.String())
+	}
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
 
-	u, e := conf.GetUserLocPath("stuart", "home")
-	if e != nil {
-		t.Fatalf(e.Error())
-	}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Should not panic")
+		}
+	}()
+
+	u := conf.GetUserLocPath("stuart", "home")
 
 	if !strings.HasSuffix(u, "/testdata/stuart") {
 		t.Fatalf("Should return path to /testdata/stuart")
