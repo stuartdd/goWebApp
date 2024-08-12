@@ -24,7 +24,7 @@
          "echo": {
           "StdOutType": "txt",
            "Cmd": [
-               "echo", "User:%{user} Loc:%{loc} Find:%{find} PIUser:%{USER} PWD:%{PWD}"
+               "echo", "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
            ]
          },
         "ds": {

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+logdir=testdata/admin/logs
+
+file=$(ls $logdir -Art | tail -1)
+
+tail -f $logdir/$file
+

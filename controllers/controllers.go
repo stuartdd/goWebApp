@@ -46,7 +46,6 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(config.NewPanicMessage("File not found", http.StatusNotFound, err.Error()))
 	}
-
 	if stats.IsDir() {
 		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", fullFile)))
 	}
@@ -197,24 +196,20 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	dir := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	stats, err := os.Stat(dir)
 	if err != nil {
-		if p.log != nil {
-			p.log(fmt.Sprintf("PostFileHandler:Path Error:%s", err.Error()))
-		}
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Dir not found", true)
+		panic(config.NewPanicMessage("Dir not found", http.StatusNotFound, err.Error()))
 	}
 	if !stats.IsDir() {
-		return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Is not a dir", true)
+		panic(config.NewPanicMessage("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", dir)))
 	}
 	body, err := io.ReadAll(p.request.Body)
 	if err != nil {
-		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to read input", true)
+		panic(config.NewPanicMessage("Failed to read POST data", http.StatusBadRequest, err.Error()))
 	}
 	file := p.parameters.GetUserLocPath(true, false, p.parameters.GetQueryAsBool("base64", false))
 	err = os.WriteFile(file, body, 0644)
 	if err != nil {
-		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save data", true)
+		panic(config.NewPanicMessage("Failed to save data", http.StatusInternalServerError, err.Error()))
 	}
-
 	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File saved", false)
 }
 
@@ -240,7 +235,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if p.addLrp != nil {
 		ok := p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), 0, false)
 		if !ok {
-			return NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Exec already running", true)
+			panic(config.NewPanicMessage("Exec already running", http.StatusForbidden, fmt.Sprintf("User:%s Exec:%s Lon running process is already running", p.parameters.GetUser(), p.parameters.GetExecId())))
 		}
 	}
 	execInfo := p.parameters.GetUserExecInfo()
@@ -255,20 +250,20 @@ func (p *ExecHandler) Submit() *ResponseData {
 	})
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
-		return NewResponseData(http.StatusFailedDependency).WithContentReasonAsJson(err.Error(), true)
+		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("RC:%d Error:%s", code, err.Error())))
 	}
 	if execInfo.LogOut != "" {
 		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
 		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdOut, 0644)
 		if err != nil {
-			return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save stdOut to log", true)
+			panic(config.NewPanicMessage("Failed to write stdOut to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdOut. RC:%d Error:%s", code, err.Error())))
 		}
 	}
 	if execInfo.LogErr != "" {
 		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
 		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdErr, 0644)
 		if err != nil {
-			return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Failed to save stdErr to log", true)
+			panic(config.NewPanicMessage("Failed to write stdErr to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdErr. RC:%d Error:%s", code, err.Error())))
 		}
 	}
 	if code > 0 && execInfo.NzCodeReturns >= http.StatusMultipleChoices {
