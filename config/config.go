@@ -111,6 +111,51 @@ type LogData struct {
 	ConsoleOut     bool
 }
 
+type StaticData struct {
+	Path string
+	Home string
+}
+
+func (p *StaticData) HasStaticData() bool {
+	return p.Path != ""
+}
+
+func (p *StaticData) GetHome() string {
+	return filepath.Join(p.Path, p.Home)
+}
+
+func (p *StaticData) CheckFileExists(file string) bool {
+	file = strings.TrimPrefix(file, "/")
+	fileParts := strings.SplitN(file, "&", 2)
+	if len(fileParts) < 1 {
+		return false
+	}
+
+	absFilePath := filepath.Join(p.Path, strings.ReplaceAll(fileParts[0], "/", string(os.PathSeparator)))
+	stats, err := os.Stat(absFilePath)
+	if err != nil {
+		return false
+	} else {
+		if stats.IsDir() {
+			return false
+		}
+	}
+	return true
+
+}
+
+func (p *StaticData) CheckHomeExists() error {
+	if p.Home == "" {
+		return fmt.Errorf("static Home is undefined in StaticData")
+	}
+	ok := p.CheckFileExists(p.Home)
+	if ok {
+		return nil
+	} else {
+		return fmt.Errorf("static Home file[%s] does not exist", filepath.Join(p.Path, p.Home))
+	}
+}
+
 func NewLogData() *LogData {
 	return &LogData{
 		FileNameMask:   "",
@@ -182,7 +227,7 @@ type ConfigDataInternal struct {
 	PanicResponseCode   int
 	FilterFiles         []string
 	ServerDataRoot      string
-	ServerStaticRoot    string
+	StaticData          *StaticData
 	TemplateStaticFiles *TemplateStaticFiles
 	FaviconIcoPath      string
 	Env                 map[string]string
@@ -264,6 +309,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		FilterFiles:         []string{},
 		PanicResponseCode:   500,
 		ServerDataRoot:      "",
+		StaticData:          &StaticData{Path: "", Home: ""},
 		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
 		ThumbnailTrim:       []int{0, 0},
@@ -306,16 +352,16 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 
 	if verbose {
 		ret, cfgErr := configDataExtternal.resolveLocations(createDir)
-		fmt.Println("Config Error Data -------")
-		fmt.Print(strings.TrimSpace(cfgErr.String()))
-		fmt.Println("Final Config Data -------")
-		s, err := ret.String()
-		if err != nil {
-			fmt.Printf("Config data String() returned this error: %s", err.Error())
-		} else {
-			fmt.Println(s)
+		if ret != nil {
+			fmt.Println("Final Config Data -------")
+			s, err := ret.String()
+			if err != nil {
+				fmt.Printf("Config data String() returned this error: %s", err.Error())
+			} else {
+				fmt.Println(s)
+			}
+			fmt.Println("Final Config Data -------")
 		}
-		fmt.Println("Final Config Data -------")
 		return ret, cfgErr
 	} else {
 		return configDataExtternal.resolveLocations(createDir)
@@ -356,11 +402,22 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		p.SetServerDataRoot(f)
 	}
 
-	f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv) // Will check ServerStaticRoot
-	if e != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find ServerStaticRoot:%s. Cause:%s", f, e.Error()))
-	} else {
-		p.SetServerStaticRoot(f)
+	if p.HasStaticData() {
+		f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv) // Will check ServerStaticRoot
+		if e != nil {
+			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Path in config file:%s. Cause:%s", p.ConfigName, e.Error()))
+		} else {
+			p.SetServerStaticRoot(f)
+		}
+
+		if p.internal.StaticData.Home == "" {
+			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Home in config file:%s", p.ConfigName))
+		}
+
+		e = p.GetStaticData().CheckHomeExists()
+		if e != nil {
+			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Home in config file:%s. Cause:%s", p.ConfigName, e.Error()))
+		}
 	}
 
 	errorList := NewConfigErrorData()
@@ -555,6 +612,10 @@ func (l *ConfigData) Verbose(s string) {
 	}
 }
 
+func (p *ConfigData) HasStaticData() bool {
+	return p.internal.StaticData.HasStaticData()
+}
+
 func (p *ConfigData) getNextReloadConfigMillis() int64 {
 	return time.Now().UnixMilli() + (p.internal.ReloadConfigSeconds * 1000)
 }
@@ -650,7 +711,11 @@ func (p *ConfigData) SetServerDataRoot(f string) {
 }
 
 func (p *ConfigData) GetServerStaticRoot() string {
-	return p.internal.ServerStaticRoot
+	return p.internal.StaticData.Path
+}
+
+func (p *ConfigData) GetStaticData() *StaticData {
+	return p.internal.StaticData
 }
 
 func (p *ConfigData) GetTemplateData() *TemplateStaticFiles {
@@ -662,7 +727,7 @@ func (p *ConfigData) IsTemplating() bool {
 }
 
 func (p *ConfigData) SetServerStaticRoot(path string) {
-	p.internal.ServerStaticRoot = path
+	p.internal.StaticData.Path = path
 }
 
 func (p *ConfigData) GetContentTypeCharset() string {

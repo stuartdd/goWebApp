@@ -88,6 +88,10 @@ func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEve
 	}
 }
 
+func (p *ServerHandler) HasStaticData() bool {
+	return p.config.HasStaticData()
+}
+
 func (p *ServerHandler) GetUpSince() time.Time {
 	return p.upSince
 }
@@ -127,18 +131,28 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewResponseData(pm.Status).WithContentReasonAsJson(pm.Reason, true), shouldLog)
 		}
 	}()
+
+	staticFileData := h.config.GetStaticData()
+
 	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
 
 	var isAbsolutePath bool
-	requestUrlparts := strings.Split(urlPath, "/")
-	if requestUrlparts[0] == "" {
-		isAbsolutePath = true
-		requestUrlparts = requestUrlparts[1:]
+	var requestUrlparts []string
+	if urlPath == "/" {
+		if staticFileData.HasStaticData() {
+			requestUrlparts = []string{"static", staticFileData.Home}
+		}
 	} else {
-		isAbsolutePath = false
-	}
-	if requestUrlparts[0] == "" {
-		requestUrlparts = requestUrlparts[1:]
+		requestUrlparts = strings.Split(urlPath, "/")
+		if requestUrlparts[0] == "" {
+			isAbsolutePath = true
+			requestUrlparts = requestUrlparts[1:]
+		} else {
+			isAbsolutePath = false
+		}
+		if requestUrlparts[0] == "" {
+			requestUrlparts = requestUrlparts[1:]
+		}
 	}
 
 	if len(requestUrlparts) > 1 {
@@ -272,6 +286,10 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if staticFileData.HasStaticData() && h.config.GetStaticData().CheckFileExists(urlPath) {
+		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, h.config, logFunc, verboseFunc).Submit(), shouldLog)
+		return
+	}
 	logFunc(fmt.Sprintf("Req:  %s:%s", r.Method, urlPath))
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true), shouldLog)
 }
@@ -348,6 +366,11 @@ func (p *WebAppServer) Start() int {
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
 	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetServerDataRoot()))
+	if p.Handler.config.HasStaticData() {
+		p.Log(fmt.Sprintf("Static Data Root  :%s.", p.Handler.config.GetServerStaticRoot()))
+	} else {
+		p.Log("Static Data       :Undefined. Add StaticData.Home to config")
+	}
 	if p.Handler.config.IsTemplating() {
 		p.Log(fmt.Sprintf("Server Templating :%s.", p.Handler.config.GetTemplateData().FullFileName))
 	} else {

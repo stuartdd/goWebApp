@@ -44,14 +44,14 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 
 	stats, err := os.Stat(fullFile)
 	if err != nil {
-		panic(config.NewPanicMessage("File not found", http.StatusNotFound, err.Error()))
+		panic(config.NewPanicMessage("File not found", http.StatusNotFound, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
 	if stats.IsDir() {
-		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", fullFile)))
+		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("Static file %s is a Directory", fullFile)))
 	}
 	fileContent, err := os.ReadFile(fullFile)
 	if err != nil {
-		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, err.Error()))
+		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
 	if p.configData.IsTemplating() {
 		td := p.configData.GetTemplateData()

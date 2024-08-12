@@ -24,7 +24,7 @@ func TestPictureScan(t *testing.T) {
 
 	_, err := ScanDirectory("../tostdata", ext, DirDataScanFileName)
 	AssertErrContains(t, "TestPictureScan 1", err, []string{"no such file or directory"})
-	_, err = ScanDirectory("../testdata/favicon.ico", ext, DirDataScanFileName)
+	_, err = ScanDirectory("../testdata/favicon1.ico", ext, DirDataScanFileName)
 	AssertErrContains(t, "TestPictureScan 2", err, []string{"is not a directory"})
 
 	removeDataFile(t, dirDataScanFile)

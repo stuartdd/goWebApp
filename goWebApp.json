@@ -137,7 +137,10 @@
     ".log"
   ],
   "ServerDataRoot": "./testdata",
-  "ServerStaticRoot": "%{WebServerHome}/static",
+  "StaticData": {
+    "Path":"%{WebServerHome}/static",
+    "Home" :"dart.html"
+  },
   "TemplateStaticFiles": {
     "Files": [
       "dart.html",

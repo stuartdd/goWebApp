@@ -65,6 +65,9 @@
     ".log"
   ],
   "ServerDataRoot": "/home/pi/server/goWebApp/testdata",
-  "ServerStaticRoot": "/home/pi/server/goWebApp/static",
+  "StaticData": {
+    "Path":"/home/pi/server/goWebApp/static",
+    "Home" :"dart.html"
+  },
   "FaviconIcoPath": "favicon1.ico"
 }
