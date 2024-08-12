@@ -26,6 +26,12 @@
          "Cmd": [
              "echo", "User:%{user} Loc:%{loc} Find:%{find} PIUser:%{USER} PWD:%{PWD}"
          ]
+       },
+       "llog": {
+        "StdOutType": "txt",
+         "Cmd": [
+             "./latestLog.sh"
+         ]
        }
       }
     },
@@ -60,5 +66,5 @@
   ],
   "ServerDataRoot": "/home/pi/server/goWebApp/testdata",
   "ServerStaticRoot": "/home/pi/server/goWebApp/static",
-  "FaviconIcoPath": "favicon.ico"
+  "FaviconIcoPath": "favicon1.ico"
 }
