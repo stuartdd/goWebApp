@@ -53,6 +53,10 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
+	if p.verbose != nil {
+		p.verbose(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(p.filePath[len(p.filePath)-1]), len(fileContent)))
+
+	}
 	if p.configData.IsTemplating() {
 		td := p.configData.GetTemplateData()
 		if td.ShouldTemplate(list[len(list)-1]) {
@@ -94,6 +98,9 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, err.Error()))
 	}
+	if p.verbose != nil {
+		p.verbose(fmt.Sprintf("Read File:%s Mime[%s] Len[%d]", file, config.LookupContentType(p.parameters.GetName()), len(fileContent)))
+	}
 	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.parameters.GetName())
 }
 
@@ -129,9 +136,9 @@ func (p *DirHandler) Submit() *ResponseData {
 		if err != nil {
 			panic(config.NewPanicMessage("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
 		}
-		return NewResponseData(http.StatusOK).WithContentBytes(filesAsJson(entries, p.parameters)).WithMimeType("json")
+		return NewResponseData(http.StatusOK).WithContentBytes(filesAsJson(entries, p.parameters, p.verbose, file)).WithMimeType("json")
 	} else {
-		return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters)).WithMimeType("json")
+		return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters, p.verbose, file)).WithMimeType("json")
 	}
 }
 
@@ -210,6 +217,10 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(config.NewPanicMessage("Failed to save data", http.StatusInternalServerError, err.Error()))
 	}
+	if p.verbose != nil {
+		p.verbose(fmt.Sprintf("File Stored:%s [%d]", file, len(body)))
+	}
+
 	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File saved", false)
 }
 
@@ -248,6 +259,11 @@ func (p *ExecHandler) Submit() *ResponseData {
 			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
 		}
 	})
+
+	if p.verbose != nil {
+		p.verbose(execData.String())
+	}
+
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
 		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("RC:%d Error:%s", code, err.Error())))
@@ -370,6 +386,7 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 func fmtAlloc(al uint64) string {
 	return fmt.Sprintf("%d MiB (%d B)", al/1024/1024, al)
 }
+
 func fmtDuration(d time.Duration) string {
 	secs := int64(d.Seconds())
 	h := secs / 3600
@@ -417,7 +434,7 @@ func treeAsJson(root *TreeDirNode, params *UrlRequestParts) []byte {
 	return buffer.Bytes()
 }
 
-func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts) []byte {
+func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(string), path string) []byte {
 	var buffer bytes.Buffer
 	entLen := len(ents)
 	buffer.WriteRune('{')
@@ -426,20 +443,26 @@ func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts) []byte {
 	writePathToJson(params.GetOptionalParam(PathParam, ""), PathParam, &buffer)
 	buffer.WriteString("\"files\":[")
 	bufLen := buffer.Len()
+	count := 0
 	for i := 0; i < entLen; i++ {
 		e := ents[i]
 		if filterDirNames(e, params.GetConfigFileFilter()) {
 			writeSingleFileNameToJson(e, &buffer)
 			bufLen = buffer.Len()
 			buffer.WriteRune(',')
+			count++
 		}
 	}
 	buffer.Truncate(bufLen)
 	buffer.WriteString("]}")
+	if verbose != nil {
+		verbose(fmt.Sprintf("List Files:%s Returned[%d]", path, count))
+	}
+
 	return buffer.Bytes()
 }
 
-func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
+func listDirectoriesAsJson(dir string, param *UrlRequestParts, verbose func(string), path string) []byte {
 	list := &[]string{}
 	listDirectoriesRec(dir, dir+string(os.PathSeparator), param.GetConfigFileFilter(), list)
 	listLen := len(*list)
@@ -447,6 +470,7 @@ func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
 	buffer.WriteRune('{')
 	writeJsonHeader(param, &buffer)
 	buffer.WriteString(",\"paths\":[")
+	count := 0
 	for i, s := range *list {
 		buffer.WriteString("{\"name\":\"")
 		buffer.WriteString(s)
@@ -457,8 +481,12 @@ func listDirectoriesAsJson(dir string, param *UrlRequestParts) []byte {
 		if i < (listLen - 1) {
 			buffer.WriteRune(',')
 		}
+		count++
 	}
 	buffer.WriteString("]}")
+	if verbose != nil {
+		verbose(fmt.Sprintf("List Directories:%s Returned[%d]", path, count))
+	}
 	return buffer.Bytes()
 }
 

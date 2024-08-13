@@ -117,7 +117,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	logFunc := h.logger.Log
-	verboseFunc := h.logger.Verbose
+	verboseFunc := h.logger.GetVerbose()
 
 	urlPath := strings.TrimSpace(r.URL.Path)
 	defer func() {

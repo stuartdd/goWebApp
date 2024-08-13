@@ -13,7 +13,7 @@ import (
 
 type Logger interface {
 	Log(string)
-	Verbose(string)
+	GetVerbose() func(string)
 	IsOpen() bool
 	Close()
 	LogFileName() string
@@ -128,9 +128,16 @@ func NewLogger(pPath string, pFileNameMask string, pMonitorSeconds int, consoleO
 	return l, l.logFileData.err
 }
 
-func (l *logger) Verbose(s string) {
+func (l *logger) GetVerbose() func(string) {
 	if l.verboseLog {
-		fmt.Println(s)
+		return l.verbose
+	}
+	return nil
+}
+
+func (l *logger) verbose(s string) {
+	if l.verboseLog {
+		l.Log(s)
 	}
 }
 
