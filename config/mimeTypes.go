@@ -72,6 +72,7 @@ func makeContentTypesMap() map[string]string {
 	mime["txt"] = "text/plain%0"
 	mime["vsd"] = "application/vnd.visio"
 	mime["wav"] = "audio/wav"
+	mime["wasm"] = "application/wasm"
 	mime["weba"] = "audio/webm"
 	mime["webm"] = "video/webm"
 	mime["webp"] = "image/webp"
