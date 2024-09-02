@@ -157,7 +157,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
-			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], h.config, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, logFunc, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
@@ -287,7 +287,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if staticFileData.HasStaticData() && h.config.GetStaticData().CheckFileExists(urlPath) {
-		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, h.config, logFunc, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, logFunc, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	logFunc(fmt.Sprintf("Req:  %s:%s", r.Method, urlPath))

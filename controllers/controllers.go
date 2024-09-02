@@ -22,23 +22,23 @@ type Handler interface {
 }
 
 type StaticFileHandler struct {
-	filePath   []string
-	configData *config.ConfigData
-	log        func(string)
-	verbose    func(string)
+	filePath []string
+	urlParts *UrlRequestParts
+	log      func(string)
+	verbose  func(string)
 }
 
-func NewStaticFileHandler(file []string, configData *config.ConfigData, logFunc func(string), verboseFunc func(string)) *StaticFileHandler {
+func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, logFunc func(string), verboseFunc func(string)) *StaticFileHandler {
 	return &StaticFileHandler{
-		filePath:   file,
-		configData: configData,
-		log:        logFunc,
-		verbose:    verboseFunc,
+		filePath: file,
+		urlParts: urlParts,
+		log:      logFunc,
+		verbose:  verboseFunc,
 	}
 }
 
 func (p *StaticFileHandler) Submit() *ResponseData {
-	list := []string{p.configData.GetServerStaticRoot()}
+	list := []string{p.urlParts.config.GetServerStaticRoot()}
 	list = append(list, p.filePath...)
 	fullFile := filepath.Join(list...)
 
@@ -57,10 +57,10 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 		p.verbose(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(p.filePath[len(p.filePath)-1]), len(fileContent)))
 
 	}
-	if p.configData.IsTemplating() {
-		td := p.configData.GetTemplateData()
+	if p.urlParts.config.IsTemplating() {
+		td := p.urlParts.config.GetTemplateData()
 		if td.ShouldTemplate(list[len(list)-1]) {
-			fileContent = []byte(p.configData.SubstituteFromMap([]byte(string(fileContent)), td.Data))
+			fileContent = []byte(p.urlParts.config.SubstituteFromMap([]byte(string(fileContent)), td.Data(*p.urlParts.GetCachedMap())))
 		}
 	}
 	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])

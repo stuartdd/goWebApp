@@ -63,7 +63,7 @@ Note any undefined values are defaulted to constants defined below
 type TemplateStaticFiles struct {
 	Files        []string
 	DataFile     string
-	Data         map[string]string
+	data         map[string]string
 	FullFileName string
 }
 
@@ -81,12 +81,23 @@ func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
 	}
-	t.Data = m
+	t.data = m
 	t.FullFileName = f
 	return t, nil
 }
 func (t *TemplateStaticFiles) String() string {
 	return fmt.Sprintf("%s. Templates:%s", t.FullFileName, t.Files)
+}
+
+func (t *TemplateStaticFiles) Data(plus map[string]string) map[string]string {
+	m := map[string]string{}
+	for n, v := range plus {
+		m[n] = v
+	}
+	for n, v := range t.data {
+		m[n] = v
+	}
+	return m
 }
 
 func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {

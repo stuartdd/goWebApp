@@ -1,0 +1,163 @@
+{
+  "ReloadConfigSeconds": 3600,
+  "Port": 8082,
+  "ThumbnailTrim": [
+    20,
+    4
+  ],
+  "Users": {
+    "admin": {
+      "Hidden": true,
+      "Name": "Admin",
+      "Home": "",
+      "Locations": {
+        "cache": "cache",
+        "exec" : "cache"
+      },
+      "Exec": {
+        "dmesg": {
+          "StdOutType": "json",
+           "Cmd": [
+               "./execDmesg.sh", "%{find}"
+           ]
+         },
+         "echo": {
+          "StdOutType": "txt",
+           "Cmd": [
+               "echo", "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
+           ]
+         },
+        "ds": {
+          "Cmd": [
+            "./diskSize.sh"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 200,
+          "Detached": false
+        },
+        "lr1": {
+          "Cmd": [
+            "./longRun.sh",
+            "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 0,
+          "Detached": true
+        },
+        "lr2": {
+          "Cmd": [
+            "./longRun.sh",
+            "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 0,
+          "Detached": true
+        },
+        "ufs": {
+          "Cmd": [
+            "./textToJson",
+            "ufsConfig.json"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 200,
+          "Detached": false
+        }
+      },
+      "Env": {
+        "lsargs": "-l"
+      }
+    },
+    "bob": {
+      "Hidden": null,
+      "Name": "Bob",
+      "Home": "",
+      "Locations": {
+        "data": "stateData",
+        "home": "",
+        "original": "***%{WebServerPictures}/originals/%{id}",
+        "pics": "b-pics",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
+        "usr": "b-testfolder"
+      },
+      "Exec": null,
+      "Env": null
+    },
+    "stuart": {
+      "Hidden": null,
+      "Name": "Stuart",
+      "Home": "",
+      "Locations": {
+        "cache": "cache",
+        "data": "stateData",
+        "dev": "***%{WebServerPictures}/dev/%{id}",
+        "home": "",
+        "logs": "logs",
+        "original": "***%{WebServerPictures}/originals/%{id}",
+        "pics": "s-pics",
+        "testtree": "***%{WebServerPictures}",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
+        "usr": "s-testfolder"
+      },
+      "Exec": null,
+      "Env": null
+    }
+  },
+  "ContentTypeCharset": "utf-8",
+  "LogData": {
+    "FileNameMask": "goWebServer-%y-%m-%d.log",
+    "Path": "admin/logs",
+    "MonitorSeconds": 30,
+    "ConsoleOut": true
+  },
+  "ServerName": "MyServer",
+  "PanicResponseCode": 500,
+  "FilterFiles": [
+    ".json",
+    ".data",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".info",
+    ".log"
+  ],
+  "ServerDataRoot": "./testdata",
+  "StaticData": {
+    "Path":"%{WebServerHome}/static",
+    "Home" :"tgo.html"
+  },
+  "TemplateStaticFiles": {
+    "Files": [
+      "tgo.html",
+      "tgo2.html",
+      "tgo.css"
+    ],
+    "DataFile": "./testdata/configDataPI.json",
+    "Data": null,
+    "FullFileName": ""
+  },
+  "FaviconIcoPath": "tgo.ico",
+  "Env": {
+    "linuxUserGit": "/home/stuart/git"
+  },
+  "ExecManager": {
+    "Path": "./testdata/admin",
+    "File": "RunningProcs.json",
+    "TestCommand": "./checkLrp.sh"
+  }
+}
