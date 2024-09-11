@@ -138,7 +138,7 @@
   ],
   "ServerDataRoot": "./testdata",
   "StaticData": {
-    "Path":"%{WebServerHomeTgo}/static",
+    "Path":"%{WebServerHome}/static",
     "Home" :"tgo.html"
   },
   "TemplateStaticFiles": {
@@ -153,7 +153,8 @@
   },
   "FaviconIcoPath": "tgo.ico",
   "Env": {
-    "linuxUserGit": "/home/stuart/git"
+    "linuxUserGit": "/home/stuart/git",
+    "hnav": "UL"
   },
   "ExecManager": {
     "Path": "./testdata/admin",

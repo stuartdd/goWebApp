@@ -95,7 +95,7 @@ func (p *UrlRequestParts) GetCachedMap() *map[string]string {
 	if p.cache == nil {
 		m := map[string]string{}
 		for n, v := range p.Header {
-			if len(v) != 0 {
+			if len(v[0]) != 0 {
 				m[n] = decodeValue(v[0])
 			}
 		}
@@ -103,8 +103,8 @@ func (p *UrlRequestParts) GetCachedMap() *map[string]string {
 			m[n] = decodeValue(v)
 		}
 		for n, v := range p.Query {
-			if len(v) != 0 {
-				m[n] = decodeValue(v[0])
+			if len(v[0]) != 0 {
+				m[n] = v[0] // Dont decrypt (convert from base64) query values.
 			}
 		}
 		p.cache = &m
