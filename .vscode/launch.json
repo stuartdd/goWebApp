@@ -11,7 +11,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "goWebApp.go",
-            "args": ["config=tgo.json"]
+            "args": ["config=tgo.json", "scan", "stuart"]
         }
     ]
 }

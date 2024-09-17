@@ -157,13 +157,13 @@ func NewImage(imagePath string, debug bool, sel func(*IFDEntry, *Walker) bool, l
 	}
 
 	if image.soi != "FFD8" {
-		panic(fmt.Sprintf("Jpeg marker 'FFD8' is missing (Offset %d) found %s", OfsSOI, image.soi))
+		panic(fmt.Sprintf("Jpeg marker 'FFD8' is missing (Offset %d) found %s. Path:%s", OfsSOI, image.soi, imagePath))
 	}
 	if image.app1Marker != "FFE1" {
-		panic(fmt.Sprintf("Jpeg APP1 marker 'FFE1' is missing (Offset %d) found %s", OfsAPP1Marker, image.app1Marker))
+		panic(fmt.Sprintf("Jpeg APP1 marker 'FFE1' is missing (Offset %d) found %s. Path:%s", OfsAPP1Marker, image.app1Marker, imagePath))
 	}
 	if !image.exif {
-		panic(fmt.Sprintf("Jpeg 'Exif' data marker is missing (Offset %d) found %s", OfsExifHeader, bytesToZString(walker.Pos(OfsExifHeader).Bytes(6))))
+		panic(fmt.Sprintf("Jpeg 'Exif' data marker is missing (Offset %d) found %s. Path:%s", OfsExifHeader, bytesToZString(walker.Pos(OfsExifHeader).Bytes(6)), imagePath))
 	}
 
 	tiffHeader := walker.Pos(OfsTiffHeader).Zstring(2)

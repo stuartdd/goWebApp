@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/stuartdd/goWebApp/image"
 )
 
 const DirDataScanFileName = "dirScanData.json"
@@ -247,27 +249,27 @@ func (p *PicDir) visitEachDir(path *PicPath, files []*PicFile, onDir func(*PicPa
 	}
 }
 
-func (p *PicDir) Add(path string) {
-	p.addParts(strings.Split(path, "/"))
+func (p *PicDir) Add(path string, info string) {
+	p.addParts(strings.Split(path, "/"), info)
 }
 
 func (p *PicDir) AddPath(path *PicPath) {
-	p.addParts(path.paths)
+	p.addParts(path.paths, "")
 }
 
-func (p *PicDir) addParts(parts []string) {
+func (p *PicDir) addParts(parts []string, info string) {
 	l := len(parts)
 	if l > 0 {
 		p0 := parts[0]
 		if l == 1 {
-			p.Files = append(p.Files, &PicFile{N: p0})
+			p.Files = append(p.Files, &PicFile{N: p0, D: info})
 		} else {
 			sub := p.hasSub(p0)
 			if sub == nil {
 				sub = newPicDir(p0)
 				p.Dirs = append(p.Dirs, sub)
 			}
-			sub.addParts(parts[1:])
+			sub.addParts(parts[1:], info)
 		}
 	}
 }
@@ -300,13 +302,41 @@ func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 					add = onFile(path, info.Name())
 				}
 				if add {
-					dir.Add(path[pref:])
+					dt := ""
+					_, err := image.NewImage(path, true, func(i *image.IFDEntry, w *image.Walker) bool {
+						if i != nil {
+							if i.TagData.Name == "DateTimeOriginal" {
+								dt = i.Value
+							}
+						}
+						return true
+					}, "Test image")
+					if err != nil {
+						dt = findDataTimeFromFile(info.Name())
+					}
+					dir.Add(path[pref:], dt)
 				}
 			}
 		}
 		return nil
 	})
 	return dir, nil
+}
+
+func findDataTimeFromFile(spec string) string {
+	spec1 := []byte(spec)
+	spec2 := make([]byte, 14)
+	pos := 0
+	for _, c := range spec1 {
+		if c >= '0' && c <= '9' {
+			spec2[pos] = c
+			pos++
+			if pos > 13 {
+				break
+			}
+		}
+	}
+	return string(spec2)
 }
 
 func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData, error) {

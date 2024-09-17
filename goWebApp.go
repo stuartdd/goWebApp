@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -242,12 +243,16 @@ func osReader(message string, chars string) string {
 func scanUserOriginals(user string, cfg *config.ConfigData) string {
 	defer func() {
 		if r := recover(); r != nil {
-			pm := r.(*config.PanicMessage)
-			if pm == nil {
-				err := r.(error)
-				pm = config.NewPanicMessageFromString(err.Error())
+			pm, ok := r.(*config.PanicMessage)
+			if ok {
+				if pm == nil {
+					err := r.(error)
+					pm = config.NewPanicMessageFromString(err.Error())
+				}
+				osExitWithMessage(1, fmt.Sprintf("Scan: User '%s'. %s", user, pm))
+			} else {
+				osExitWithMessage(1, fmt.Sprintf("Scan: User '%s'. %s\n%s", user, r, debug.Stack()))
 			}
-			osExitWithMessage(1, fmt.Sprintf("Scan: User '%s'. %s", user, pm))
 		}
 	}()
 
