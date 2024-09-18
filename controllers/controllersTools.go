@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/pictures"
 )
 
 const UserParam = "user"
@@ -200,11 +201,6 @@ func (p *UrlRequestParts) SubstituteFromCachedMap(cmd []byte) string {
 	return p.config.SubstituteFromMap(cmd, *p.GetCachedMap())
 }
 
-func (p *UrlRequestParts) ToThumbnail(filename string) string {
-	tnt := p.config.GetThumbnailTrim()
-	return filename[tnt[0] : len(filename)-tnt[1]]
-}
-
 func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase64 bool) string {
 	ulp := p.config.GetUserLocPath(p.GetUser(), p.GetLocation())
 	if p.HasParam(PathParam) {
@@ -230,7 +226,7 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 				}
 			}
 			if asThumbnail {
-				ulp = filepath.Join(ulp, p.ToThumbnail(np))
+				ulp = filepath.Join(ulp, pictures.UnFormatThumbNail(p.config.GetThumbnailFormat(), np))
 			} else {
 				ulp = filepath.Join(ulp, np)
 			}

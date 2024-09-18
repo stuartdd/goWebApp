@@ -254,7 +254,7 @@ func TestBadExifMarker(t *testing.T) {
 	createDataFile(t, td1, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
 	_, err := NewImage(tdFileJpeg, true, nil, "")
-	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif" {
+	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found Fxif. Path:td1.jpg" {
 		t.Fatalf("TD1 %s", err.Error())
 	}
 }
@@ -263,7 +263,7 @@ func TestBadSOI(t *testing.T) {
 	createDataFile(t, td2, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
 	_, err := NewImage(tdFileJpeg, true, nil, "")
-	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0" {
+	if err.Error() != "PANIC:Jpeg marker 'FFD8' is missing (Offset 0) found FFD0. Path:td1.jpg" {
 		t.Fatalf("BadSOI %s", err.Error())
 	}
 }
@@ -272,7 +272,7 @@ func TestBadA001(t *testing.T) {
 	createDataFile(t, td3, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
 	_, err := NewImage(tdFileJpeg, true, nil, "")
-	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF" {
+	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFEF. Path:td1.jpg" {
 		t.Fatalf("BadA001 %s", err.Error())
 	}
 }
@@ -281,7 +281,7 @@ func TestBadJpg(t *testing.T) {
 	createDataFile(t, td4, tdFileJpeg)
 	defer removeDataFile(tdFileJpeg)
 	_, err := NewImage(tdFileJpeg, true, nil, "")
-	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF" {
+	if err.Error() != "PANIC:Jpeg 'Exif' data marker is missing (Offset 6) found JFIF. Path:td1.jpg" {
 		t.Fatalf("%s", err.Error())
 	}
 }
@@ -325,7 +325,7 @@ func TestImage02(t *testing.T) {
 	_, err := NewImage("../testdata/test_data_02.ti", false, func(ifd *IFDEntry, w *Walker) bool {
 		return strings.Contains(ifd.TagData.Name, "Date")
 	}, "")
-	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0" {
+	if err.Error() != "PANIC:Jpeg APP1 marker 'FFE1' is missing (Offset 2) found FFE0. Path:../testdata/test_data_02.ti" {
 		t.Fatal(err)
 	}
 }

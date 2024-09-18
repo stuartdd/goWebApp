@@ -17,14 +17,68 @@ const x2DataFileName = "xxx-2.log"
 var td = []byte{0xff, 0x8, 0xff, 0x4, 0xaf, 0xc6, 0x45, 0x78}
 var ext = []string{"json", "LOG", "KeepMe"}
 
+func TestDateTimeParser(t *testing.T) {
+	tim, err := NewFileDateTimeFromSpec("2024_05_18:13:45:30:1_abc.jpeg")
+	if err != nil {
+		t.Fatalf("returned error %s", err.Error())
+	}
+	assertEquals(t, "From String OK", "2024_05_18_13_45_30_abc.jpg.jpg", tim.Format(defaultThumbnailFormat, "abc.jpg"))
+	assertEquals(t, "20150731_120905.jpg", "abc.jpg", UnFormatThumbNail(defaultThumbnailFormat, "2024_07_13_12_13_30_abc.jpg.jpg"))
+
+	tim, err = NewFileDateTimeFromSpec("2024/05/18/13/45/30/1_abc.jpeg")
+	if err != nil {
+		t.Fatalf("returned error %s", err.Error())
+	}
+	assertEquals(t, "2024/05/18/13/45/30/1", "2024_05_18_13_45_30_abc.jpg.jpg", tim.Format(defaultThumbnailFormat, "abc.jpg"))
+	assertEquals(t, "20150731_120905.jpg", "abc.jpg", UnFormatThumbNail(defaultThumbnailFormat, "2024_07_13_12_13_30_abc.jpg.jpg"))
+
+	tim, err = NewFileDateTimeFromSpec("20240713_121330")
+	if err != nil {
+		t.Fatalf("returned error %s", err.Error())
+	}
+	assertEquals(t, "20240713_121330", "2024_07_13_12_13_30_abc.jpg.jpg", tim.Format(defaultThumbnailFormat, "abc.jpg"))
+	assertEquals(t, "20150731_120905.jpg", "abc.jpg", UnFormatThumbNail(defaultThumbnailFormat, "2024_07_13_12_13_30_abc.jpg.jpg"))
+
+	tim, err = NewFileDateTimeFromSpec("20240713_1213")
+	if err != nil {
+		t.Fatalf("returned error %s", err.Error())
+	}
+	assertEquals(t, "20240713_1213", "2024_07_13_12_13_00_abc.jpg.jpg", tim.Format(defaultThumbnailFormat, "abc.jpg"))
+	assertEquals(t, "20150731_120905.jpg", "abc.jpg", UnFormatThumbNail(defaultThumbnailFormat, "2024_07_13_12_13_00_abc.jpg.jpg"))
+
+	tim, err = NewFileDateTimeFromSpec("20150731_120905.jpg")
+	if err != nil {
+		t.Fatalf("returned error %s", err.Error())
+	}
+	assertEquals(t, "20150731_120905.jpg", "2015_07_31_12_09_05_abc.jpg.jpg", tim.Format(defaultThumbnailFormat, "abc.jpg"))
+	assertEquals(t, "20150731_120905.jpg", "abc.jpg", UnFormatThumbNail(defaultThumbnailFormat, "2015_07_31_12_09_05_abc.jpg.jpg"))
+
+	tim, err = NewFileDateTimeFromSpec("IMG-20200108-WA0001.jpg")
+	if err != nil {
+		t.Fatalf("returned error %s", err.Error())
+	}
+	assertEquals(t, "IMG-20200108-WA0001.jpg", "2020_01_08_00_01_00_abc.jpg.jpg", tim.Format(defaultThumbnailFormat, "abc.jpg"))
+	assertEquals(t, "20150731_120905.jpg", "abc.jpg", UnFormatThumbNail(defaultThumbnailFormat, "2020_01_08_00_01_00_abc.jpg.jpg"))
+
+	_, err = NewFileDateTimeFromSpec("20/05/18/13/45/30/1_abc.jpeg")
+	assertEquals(t, "20/05/18/13/45/30/1", "month '18' above 12", err.Error())
+
+	_, err = NewFileDateTimeFromSpec("03112006050-001.jpg")
+	assertEquals(t, "03112006050-001", "year '311' before 1970", err.Error())
+
+	_, err = NewFileDateTimeFromSpec("00001IMG_00001_BURST20170602124113.jpg")
+	assertEquals(t, "00001IMG_00001_BURST20170602124113.jpg", "character buffer overrun", err.Error())
+
+}
+
 func TestPictureScan(t *testing.T) {
 	dirDataScanFile, _ := filepath.Abs(filepath.Join(originals, DirDataScanFileName))
 	x1DataFile, _ := filepath.Abs(filepath.Join(originals, x1DataFileName))
 	x2DataFile, _ := filepath.Abs(filepath.Join(originals, x2DataFileName))
 
-	_, err := ScanDirectory("../tostdata", ext, DirDataScanFileName)
+	_, err := ScanDirectory("../tostdata", ext, DirDataScanFileName, defaultThumbnailFormat)
 	AssertErrContains(t, "TestPictureScan 1", err, []string{"no such file or directory"})
-	_, err = ScanDirectory("../testdata/favicon1.ico", ext, DirDataScanFileName)
+	_, err = ScanDirectory("../testdata/favicon1.ico", ext, DirDataScanFileName, defaultThumbnailFormat)
 	AssertErrContains(t, "TestPictureScan 2", err, []string{"is not a directory"})
 
 	removeDataFile(t, dirDataScanFile)
@@ -35,12 +89,12 @@ func TestPictureScan(t *testing.T) {
 	defer removeDataFile(t, x1DataFile)
 
 	createDataFile(t, td, x1DataFile)
-	_, referenceCount, _ := createScanData(originals, ext, DirDataScanFileName)
+	_, referenceCount, _ := createScanData(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 
 	// Initial scan crerates the dta file.
 	// Current size is 65 with x1DataFile added
 	// The data file is saved for next time
-	sd1, err := ScanDirectory(originals, ext, DirDataScanFileName)
+	sd1, err := ScanDirectory(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 	if err != nil {
 		t.Fatalf("ScanDirectory 1 %v", err)
 	}
@@ -56,7 +110,7 @@ func TestPictureScan(t *testing.T) {
 	// Second scan should read datafile in to OldState
 	// New State is the new scan.
 	// Should be nothing to do!
-	sd2, err := ScanDirectory(originals, ext, DirDataScanFileName)
+	sd2, err := ScanDirectory(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 	if err != nil {
 		t.Fatalf("ScanDirectory 2 %v", err)
 	}
@@ -66,7 +120,7 @@ func TestPictureScan(t *testing.T) {
 	// remove a file
 	removeDataFile(t, x1DataFile)
 
-	sd3, err := ScanDirectory(originals, ext, DirDataScanFileName)
+	sd3, err := ScanDirectory(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 	if err != nil {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
@@ -80,7 +134,7 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
 
-	sd4, err := ScanDirectory(originals, ext, DirDataScanFileName)
+	sd4, err := ScanDirectory(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 	if err != nil {
 		t.Fatalf("ScanDirectory 4 %v", err)
 	}
@@ -91,7 +145,7 @@ func TestPictureScan(t *testing.T) {
 
 	createDataFile(t, td, x2DataFile)
 
-	sd5, err := ScanDirectory(originals, ext, DirDataScanFileName)
+	sd5, err := ScanDirectory(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 	if err != nil {
 		t.Fatalf("ScanDirectory 3 %v", err)
 	}
@@ -107,7 +161,7 @@ func TestPictureScan(t *testing.T) {
 		t.Fatalf("ScanDirectory 5 %v", err)
 	}
 
-	sd6, err := ScanDirectory(originals, ext, DirDataScanFileName)
+	sd6, err := ScanDirectory(originals, ext, DirDataScanFileName, defaultThumbnailFormat)
 	if err != nil {
 		t.Fatalf("ScanDirectory 6 %v", err)
 	}
@@ -118,6 +172,13 @@ func TestPictureScan(t *testing.T) {
 	assertNotContains(t, "Scan 6, NewState", sd6.ScanState, x1DataFileName, false)
 	assertDiff(t, "ListNewAddDel 5", sd6, "!")
 
+}
+
+func assertEquals(t *testing.T, info string, expected string, actual string) {
+	if actual == expected {
+		return
+	}
+	t.Fatalf("assertEquals:%s \nExpected:%s\nActual  :%s", info, expected, actual)
 }
 
 func assertContains(t *testing.T, info string, state *PicDir, file string) {
@@ -250,7 +311,7 @@ func countScannedFiles(state *PicDir) int {
 }
 
 func TestPictureInAnotB(t *testing.T) {
-	AA, err := WalkDir(originals, func(p string, n string) bool {
+	AA, err := WalkDir(originals, defaultThumbnailFormat, func(p string, n string) bool {
 		return !strings.Contains(n, ".json") && !strings.Contains(n, ".log")
 	})
 	if err != nil {
@@ -377,7 +438,7 @@ func TestPicPath(t *testing.T) {
 func TestPictureWalker(t *testing.T) {
 	m := map[string]string{}
 	c := 0
-	l, err := WalkDir(originals, func(p string, n string) bool {
+	l, err := WalkDir(originals, defaultThumbnailFormat, func(p string, n string) bool {
 		fn, _ := filepath.Abs(fmt.Sprintf("%s/%s/%s", originals, p, n))
 		_, ok := m[fn]
 		if ok {

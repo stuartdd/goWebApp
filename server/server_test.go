@@ -415,7 +415,7 @@ func TestServerTime(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 176, 5)
+	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 180, 5)
 	if !strings.HasPrefix(trimString(resBody), "{\"time\":{") {
 		t.Fatalf("Respons body does not start with...")
 	}

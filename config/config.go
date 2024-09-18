@@ -230,7 +230,7 @@ func (p *UserData) IsHidden() bool {
 type ConfigDataInternal struct {
 	ReloadConfigSeconds int64
 	Port                int
-	ThumbnailTrim       []int
+	ThumbnailFormat     string
 	Users               map[string]UserData
 	ContentTypeCharset  string
 	LogData             *LogData
@@ -323,7 +323,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		StaticData:          &StaticData{Path: "", Home: ""},
 		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
-		ThumbnailTrim:       []int{0, 0},
+		ThumbnailFormat:     "",
 		Env:                 map[string]string{},
 	}
 
@@ -467,11 +467,8 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		p.SetFaviconIcoPath(f)
 	}
 
-	switch len(p.internal.ThumbnailTrim) {
-	case 0:
-		p.internal.ThumbnailTrim = []int{0, 0}
-	case 1:
-		p.internal.ThumbnailTrim = append(p.internal.ThumbnailTrim, 0)
+	if len(p.internal.ThumbnailFormat) < 12 {
+		p.internal.ThumbnailFormat = ""
 	}
 
 	for userId, userData := range p.internal.Users {
@@ -709,8 +706,8 @@ func (p *ConfigData) GetFilesFilter() []string {
 	return p.internal.FilterFiles
 }
 
-func (p *ConfigData) GetThumbnailTrim() []int {
-	return p.internal.ThumbnailTrim
+func (p *ConfigData) GetThumbnailFormat() string {
+	return p.internal.ThumbnailFormat
 }
 
 func (p *ConfigData) GetServerDataRoot() string {

@@ -257,7 +257,7 @@ func scanUserOriginals(user string, cfg *config.ConfigData) string {
 	}()
 
 	path := cfg.GetUserLocPath(user, "original")
-	sd, err := pictures.ScanDirectory(path, []string{"jpg", "jpeg"}, pictures.DirDataScanFileName)
+	sd, err := pictures.ScanDirectory(path, []string{"jpg", "jpeg"}, pictures.DirDataScanFileName, cfg.GetThumbnailFormat())
 	if err != nil {
 		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))
 	}

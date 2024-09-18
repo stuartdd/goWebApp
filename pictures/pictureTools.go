@@ -7,12 +7,16 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/stuartdd/goWebApp/image"
 )
 
 const DirDataScanFileName = "dirScanData.json"
+const defaultThumbnailFormat = "%yyy_%m_%d_%H_%M_%S_"
+const defaultThumbnailExt = ".jpg"
 
 type FileChangeType uint16
 
@@ -21,6 +25,91 @@ const (
 	FileAdd
 	FileDel
 )
+
+type FileDateTime struct {
+	y, m, d, hh, mm, ss int
+}
+
+func NewFileDateTimeFromSpec(spec string) (*FileDateTime, error) {
+	spec1 := []byte(spec)
+	spec2 := make([]byte, 18)
+	specPos := 0
+	for _, c := range spec1 {
+		if c >= '0' && c <= '9' {
+			spec2[specPos] = c
+			specPos++
+			if specPos > 17 {
+				return nil, fmt.Errorf("character buffer overrun")
+			}
+		}
+	}
+	specPos = 0
+	y, spespecPos := readIntFromSpec(spec2, 0, 4)
+	if y < 1970 {
+		return nil, fmt.Errorf("year '%d' before 1970", y)
+	}
+	if y > 2100 {
+		return nil, fmt.Errorf("year '%d' after 2070", y)
+	}
+	m, spespecPos := readIntFromSpec(spec2, spespecPos, 2)
+	if m < 1 {
+		return nil, fmt.Errorf("month '%d' is 0", m)
+	}
+	if m > 12 {
+		return nil, fmt.Errorf("month '%d' above 12", m)
+	}
+	d, spespecPos := readIntFromSpec(spec2, spespecPos, 2)
+	if d < 1 {
+		return nil, fmt.Errorf("day Of Month '%d' is 0", d)
+	}
+	if m > 31 {
+		return nil, fmt.Errorf("day Of Month '%d' above 31", d)
+	}
+	hh, spespecPos := readIntFromSpec(spec2, spespecPos, 2)
+	if hh > 23 {
+		return nil, fmt.Errorf("hour '%d' is above 23", hh)
+	}
+	mm, spespecPos := readIntFromSpec(spec2, spespecPos, 2)
+	if mm > 59 {
+		return nil, fmt.Errorf("min '%d' is above 59", mm)
+	}
+	ss, _ := readIntFromSpec(spec2, spespecPos, 2)
+	if ss > 59 {
+		return nil, fmt.Errorf("seconds '%d' is above 59", ss)
+	}
+	return &FileDateTime{y: y, m: m, d: d, hh: hh, mm: mm, ss: ss}, nil
+}
+
+func NewFileDateTimeFromTime(t time.Time) *FileDateTime {
+	return &FileDateTime{y: t.Year(), m: int(t.Month()), d: t.Day(), hh: t.Hour(), mm: t.Minute(), ss: t.Second()}
+}
+
+func (dt *FileDateTime) Format(formatString string, imageFileName string) string {
+	if len(formatString) < 12 {
+		formatString = defaultThumbnailFormat
+	}
+	s := strings.ReplaceAll(formatString, "%yyy", strconv.Itoa(dt.y))
+	s = strings.ReplaceAll(s, "%m", pad2(dt.m))
+	s = strings.ReplaceAll(s, "%d", pad2(dt.d))
+	s = strings.ReplaceAll(s, "%H", pad2(dt.hh))
+	s = strings.ReplaceAll(s, "%M", pad2(dt.mm))
+	s = strings.ReplaceAll(s, "%S", pad2(dt.ss))
+	return s + imageFileName + defaultThumbnailExt
+}
+
+func pad2(i int) string {
+	if i < 10 {
+		return "0" + strconv.Itoa(i)
+	}
+	return strconv.Itoa(i)
+}
+
+func UnFormatThumbNail(formatString string, thumbnailFileName string) string {
+	if len(formatString) < 12 {
+		formatString = defaultThumbnailFormat
+	}
+	return thumbnailFileName[len(formatString) : len(thumbnailFileName)-len(defaultThumbnailExt)]
+}
 
 type ScannedData struct {
 	DataFile           string
@@ -283,7 +372,7 @@ func (p *PicDir) hasSub(name string) *PicDir {
 	return nil
 }
 
-func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
+func WalkDir(file string, tnFormat string, onFile func(string, string) bool) (*PicDir, error) {
 	f, err := filepath.Abs(file)
 	if err != nil {
 		return nil, err
@@ -302,19 +391,30 @@ func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 					add = onFile(path, info.Name())
 				}
 				if add {
-					dt := ""
-					_, err := image.NewImage(path, true, func(i *image.IFDEntry, w *image.Walker) bool {
+
+					var dt *FileDateTime
+					image.NewImage(path, false, func(i *image.IFDEntry, w *image.Walker) bool {
 						if i != nil {
-							if i.TagData.Name == "DateTimeOriginal" {
-								dt = i.Value
+							if i.TagData.Name == "DateTimeOriginal" && dt == nil {
+								dt, _ = NewFileDateTimeFromSpec(i.Value)
+							}
+							if i.TagData.Name == "DateTime" && dt == nil {
+								dt, _ = NewFileDateTimeFromSpec(i.Value)
+							}
+							if i.TagData.Name == "DateTimeDigitized" && dt == nil {
+								dt, _ = NewFileDateTimeFromSpec(i.Value)
 							}
 						}
 						return true
-					}, "Test image")
-					if err != nil {
-						dt = findDataTimeFromFile(info.Name())
+					}, "Scan EXIF image data")
+
+					if dt == nil {
+						dt, _ = NewFileDateTimeFromSpec(info.Name())
+						if dt == nil {
+							dt = NewFileDateTimeFromTime(info.ModTime())
+						}
 					}
-					dir.Add(path[pref:], dt)
+					dir.Add(path[pref:], dt.Format(tnFormat, info.Name()))
 				}
 			}
 		}
@@ -323,23 +423,19 @@ func WalkDir(file string, onFile func(string, string) bool) (*PicDir, error) {
 	return dir, nil
 }
 
-func findDataTimeFromFile(spec string) string {
-	spec1 := []byte(spec)
-	spec2 := make([]byte, 14)
-	pos := 0
-	for _, c := range spec1 {
-		if c >= '0' && c <= '9' {
-			spec2[pos] = c
-			pos++
-			if pos > 13 {
-				break
-			}
+func readIntFromSpec(spec []byte, from, len int) (int, int) {
+	acc := 0
+	for i := from; i < (from + len); i++ {
+		acc = acc * 10
+		si := int(spec[i])
+		if si >= '0' && si <= '9' {
+			acc = acc + (int(spec[i] - '0'))
 		}
 	}
-	return string(spec2)
+	return acc, from + len
 }
 
-func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData, error) {
+func ScanDirectory(dir string, ext []string, dataFileName string, thumbNailFormat string) (*ScannedData, error) {
 	dataDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -358,7 +454,7 @@ func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData,
 		//
 		// No existing file state data json
 		//
-		scanData, scanDataCount, err := createScanData(dataDir, ext, dataFileName)
+		scanData, scanDataCount, err := createScanData(dataDir, ext, dataFileName, thumbNailFormat)
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +478,7 @@ func ScanDirectory(dir string, ext []string, dataFileName string) (*ScannedData,
 	if err != nil {
 		return nil, err
 	}
-	scanData, scanDataCount, err := createScanData(dataDir, ext, dataFileName)
+	scanData, scanDataCount, err := createScanData(dataDir, ext, dataFileName, thumbNailFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -412,13 +508,13 @@ func (p *ScannedData) Commit(indent bool) error {
 	return fmt.Errorf("no data to scan data to Commit")
 }
 
-func createScanData(dir string, ext []string, dataFileName string) (*PicDir, int, error) {
+func createScanData(dir string, ext []string, dataFileName string, thumbNailFormat string) (*PicDir, int, error) {
 	lcExt := make([]string, len(ext))
 	for i, e := range ext {
 		lcExt[i] = strings.ToLower(e)
 	}
 	count := 0
-	sd, err := WalkDir(dir, func(p string, n string) bool {
+	sd, err := WalkDir(dir, thumbNailFormat, func(p string, n string) bool {
 		if n == dataFileName {
 			return false // dont include the data file in the data
 		}
