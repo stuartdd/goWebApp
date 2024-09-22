@@ -43,7 +43,7 @@
         },
         "ufs": {
           "Cmd": [
-            "./textToJson",
+            "./webtools",
             "ufsConfig.json"
           ],
           "Dir": "",

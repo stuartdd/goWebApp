@@ -2,6 +2,6 @@
 
 dmesg | grep -i "$1" > execDmesg.raw
 
-./textToJson execDmesg.json
+./webtools execDmesg.json
 
 rm execDmesg.raw

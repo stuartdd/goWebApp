@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/stuartdd/goWebApp/config"
-	"github.com/stuartdd/goWebApp/pictures"
 )
 
 const UserParam = "user"
@@ -226,7 +225,7 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 				}
 			}
 			if asThumbnail {
-				ulp = filepath.Join(ulp, pictures.UnFormatThumbNail(p.config.GetThumbnailFormat(), np))
+				ulp = filepath.Join(ulp, np)
 			} else {
 				ulp = filepath.Join(ulp, np)
 			}

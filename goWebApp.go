@@ -2,17 +2,14 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"log"
 	"os"
-	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/stuartdd/goWebApp/config"
 	"github.com/stuartdd/goWebApp/logging"
-	"github.com/stuartdd/goWebApp/pictures"
 	"github.com/stuartdd/goWebApp/server"
 )
 
@@ -54,8 +51,6 @@ func main() {
 	createLocationsFlag := s != ""
 	s, addPos := getArg("add")
 	addUserFlag := s != ""
-	s, scanPos := getArg("scan")
-	scanDirFlag := s != ""
 
 	if addUserFlag && addPos == 0 {
 		// add was the last parameter!
@@ -94,16 +89,6 @@ func main() {
 	if killServer {
 		server.SendToHost(cfg.GetPortString(), "server/exit")
 		time.Sleep(999 * time.Millisecond)
-	}
-
-	if scanDirFlag {
-		if scanPos == 0 {
-			osExitWithMessage(1, "Scan: requires a user name.")
-		}
-		user := os.Args[scanPos]
-		output := scanUserOriginals(user, cfg)
-		os.Stdout.WriteString(output)
-		os.Exit(0)
 	}
 
 	if createLocationsFlag {
@@ -238,44 +223,4 @@ func osReader(message string, chars string) string {
 		return s
 	}
 	return ""
-}
-
-func scanUserOriginals(user string, cfg *config.ConfigData) string {
-	defer func() {
-		if r := recover(); r != nil {
-			pm, ok := r.(*config.PanicMessage)
-			if ok {
-				if pm == nil {
-					err := r.(error)
-					pm = config.NewPanicMessageFromString(err.Error())
-				}
-				osExitWithMessage(1, fmt.Sprintf("Scan: User '%s'. %s", user, pm))
-			} else {
-				osExitWithMessage(1, fmt.Sprintf("Scan: User '%s'. %s\n%s", user, r, debug.Stack()))
-			}
-		}
-	}()
-
-	path := cfg.GetUserLocPath(user, "original")
-	sd, err := pictures.ScanDirectory(path, []string{"jpg", "jpeg"}, pictures.DirDataScanFileName, cfg.GetThumbnailFormat())
-	if err != nil {
-		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))
-	}
-	var buff bytes.Buffer
-	sd.ListNewAddDel(func(fct pictures.FileChangeType, s string) {
-		switch fct {
-		case pictures.FileAdd:
-			buff.WriteString(fmt.Sprintf("ADD:%s", s))
-		case pictures.FileNew:
-			buff.WriteString(fmt.Sprintf("NEW:%s", s))
-		case pictures.FileDel:
-			buff.WriteString(fmt.Sprintf("DEL:%s", s))
-		}
-		buff.WriteString("\n")
-	})
-	err = sd.Commit(true)
-	if err != nil {
-		osExitWithMessage(1, fmt.Sprintf("Scan: '%s'.", err.Error()))
-	}
-	return buff.String()
 }
