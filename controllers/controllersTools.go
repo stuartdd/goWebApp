@@ -225,7 +225,7 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 				}
 			}
 			if asThumbnail {
-				ulp = filepath.Join(ulp, np)
+				ulp = filepath.Join(ulp, p.config.ConvertToThumbnail(np))
 			} else {
 				ulp = filepath.Join(ulp, np)
 			}

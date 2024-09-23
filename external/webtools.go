@@ -17,6 +17,18 @@ import (
 const defaultthumbNailTimeStamp = "%y_%m_%d_%H_%M_%S_"
 const defaultThumbnailExt = ".jpg"
 
+var orientationNames = map[string]string{
+	"0": "?: Not defined",
+	"1": "1: 0 degrees",
+	"2": "2: 0 degrees, mirrored",
+	"3": "3: 180 degrees",
+	"4": "4: 180 degrees, mirrored",
+	"5": "5: 90 degrees",
+	"6": "6: 90 degrees, mirrored",
+	"7": "7: 270 degrees",
+	"8": "8: 270 degrees, mirrored",
+}
+
 type Token struct {
 	Pos    int
 	Name   string
@@ -35,9 +47,14 @@ type Users struct {
 	ImagePaths []string
 }
 
-// func (u *Users) Path(index int) string {
-// 	return filepath.Join(u.ImageRoot, u.ImagePaths[index])
-// }
+// 1 = 0 degrees: the correct orientation, no adjustment is required.
+// 2 = 0 degrees, mirrored: image has been flipped back-to-front.
+// 3 = 180 degrees: image is upside down.
+// 4 = 180 degrees, mirrored: image has been flipped back-to-front and is upside down.
+// 5 = 90 degrees: image has been flipped back-to-front and is on its side.
+// 6 = 90 degrees, mirrored: image is on its side.
+// 7 = 270 degrees: image has been flipped back-to-front and is on its far side.
+// 8 = 270 degrees, mirrored: image is on its far side.
 
 func (u *Users) ToUserPath(name string) string {
 	var buff bytes.Buffer
@@ -207,7 +224,7 @@ func RunThumbnails(content []byte, configFileName string) {
 				}
 			}
 			return false
-		}, func(info *UserPathInfo, path string, fileName string, tn string) {
+		}, func(info *UserPathInfo, path string, fileName string, tn string, orientation string) {
 			p2 := filepath.Join(thumbNailRoot, filepath.Dir(path)[len(info.root):], tn)
 			p2Dir := filepath.Dir(p2)
 			okDir, _ := fileExists(p2Dir, true, 0)
@@ -225,6 +242,11 @@ func RunThumbnails(content []byte, configFileName string) {
 			}
 			ok, _ := fileExists(p2, false, 0)
 			if !ok {
+				orientationName, ok := orientationNames[strings.TrimSpace(orientation)]
+				if !ok {
+					orientationName = orientationNames["0"]
+				}
+				log("Orientation = " + orientationName + "\n")
 				exec := strings.ReplaceAll(thumbnailInfo.ThumbNailsExec, "%in", path)
 				exec = strings.ReplaceAll(exec, "%out", p2)
 				os.Stdout.WriteString(exec + "\n")
@@ -511,7 +533,7 @@ func logLn(s string) {
 	os.Stdout.WriteString(fmt.Sprintf(" ## %s\n", s))
 }
 
-func WalkDir(config *ThumbnailInfo, userPathInfo *UserPathInfo, onFile func(string) bool, onLog func(*UserPathInfo, string, string, string)) error {
+func WalkDir(config *ThumbnailInfo, userPathInfo *UserPathInfo, onFile func(string) bool, onLog func(*UserPathInfo, string, string, string, string)) error {
 	absBasePath, err := filepath.Abs(userPathInfo.Joined())
 	if err != nil {
 		return err
@@ -530,6 +552,7 @@ func WalkDir(config *ThumbnailInfo, userPathInfo *UserPathInfo, onFile func(stri
 				}
 				if add {
 					var dt *FileDateTime
+					or := "0"
 					NewImage(path, false, func(i *IFDEntry, w *Walker) bool {
 						if i != nil {
 							if i.TagData.Name == "DateTimeOriginal" && dt == nil {
@@ -540,6 +563,9 @@ func WalkDir(config *ThumbnailInfo, userPathInfo *UserPathInfo, onFile func(stri
 							}
 							if i.TagData.Name == "DateTimeDigitized" && dt == nil {
 								dt, _ = NewFileDateTimeFromSpec(i.Value, 3)
+							}
+							if i.TagData.Name == "Orientation" && dt == nil {
+								or = i.Value
 							}
 						}
 						return true
@@ -552,7 +578,7 @@ func WalkDir(config *ThumbnailInfo, userPathInfo *UserPathInfo, onFile func(stri
 						}
 					}
 
-					onLog(userPathInfo, path, info.Name(), dt.Format(config.ThumbNailTimeStamp, info.Name()))
+					onLog(userPathInfo, path, info.Name(), dt.Format(config.ThumbNailTimeStamp, info.Name()), or)
 				}
 			}
 		}

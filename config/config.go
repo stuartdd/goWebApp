@@ -17,6 +17,8 @@ const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultConfigReloadTime = 3600
+const thumbnailTrimPrefix = 20
+const thumbnailTrimSuffix = 4
 
 type PanicMessage struct {
 	Status int
@@ -230,7 +232,7 @@ func (p *UserData) IsHidden() bool {
 type ConfigDataInternal struct {
 	ReloadConfigSeconds int64
 	Port                int
-	ThumbnailFormat     string
+	ThumbnailTrim       []int
 	Users               map[string]UserData
 	ContentTypeCharset  string
 	LogData             *LogData
@@ -323,7 +325,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		StaticData:          &StaticData{Path: "", Home: ""},
 		TemplateStaticFiles: nil,
 		FaviconIcoPath:      "",
-		ThumbnailFormat:     "",
+		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
 		Env:                 map[string]string{},
 	}
 
@@ -341,6 +343,10 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 	}
 
 	configDataExtternal.internal = configDataInternal
+
+	if len(configDataExtternal.internal.ThumbnailTrim) < 2 {
+		return nil, NewConfigErrorData().AddError("Config data entry ThumbnailTrim data has less than 2 entries")
+	}
 
 	SetContentTypeCharset(configDataInternal.ContentTypeCharset)
 	/*
@@ -465,10 +471,6 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		errorList.AddError(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
 	} else {
 		p.SetFaviconIcoPath(f)
-	}
-
-	if len(p.internal.ThumbnailFormat) < 12 {
-		p.internal.ThumbnailFormat = ""
 	}
 
 	for userId, userData := range p.internal.Users {
@@ -706,8 +708,13 @@ func (p *ConfigData) GetFilesFilter() []string {
 	return p.internal.FilterFiles
 }
 
-func (p *ConfigData) GetThumbnailFormat() string {
-	return p.internal.ThumbnailFormat
+func (p *ConfigData) ConvertToThumbnail(name string) (resp string) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = name
+		}
+	}()
+	return name[p.internal.ThumbnailTrim[0] : len(name)-p.internal.ThumbnailTrim[1]]
 }
 
 func (p *ConfigData) GetServerDataRoot() string {
