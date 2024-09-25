@@ -113,6 +113,26 @@ func (p *UrlRequestParts) GetCachedMap() *map[string]string {
 	return p.cache
 }
 
+func (p *UrlRequestParts) QueryAsString() string {
+	var buff bytes.Buffer
+	hasAmper := false
+	if len(p.Query) > 0 {
+		for n, v := range p.Query {
+			if len(v) > 0 {
+				buff.WriteString(n)
+				buff.WriteRune('=')
+				buff.WriteString(v[0])
+			}
+			hasAmper = true
+			buff.WriteRune('&')
+		}
+	}
+	if hasAmper {
+		return "?" + buff.String()[0:buff.Len()-1]
+	}
+	return ""
+}
+
 func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 	var v string
 	if fallback {

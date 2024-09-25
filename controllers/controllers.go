@@ -24,15 +24,13 @@ type Handler interface {
 type StaticFileHandler struct {
 	filePath []string
 	urlParts *UrlRequestParts
-	log      func(string)
 	verbose  func(string)
 }
 
-func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, logFunc func(string), verboseFunc func(string)) *StaticFileHandler {
+func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, verboseFunc func(string)) *StaticFileHandler {
 	return &StaticFileHandler{
 		filePath: file,
 		urlParts: urlParts,
-		log:      logFunc,
 		verbose:  verboseFunc,
 	}
 }
@@ -69,16 +67,14 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
-	log        func(string)
 	verbose    func(string)
 	addLrp     func(string, string, int, bool) bool
 }
 
-func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string), verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
+func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
 	return &ReadFileHandler{
 		parameters: urlParts,
 		configData: configData,
-		log:        logFunc,
 		verbose:    verboseFunc,
 		addLrp:     addFunc,
 	}
@@ -107,22 +103,19 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 type DirHandler struct {
 	parameters *UrlRequestParts
 	listFiles  bool
-	log        func(string)
 	verbose    func(string)
 }
 
-func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, logFunc func(string), verboseFunc func(string)) Handler {
+func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, verboseFunc func(string)) Handler {
 	return &DirHandler{
 		parameters: urlRequestData,
 		listFiles:  listFiles,
-		log:        logFunc,
 		verbose:    verboseFunc,
 	}
 }
 
 func (p *DirHandler) Submit() *ResponseData {
 	var err error
-
 	file := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	stats, err := os.Stat(file)
 	if err != nil {
@@ -145,14 +138,12 @@ func (p *DirHandler) Submit() *ResponseData {
 
 type TreeHandler struct {
 	parameters *UrlRequestParts
-	log        func(string)
 	verbose    func(string)
 }
 
-func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, logFunc func(string), verboseFunc func(string)) Handler {
+func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
 	return &TreeHandler{
 		parameters: urlParts,
-		log:        logFunc,
 		verbose:    verboseFunc,
 	}
 }
@@ -187,15 +178,13 @@ func (p *TreeHandler) Submit() *ResponseData {
 type PostFileHandler struct {
 	parameters *UrlRequestParts
 	request    *http.Request
-	log        func(string)
 	verbose    func(string)
 }
 
-func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, logFunc func(string), verboseFunc func(string)) Handler {
+func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, verboseFunc func(string)) Handler {
 	return &PostFileHandler{
 		parameters: urlParts,
 		request:    r,
-		log:        logFunc,
 		verbose:    verboseFunc,
 	}
 }
@@ -228,8 +217,8 @@ func (p *PostFileHandler) Submit() *ResponseData {
 type ExecHandler struct {
 	parameters *UrlRequestParts
 	createMap  func([]byte, []byte, int) map[string]interface{}
-	log        func(string)
 	verbose    func(string)
+	log        func(string)
 	addLrp     func(string, string, int, bool) bool
 }
 
@@ -237,8 +226,8 @@ func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, cr
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
-		log:        logFunc,
 		verbose:    verboseFunc,
+		log:        logFunc,
 		addLrp:     addFunc,
 	}
 }

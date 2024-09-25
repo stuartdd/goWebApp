@@ -157,58 +157,58 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
-			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getTestUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 
 		p, ok, shouldLog = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, logFunc, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
@@ -287,10 +287,10 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if staticFileData.HasStaticData() && h.config.GetStaticData().CheckFileExists(urlPath) {
-		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, logFunc, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, verboseFunc).Submit(), shouldLog)
 		return
 	}
-	logFunc(fmt.Sprintf("Req:  %s:%s", r.Method, urlPath))
+	logFunc(fmt.Sprintf("Req:  %s:%s%s", r.Method, urlPath, requestData.QueryAsString()))
 	h.writeResponse(w, controllers.NewResponseData(http.StatusNotFound).WithContentReasonAsJson("Resource not found", true), shouldLog)
 }
 
