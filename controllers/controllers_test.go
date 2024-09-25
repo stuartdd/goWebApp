@@ -28,13 +28,13 @@ func TestToJson(t *testing.T) {
 
 	params = NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home", PathParam: path})
 	files, _ := os.ReadDir(path)
-	json = filesAsJson(files, params, nil, "")
+	json = listFilesAsJson(files, params, nil, "")
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":{\"name\":\"") {
 		t.Fatalf("filesAsJson with path Invalid header in json. [%s]", string(json))
 	}
 
 	params = NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
-	json = filesAsJson(files, params, nil, "")
+	json = listFilesAsJson(files, params, nil, "")
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":null,\"files\":[") {
 		t.Fatalf("filesAsJson without path Invalid header in json. [%s]", string(json))
 	}

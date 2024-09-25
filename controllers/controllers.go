@@ -131,12 +131,13 @@ func (p *DirHandler) Submit() *ResponseData {
 	if !stats.IsDir() {
 		panic(config.NewPanicMessage("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", file)))
 	}
+	index := p.parameters.GetQueryAsInt("index", -1)
 	if p.listFiles {
 		entries, err := os.ReadDir(file)
 		if err != nil {
 			panic(config.NewPanicMessage("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
 		}
-		return NewResponseData(http.StatusOK).WithContentBytes(filesAsJson(entries, p.parameters, p.verbose, file)).WithMimeType("json")
+		return NewResponseData(http.StatusOK).WithContentBytes(listFilesAsJson(entries, p.parameters, p.verbose, file, index)).WithMimeType("json")
 	} else {
 		return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters, p.verbose, file)).WithMimeType("json")
 	}
@@ -434,7 +435,7 @@ func treeAsJson(root *TreeDirNode, params *UrlRequestParts) []byte {
 	return buffer.Bytes()
 }
 
-func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(string), path string) []byte {
+func listFilesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(string), path string, index int) []byte {
 	var buffer bytes.Buffer
 	entLen := len(ents)
 	buffer.WriteRune('{')
@@ -442,18 +443,30 @@ func filesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(strin
 	buffer.WriteRune(',')
 	writePathToJson(params.GetOptionalParam(PathParam, ""), PathParam, &buffer)
 	buffer.WriteString("\"files\":[")
-	bufLen := buffer.Len()
 	count := 0
-	for i := 0; i < entLen; i++ {
-		e := ents[i]
+	if index != -1 {
+		if index >= entLen {
+			index = entLen - 1
+		}
+		e := ents[index]
 		if filterDirNames(e, params.GetConfigFileFilter()) {
 			writeSingleFileNameToJson(e, &buffer)
-			bufLen = buffer.Len()
-			buffer.WriteRune(',')
 			count++
 		}
+	} else {
+		bufLen := buffer.Len()
+		for i := 0; i < entLen; i++ {
+			e := ents[i]
+			if filterDirNames(e, params.GetConfigFileFilter()) {
+				writeSingleFileNameToJson(e, &buffer)
+				bufLen = buffer.Len()
+				buffer.WriteRune(',')
+				count++
+			}
+		}
+		buffer.Truncate(bufLen)
 	}
-	buffer.Truncate(bufLen)
+
 	buffer.WriteString("]}")
 	if verbose != nil {
 		verbose(fmt.Sprintf("List Files:%s Returned[%d]", path, count))

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/stuartdd/goWebApp/config"
@@ -127,6 +128,15 @@ func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 		return false
 	}
 	return fallback
+}
+
+func (p *UrlRequestParts) GetQueryAsInt(key string, fallback int) int {
+	v := p.GetOptionalQuery(key, strconv.Itoa(fallback))
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+	return i
 }
 
 func (p *UrlRequestParts) GetOptionalQuery(key string, fallback string) string {
