@@ -59,8 +59,7 @@ func (p *PanicMessage) Error() string {
 }
 
 /*
-ConfigData - Read configuration data from the JSON configuration file.
-Note any undefined values are defaulted to constants defined below
+Template data read from configuration data JSONn file.
 */
 type TemplateStaticFiles struct {
 	Files        []string
@@ -78,12 +77,12 @@ func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template data file. Error:%s", err.Error())
 	}
-	m := make(map[string]string)
+	m := make(map[string]interface{})
 	err = json.Unmarshal(content, &m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
 	}
-	t.data = m
+	t.data = FlattenMap(m, "data")
 	t.FullFileName = f
 	return t, nil
 }
@@ -838,6 +837,37 @@ func (p *ConfigData) String() (string, error) {
 		return "", fmt.Errorf("failed to present data as Json:%s. Error:%s", p.ConfigName, err.Error())
 	}
 	return string(data), nil
+}
+
+func FlattenMap(m map[string]interface{}, prefix string) map[string]string {
+	out := make(map[string]string)
+	flattenRec(out, []string{}, prefix, m)
+	return out
+}
+
+func flattenRec(m map[string]string, path []string, n string, v interface{}) {
+	switch x := v.(type) {
+	case map[string]interface{}:
+		for nn, vv := range x {
+			flattenRec(m, appendStrF(path, n), nn, vv)
+		}
+	case []interface{}:
+		for nn, vv := range x {
+			flattenRec(m, appendStrF(path, n), strconv.Itoa(nn), vv)
+		}
+	default:
+		m[strings.Join(appendStrF(path, n), ".")] = fmt.Sprintf("%v", x)
+	}
+}
+
+func appendStrF(path []string, p string) []string {
+	if p == "" {
+		return path
+	}
+	pp := make([]string, len(path)+1)
+	copy(pp, path)
+	pp[len(path)] = p
+	return pp
 }
 
 func (p *ConfigData) SubstituteFromMap(cmd []byte, userEnv map[string]string) string {

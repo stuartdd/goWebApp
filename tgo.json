@@ -144,10 +144,10 @@
   "TemplateStaticFiles": {
     "Files": [
       "tgo.html",
-      "tgo2.html",
+      "tgoimage.html",
       "tgo.css"
     ],
-    "DataFile": "./testdata/configDataPI.json",
+    "DataFile": "%{WebServerHome}/static/templateData.json",
     "Data": null,
     "FullFileName": ""
   },
