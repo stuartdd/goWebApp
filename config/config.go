@@ -82,7 +82,7 @@ func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
 	}
-	t.data = FlattenMap(m, "data")
+	t.data = FlattenMap(m, "")
 	t.FullFileName = f
 	return t, nil
 }
