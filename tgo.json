@@ -152,10 +152,6 @@
     "FullFileName": ""
   },
   "FaviconIcoPath": "tgo.ico",
-  "Env": {
-    "linuxUserGit": "/home/stuart/git",
-    "hnav": "UL"
-  },
   "ExecManager": {
     "Path": "./testdata/admin",
     "File": "RunningProcs.json",

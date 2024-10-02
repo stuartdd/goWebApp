@@ -82,20 +82,21 @@ func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
 	}
-	t.data = FlattenMap(m, "data")
+	t.data = FlattenMap(m, "")
 	t.FullFileName = f
 	return t, nil
 }
+
 func (t *TemplateStaticFiles) String() string {
 	return fmt.Sprintf("%s. Templates:%s", t.FullFileName, t.Files)
 }
 
 func (t *TemplateStaticFiles) Data(plus map[string]string) map[string]string {
 	m := map[string]string{}
-	for n, v := range plus {
+	for n, v := range t.data {
 		m[n] = v
 	}
-	for n, v := range t.data {
+	for n, v := range plus {
 		m[n] = v
 	}
 	return m
