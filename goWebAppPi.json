@@ -35,15 +35,57 @@
        }
       }
     },
+    "julie": {
+       "Hidden": null,
+      "Name": "Julie",
+      "Home": "***/media/USBHDD1/shares/julie",
+      "Locations": {
+        "thumbs": "***/home/pi/server/thumbnails/%{id}",
+        "original": "***/media/USBHDD1/shares/%{id}",
+        "base": ""
+        }
+    },
+    "owain": {
+      "Hidden": null,
+      "Name": "Owain",
+      "Home": "***/media/USBHDD1/shares/owain",
+      "Locations": {
+        "thumbs": "***/home/pi/server/thumbnails/%{id}",
+        "original": "***/media/USBHDD1/shares/%{id}",
+        "base": ""
+        }
+    },
+   "huw": {
+      "Hidden": null,
+      "Name": "Huw",
+      "Home": "***/media/USBHDD1/shares/huw",
+      "Locations": {
+        "thumbs": "***/home/pi/server/thumbnails/%{id}",
+        "original": "***/media/USBHDD1/shares/%{id}",
+        "base": ""
+        }
+    },
     "stuart": {
       "Hidden": null,
       "Name": "Stuart",
       "Home": "***/media/USBHDD1/shares/stuart",
       "Locations": {
         "dev": "Repository",
+        "thumbs": "***/home/pi/server/thumbnails/%{id}",
+        "original": "***/media/USBHDD1/shares/%{id}",
         "mydb": "mydb",
         "base": ""
-     }
+        }
+    },
+    "shared": {
+       "Hidden": null,
+      "Name": "Shared. Somthing for everyone!",
+      "Home": "***/media/USBHDD1/shares/shared",
+      "Locations": {
+        "thumbs": "***/home/pi/server/thumbnails/%{id}",
+        "original": "***/media/USBHDD1/shares/%{id}",
+        "base": ""
+        }
     }
   },
   "ContentTypeCharset": "utf-8",
@@ -67,7 +109,17 @@
   "ServerDataRoot": "/home/pi/server/goWebApp/testdata",
   "StaticData": {
     "Path":"/home/pi/server/goWebApp/static",
-    "Home" :"dart.html"
+    "Home" :"tgo.html"
+  },
+  "TemplateStaticFiles": {
+    "Files": [
+      "tgo.html",
+      "tgoimage.html",
+      "tgo.css"
+    ],
+    "DataFile": "static/templateData.json",
+    "Data": null,
+    "FullFileName": ""
   },
   "FaviconIcoPath": "favicon1.ico"
 }
