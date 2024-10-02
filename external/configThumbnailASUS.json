@@ -1,0 +1,30 @@
+{
+    "thumbNailsExec": "/usr/bin/convert -auto-orient -thumbnail 200 \"%in\" \"%out\"",
+    "thumbNailsRoot": "../../pictures/thumbnails",
+    "thumbNailTimeStamp": "%y_%m_%d_%H_%M_%S_",
+    "thumbNailFileSuffix": ".jpg",
+    "imageExtensions": [
+        ".jpg",
+        ".JPG"
+    ],
+    "logPath": "../../pictures/thumbnails/logs",
+    "logName": "ThumbNailGen",
+    "maxFiles": 50,
+    "dryRun": false,
+    "verbose": true,
+    "resources": {
+            "bob": {
+                "imageRoot": "../../pictures/originals",
+                "imagePaths": [
+                    "Bobs_Phone"
+                ]
+            },
+            "stuart": {
+                "imageRoot": "../../pictures/originals",
+                "imagePaths": [
+                    "sPics",
+                    "Stuart_Phone"
+                ]
+            }
+    }
+}

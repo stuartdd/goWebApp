@@ -6,7 +6,7 @@ cd $CONTROL_DIR
 
 while true
 do
-  ./goWebApp config=tgo.json
+  ./goWebApp config=tgo.json -vr
   RESP=$?
   echo "########################################################"
   echo "Response: $RESP"

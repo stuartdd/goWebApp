@@ -87,16 +87,16 @@ type image struct {
 	app1Size   uint32 // APP1 data size
 	IFDdata    []*IFDEntry
 	debug      bool
-	selector   func(*IFDEntry, *Walker) bool
+	selectCB   func(*IFDEntry, *Walker) bool
 	logOutput  *os.File
 }
 
-func NewImage(imagePath string, debug bool, sel func(*IFDEntry, *Walker) bool, log string) (img *image, err error) {
+func NewImage(imagePath string, debug bool, selectCallBack func(*IFDEntry, *Walker) bool, logFileName string) (img *image, err error) {
 	var logOutput *os.File
-	if log != "" {
-		logOutput, err = os.Create(log)
+	if logFileName != "" {
+		logOutput, err = os.Create(logFileName)
 		if err != nil {
-			panic(fmt.Sprintf("Requested output file '%s' could not be created", log))
+			panic(fmt.Sprintf("Requested output file '%s' could not be created", logFileName))
 		}
 	}
 	defer logClose(logOutput)
@@ -130,7 +130,7 @@ func NewImage(imagePath string, debug bool, sel func(*IFDEntry, *Walker) bool, l
 	}
 	image := &image{
 		debug:    debug,
-		selector: sel,
+		selectCB: selectCallBack,
 		name:     imagePath,
 		walker:   walker,
 
@@ -146,8 +146,8 @@ func NewImage(imagePath string, debug bool, sel func(*IFDEntry, *Walker) bool, l
 
 	if image.debug {
 		image.logWriteLn(image.Diagnostics("IMG"))
-		if image.selector != nil {
-			if !image.selector(nil, walker.Clone().Pos(OfsMainImageOffset)) {
+		if image.selectCB != nil {
+			if !image.selectCB(nil, walker.Clone().Pos(OfsMainImageOffset)) {
 				os.Exit(1)
 			}
 		}
@@ -345,7 +345,7 @@ func (p *image) readDirectory(base uint32, walker *Walker, dirName string, depth
 			p.readDirectory(absSubDir, walker.Clone(), ne.TagData.Name, depth+1)
 		} else {
 			ne.Value = p.GetIDFData(ne)
-			if (p.selector != nil && p.selector(ne, walker.Clone().Pos(current))) || p.selector == nil {
+			if (p.selectCB != nil && p.selectCB(ne, walker.Clone().Pos(current))) || p.selectCB == nil {
 				if p.debug {
 					p.logWriteLn(ne.Diagnostics(fmt.Sprintf("[%s of %s :%d] %s ", pad0(uint32(i+1), 2), pad0(uint32(dirCount), 2), depth, dirName)))
 				}
