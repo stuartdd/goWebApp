@@ -150,6 +150,18 @@ func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 	return fallback
 }
 
+func (p *UrlRequestParts) GetOptionalQueryAsInt(key string, fallback int) (int, error) {
+	v := p.GetOptionalQuery(key, "")
+	if v == "" {
+		return fallback, nil
+	}
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback, fmt.Errorf("value '%s' is not an int", key)
+	}
+	return i, nil
+}
+
 func (p *UrlRequestParts) GetQueryAsInt(key string, fallback int) int {
 	v := p.GetOptionalQuery(key, strconv.Itoa(fallback))
 	i, err := strconv.Atoi(v)
@@ -348,6 +360,10 @@ func (p *ResponseData) WithContentMapJson(data map[string]interface{}) *Response
 	return p
 }
 
+/*
+Mime Type should be the short form. For example 'txt' for a content type of 'text/plain'.
+Do not look up the ContentType here!
+*/
 func (p *ResponseData) WithMimeType(mimeType string) *ResponseData {
 	p.MimeType = mimeType
 	return p

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -330,6 +331,49 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	}
 	m1["users"] = l1
 	return m1
+}
+
+func GetLog(configData *config.ConfigData, previous int) *ResponseData {
+	ld := configData.GetLogData()
+	list := []string{}
+	filepath.Walk(ld.Path, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".log") {
+			list = append(list, path)
+		}
+		return nil
+	})
+	if len(list) == 0 {
+		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("No log files were found", true)
+	}
+	slices.Sort(list)
+
+	var b bytes.Buffer
+	for i, v := range list {
+		b.WriteString("Offset[")
+		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))
+		b.WriteString("] ")
+		b.WriteString(v[len(ld.Path):])
+		b.WriteString("\n")
+	}
+	if previous < 0 {
+		previous = 0
+	}
+	if previous >= (len(list)) {
+		previous = len(list) - 1
+	}
+	fileName := list[len(list)-(previous+1)]
+	b.WriteString("Displaying log File at Offset[")
+	b.WriteString(fmt.Sprintf("%2d", len(list)-(previous+1)))
+	b.WriteString("] ")
+	b.WriteString(fileName[len(ld.Path):])
+	b.WriteString("\n\n")
+
+	fileContent, err := os.ReadFile(fileName)
+	if err != nil {
+		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("Log file could not be read", true)
+	}
+	b.WriteString(string(fileContent))
+	return NewResponseData(http.StatusOK).WithContentBytes(b.Bytes()).WithMimeType("log")
 }
 
 func GetFaveIcon(configData *config.ConfigData) *ResponseData {

@@ -52,6 +52,7 @@ var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldNotLo
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLog)
 var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLog)
 var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLog)
+var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldNotLog)
 
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLog)
 
@@ -171,25 +172,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p, ok, shouldLog = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, verboseFunc).Submit(), shouldLog)
-			return
-		}
-		p, ok, shouldLog = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
-			return
-		}
-		p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
-			return
-		}
-		p, ok, shouldLog = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
-			return
-		}
 		p, ok, shouldLog = getTestUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
@@ -198,7 +180,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		p, ok, shouldLog = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetUsersAsMap(h.config.GetUsers())), shouldLog)
 			return
 		}
 		p, ok, shouldLog = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
@@ -264,6 +246,16 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getServerUsersMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapJson(controllers.GetUsersAsMap(h.config.GetUsers())), shouldLog)
+		return
+	}
+	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+	if ok {
+		ofs, err := requestData.AsAdmin().GetOptionalQueryAsInt("offset", 0)
+		if err != nil {
+			h.writeResponse(w, controllers.NewResponseData(http.StatusBadRequest).WithContentReasonAsJson(err.Error(), true), true)
+			return
+		}
+		h.writeResponse(w, controllers.GetLog(h.config, ofs), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getFaviconMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
