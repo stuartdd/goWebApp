@@ -363,7 +363,7 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 	}
 	fileName := list[len(list)-(previous+1)]
 	b.WriteString("Displaying log File at Offset[")
-	b.WriteString(fmt.Sprintf("%2d", len(list)-(previous+1)))
+	b.WriteString(fmt.Sprintf("%2d", previous))
 	b.WriteString("] ")
 	b.WriteString(fileName[len(ld.Path):])
 	b.WriteString("\n\n")
