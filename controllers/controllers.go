@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -207,15 +208,18 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	file := p.parameters.GetUserLocPath(true, false, p.parameters.GetQueryAsBool("base64", false))
 	if p.parameters.GetOptionalParam("loc", "error") == "logs" {
 		action := p.parameters.GetOptionalParam("action", "append")
-		if strings.HasSuffix()
+		if !strings.HasSuffix(file, ".log") {
+			file = file + ".log"
+		}
 		switch action {
 		case "append":
-			log, err := logging.NewLogger(filepath.Dir(file), filepath.Base(file), 99, false, false)
+			logActionAppend(file, body)
+		case "truncate":
+			err := os.Remove(file)
 			if err != nil {
-				panic(config.NewPanicMessage("Error:log: Cannot open file", http.StatusBadRequest, action))
+				panic(config.NewPanicMessage("Error:log: Cannot truncate file", http.StatusBadRequest, action))
 			}
-			defer log.Close()
-			log.Log(string(body))
+			logActionAppend(file, body)
 		default:
 			panic(config.NewPanicMessage("Invalid 'log' action", http.StatusBadRequest, action))
 		}
@@ -230,6 +234,18 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	}
 
 	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File saved", false)
+}
+
+func logActionAppend(file string, logLine []byte) {
+	log, err := logging.NewLogger(filepath.Dir(file), filepath.Base(file), 99, false, false)
+	if err != nil {
+		panic(config.NewPanicMessage("Error:log: Cannot open file", http.StatusBadRequest, "append"))
+	}
+	defer log.Close()
+	sc := bufio.NewScanner(strings.NewReader(string(logLine)))
+	for sc.Scan() {
+		log.Log(sc.Text())
+	}
 }
 
 type ExecHandler struct {

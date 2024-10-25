@@ -27,12 +27,19 @@
              "echo", "User:%{user} Loc:%{loc} Find:%{find} PIUser:%{USER} PWD:%{PWD}"
          ]
        },
-       "llog": {
-        "StdOutType": "txt",
-         "Cmd": [
-             "./latestLog.sh"
-         ]
-       }
+        "ufs": {
+          "Cmd": [
+            "./webtools",
+            "ufsConfig.json"
+          ],
+          "Dir": "",
+          "StdOutType": "json",
+          "Log": "",
+          "LogOut": "",
+          "LogErr": "",
+          "NzCodeReturns": 200,
+          "Detached": false
+        }
       }
     },
     "julie": {

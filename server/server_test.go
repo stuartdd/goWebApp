@@ -74,8 +74,36 @@ func TestServerPostLog(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	url := "log/user/stuart/name/log1/action/append"
-	RunClientPost(t, configData, url, 202, postDataFile1)
+
+	url := "log/user/stuart/name/log1/action/truncate"
+	RunClientPost(t, configData, url, 202, "Log Line 1\nLog Line 2")
+	url = "files/user/stuart/loc/logs/name/log1.log"
+	_, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if strings.Count(respBody, "Log Line ") != 2 {
+		t.Fatalf("Truncated logs should only contain 2 lines")
+	}
+	if strings.Count(respBody, "Log Line 1") != 1 {
+		t.Fatalf("Truncated logs should only contain 1 Line 1")
+	}
+	if strings.Count(respBody, "Log Line 2") != 1 {
+		t.Fatalf("Truncated logs should only contain 1 Line 2")
+	}
+	url = "log/user/stuart/name/log1/action/append"
+	RunClientPost(t, configData, url, 202, "Log Line 3")
+	url = "files/user/stuart/loc/logs/name/log1.log"
+	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if strings.Count(respBody, "Log Line ") != 3 {
+		t.Fatalf("Truncated logs should only contain 3 lines")
+	}
+	if strings.Count(respBody, "Log Line 1") != 1 {
+		t.Fatalf("Truncated logs should only contain 1 Line 1")
+	}
+	if strings.Count(respBody, "Log Line 2") != 1 {
+		t.Fatalf("Truncated logs should only contain 1 Line 2")
+	}
+	if strings.Count(respBody, "Log Line 3") != 1 {
+		t.Fatalf("Truncated logs should only contain 1 Line 3")
+	}
 
 }
 
