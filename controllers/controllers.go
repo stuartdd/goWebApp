@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/logging"
 	"github.com/stuartdd/goWebApp/runCommand"
 )
 
@@ -204,6 +205,22 @@ func (p *PostFileHandler) Submit() *ResponseData {
 		panic(config.NewPanicMessage("Failed to read POST data", http.StatusBadRequest, err.Error()))
 	}
 	file := p.parameters.GetUserLocPath(true, false, p.parameters.GetQueryAsBool("base64", false))
+	if p.parameters.GetOptionalParam("loc", "error") == "logs" {
+		action := p.parameters.GetOptionalParam("action", "append")
+		if strings.HasSuffix()
+		switch action {
+		case "append":
+			log, err := logging.NewLogger(filepath.Dir(file), filepath.Base(file), 99, false, false)
+			if err != nil {
+				panic(config.NewPanicMessage("Error:log: Cannot open file", http.StatusBadRequest, action))
+			}
+			defer log.Close()
+			log.Log(string(body))
+		default:
+			panic(config.NewPanicMessage("Invalid 'log' action", http.StatusBadRequest, action))
+		}
+		return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("Log:"+action, false)
+	}
 	err = os.WriteFile(file, body, 0644)
 	if err != nil {
 		panic(config.NewPanicMessage("Failed to save data", http.StatusInternalServerError, err.Error()))

@@ -64,6 +64,20 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "11", NewUrlRequestMatcher("", "get", true), "", "GET", true, "")
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
 }
+func TestServerPostLog(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	url := "log/user/stuart/name/log1/action/append"
+	RunClientPost(t, configData, url, 202, postDataFile1)
+
+}
 
 func TestServer(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
