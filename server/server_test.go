@@ -355,7 +355,7 @@ func TestReadDirNotFound(t *testing.T) {
 		"\"error\":true",
 		"\"reason\":\"Dir not found\"",
 	})
-	AssertLogContains(t, logger, []string{"Dir not found:404:stat", "missingfolder: no such file or directory"})
+	AssertLogContains(t, logger, []string{"Dir not found", "\"status\":404"})
 	os.Stderr.WriteString(logger.Get())
 }
 
@@ -428,7 +428,7 @@ func TestReadFileNotName(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 74, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"File not found\""})
-	AssertLogContains(t, logger, []string{"File not found:404:stat", "/notExist: no such file or directory"})
+	AssertLogContains(t, logger, []string{"File not found:404", "Error: Status:404"})
 }
 
 func TestReadFileIsDir(t *testing.T) {

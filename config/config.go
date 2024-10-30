@@ -52,7 +52,7 @@ func NewPanicMessage(reason string, status int, logged string) *PanicMessage {
 
 func (p *PanicMessage) String() string {
 	if strings.Contains(p.Logged, "stat") {
-		return fmt.Sprintf("%s:%d:%s", p.Reason, p.Statu)
+		return fmt.Sprintf("%s:%d", p.Reason, p.Status)
 	}
 	return fmt.Sprintf("%s:%d:%s", p.Reason, p.Status, p.Logged)
 }

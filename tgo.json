@@ -89,39 +89,57 @@
         "lsargs": "-l"
       }
     },
-    "bob": {
-      "Hidden": null,
-      "Name": "Bob",
-      "Home": "",
+    "julie": {
+       "Hidden": null,
+      "Name": "Julie",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
       "Locations": {
-        "data": "stateData",
-        "home": "",
-        "original": "***%{WebServerPictures}/originals/%{id}",
-        "pics": "b-pics",
-        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
-        "usr": "b-testfolder"
-      },
-      "Exec": null,
-      "Env": null
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+        }
+    },
+    "owain": {
+      "Hidden": null,
+      "Name": "Owain",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+        }
+    },
+   "huw": {
+      "Hidden": null,
+      "Name": "Huw",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+        }
     },
     "stuart": {
       "Hidden": null,
       "Name": "Stuart",
-      "Home": "",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
       "Locations": {
-        "cache": "cache",
-        "data": "stateData",
-        "dev": "***%{WebServerPictures}/dev/%{id}",
-        "home": "",
-        "logs": "logs",
-        "original": "***%{WebServerPictures}/originals/%{id}",
-        "pics": "s-pics",
-        "testtree": "***%{WebServerPictures}",
-        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
-        "usr": "s-testfolder"
-      },
-      "Exec": null,
-      "Env": null
+        "dev": "Repository",
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "mydb": "mydb",
+        "base": ""
+        }
+    },
+   "shared": {
+      "Hidden": null,
+      "Name": "Shared",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+        }
     }
   },
   "ContentTypeCharset": "utf-8",

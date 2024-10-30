@@ -139,14 +139,15 @@
   "ServerDataRoot": "./testdata",
   "StaticData": {
     "Path":"%{WebServerHome}/static",
-    "Home" :"dart.html"
+    "Home" :"tgo.html"
   },
   "TemplateStaticFiles": {
     "Files": [
-      "dart.html",
-      "dart.css"
+      "tgo.html",
+      "tgoimage.html",
+      "tgo.css"
     ],
-    "DataFile": "./testdata/configDataPI.json",
+    "DataFile": "%{WebServerHome}/static/templateData.json",
     "Data": null,
     "FullFileName": ""
   },
