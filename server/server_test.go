@@ -27,10 +27,12 @@ func (l *TLog) Log(s string) {
 	l.B.WriteString("\n")
 }
 func (l *TLog) GetVerbose() func(string) {
-	return nil
+	return l.LogNil
 }
 func (l *TLog) Get() string {
 	return l.B.String()
+}
+func (l *TLog) LogNil(s string) {
 }
 func (l *TLog) IsOpen() bool {
 	return true

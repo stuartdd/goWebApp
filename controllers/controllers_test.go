@@ -21,20 +21,20 @@ func TestToJson(t *testing.T) {
 	path := conf.GetUserLocPath("stuart", "home")
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 
-	json := listDirectoriesAsJson(path, params, nil, "")
+	json := listDirectoriesAsJson(path, params, false, verboseNil, "")
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"paths\":[{\"name\":") {
 		t.Fatalf("listDirectoriesAsJson Invalid header in json. [%s]", string(json))
 	}
 
 	params = NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home", PathParam: path})
 	files, _ := os.ReadDir(path)
-	json = listFilesAsJson(files, params, nil, "", -1)
+	json = listFilesAsJson(files, params, false, verboseNil, "", -1)
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":{\"name\":\"") {
 		t.Fatalf("filesAsJson with path Invalid header in json. [%s]", string(json))
 	}
 
 	params = NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
-	json = listFilesAsJson(files, params, nil, "", -1)
+	json = listFilesAsJson(files, params, false, verboseNil, "", -1)
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":null,\"files\":[") {
 		t.Fatalf("filesAsJson without path Invalid header in json. [%s]", string(json))
 	}
@@ -58,9 +58,11 @@ func TestExec(t *testing.T) {
 		return map[string]interface{}{"error": true, "code": ec, "out": string(out), "err": string(err)}
 	}, func(s string) {
 		// Log function
-	}, func(s string) {
-		// Verbose function
-	}, nil)
+	},
+		false,
+		func(s string) {
+			// Verbose function
+		}, nil)
 
 	res := ex.Submit()
 
@@ -118,4 +120,8 @@ func AssertEquals(t *testing.T, message string, actual []byte, expected string) 
 	if string(actual) != expected {
 		t.Fatalf("%s.\nExpected:%s\nActual:  %s", message, expected, string(actual))
 	}
+}
+
+func verboseNil(s string) {
+
 }

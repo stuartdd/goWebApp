@@ -122,6 +122,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	verboseFunc := h.logger.GetVerbose()
 
 	urlPath := strings.TrimSpace(r.URL.Path)
+	
 	defer func() {
 		if r := recover(); r != nil {
 			pm := r.(*config.PanicMessage)
@@ -159,27 +160,27 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if len(requestUrlparts) > 1 {
 		if requestUrlparts[0] == "static" {
-			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getPathsUserLocMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
@@ -204,27 +205,27 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok, shouldLog = postFileUserLocNameLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p).WithParam("loc", "logs"), h.config, r, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p).WithParam("loc", "logs"), h.config, r, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = postFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, verboseFunc).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin().RenameParameter("script", "exec"), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin().RenameParameter("script", "exec"), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getExecMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
 			return
 		}
 	}
@@ -305,7 +306,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if staticFileData.HasStaticData() && h.config.GetStaticData().CheckFileExists(urlPath) {
-		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	logFunc(fmt.Sprintf("Req:  %s:%s%s", r.Method, urlPath, requestData.QueryAsString()))

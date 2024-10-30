@@ -132,13 +132,16 @@ func (l *logger) GetVerbose() func(string) {
 	if l.verboseLog {
 		return l.verbose
 	}
-	return nil
+	return l.verboseNil
 }
 
 func (l *logger) verbose(s string) {
 	if l.verboseLog {
 		l.Log(s)
 	}
+}
+
+func (l *logger) verboseNil(s string) {
 }
 
 func (l *logger) Close() {

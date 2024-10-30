@@ -25,16 +25,18 @@ type Handler interface {
 }
 
 type StaticFileHandler struct {
-	filePath []string
-	urlParts *UrlRequestParts
-	verbose  func(string)
+	filePath  []string
+	urlParts  *UrlRequestParts
+	verbose   func(string)
+	isVerbose bool
 }
 
-func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, verboseFunc func(string)) *StaticFileHandler {
+func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, isVerbose bool, verboseFunc func(string)) *StaticFileHandler {
 	return &StaticFileHandler{
-		filePath: file,
-		urlParts: urlParts,
-		verbose:  verboseFunc,
+		filePath:  file,
+		urlParts:  urlParts,
+		verbose:   verboseFunc,
+		isVerbose: isVerbose,
 	}
 }
 
@@ -45,18 +47,20 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 
 	stats, err := os.Stat(fullFile)
 	if err != nil {
+		p.verbose(err.Error())
 		panic(config.NewPanicMessage("File not found", http.StatusNotFound, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
 	if stats.IsDir() {
+		p.verbose(fmt.Sprintf("%s Must not be a dir", stats.Name()))
 		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("Static file %s is a Directory", fullFile)))
 	}
 	fileContent, err := os.ReadFile(fullFile)
 	if err != nil {
+		p.verbose(err.Error())
 		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
-	if p.verbose != nil {
+	if p.isVerbose { // Only do this if abs necessary as Sprintf does not need to be done
 		p.verbose(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(p.filePath[len(p.filePath)-1]), len(fileContent)))
-
 	}
 	if p.urlParts.config.IsTemplating() {
 		td := p.urlParts.config.GetTemplateData()
@@ -88,16 +92,19 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 
 	stats, err := os.Stat(file)
 	if err != nil {
+		p.verbose(err.Error())
 		panic(config.NewPanicMessage("File not found", http.StatusNotFound, err.Error()))
 	}
 	if stats.IsDir() {
+		p.verbose(fmt.Sprintf("%s Must not be a dir", stats.Name()))
 		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", file)))
 	}
 	fileContent, err := os.ReadFile(file)
 	if err != nil {
+		p.verbose(err.Error())
 		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, err.Error()))
 	}
-	if p.verbose != nil {
+	if p.configData.IsVerbose { // Only do this if abs necessary as Sprintf does not need to be done
 		p.verbose(fmt.Sprintf("Read File:%s Mime[%s] Len[%d]", file, config.LookupContentType(p.parameters.GetName()), len(fileContent)))
 	}
 	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.parameters.GetName())
@@ -107,13 +114,15 @@ type DirHandler struct {
 	parameters *UrlRequestParts
 	listFiles  bool
 	verbose    func(string)
+	isVerbose  bool
 }
 
-func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, verboseFunc func(string)) Handler {
+func NewDirHandler(urlRequestData *UrlRequestParts, configData *config.ConfigData, listFiles bool, isVerbose bool, verboseFunc func(string)) Handler {
 	return &DirHandler{
 		parameters: urlRequestData,
 		listFiles:  listFiles,
 		verbose:    verboseFunc,
+		isVerbose:  isVerbose,
 	}
 }
 
@@ -133,21 +142,19 @@ func (p *DirHandler) Submit() *ResponseData {
 		if err != nil {
 			panic(config.NewPanicMessage("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
 		}
-		return NewResponseData(http.StatusOK).WithContentBytes(listFilesAsJson(entries, p.parameters, p.verbose, file, index)).WithMimeType("json")
+		return NewResponseData(http.StatusOK).WithContentBytes(listFilesAsJson(entries, p.parameters, p.isVerbose, p.verbose, file, index)).WithMimeType("json")
 	} else {
-		return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters, p.verbose, file)).WithMimeType("json")
+	return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters, p.isVerbose, p.verbose, file)).WithMimeType("json")
 	}
 }
 
 type TreeHandler struct {
 	parameters *UrlRequestParts
-	verbose    func(string)
 }
 
-func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
+func NewTreeHandler(urlParts *UrlRequestParts, configData *config.ConfigData) Handler {
 	return &TreeHandler{
 		parameters: urlParts,
-		verbose:    verboseFunc,
 	}
 }
 
@@ -182,13 +189,15 @@ type PostFileHandler struct {
 	parameters *UrlRequestParts
 	request    *http.Request
 	verbose    func(string)
+	isVerbose  bool
 }
 
-func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, verboseFunc func(string)) Handler {
+func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, isVerbose bool, verboseFunc func(string)) Handler {
 	return &PostFileHandler{
 		parameters: urlParts,
 		request:    r,
 		verbose:    verboseFunc,
+		isVerbose:  isVerbose,
 	}
 }
 
@@ -196,13 +205,16 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	dir := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	stats, err := os.Stat(dir)
 	if err != nil {
+		p.verbose(err.Error())
 		panic(config.NewPanicMessage("Dir not found", http.StatusNotFound, err.Error()))
 	}
 	if !stats.IsDir() {
+		p.verbose(fmt.Sprintf("%s Must not be a file", stats.Name()))
 		panic(config.NewPanicMessage("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", dir)))
 	}
 	body, err := io.ReadAll(p.request.Body)
 	if err != nil {
+		p.verbose(err.Error())
 		panic(config.NewPanicMessage("Failed to read POST data", http.StatusBadRequest, err.Error()))
 	}
 	file := p.parameters.GetUserLocPath(true, false, p.parameters.GetQueryAsBool("base64", false))
@@ -215,10 +227,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 		case "append":
 			logActionAppend(file, body)
 		case "truncate":
-			err := os.Remove(file)
-			if err != nil {
-				panic(config.NewPanicMessage("Error:log: Cannot truncate file", http.StatusBadRequest, action))
-			}
+			os.Remove(file)
 			logActionAppend(file, body)
 		default:
 			panic(config.NewPanicMessage("Invalid 'log' action", http.StatusBadRequest, action))
@@ -229,10 +238,9 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(config.NewPanicMessage("Failed to save data", http.StatusInternalServerError, err.Error()))
 	}
-	if p.verbose != nil {
+	if p.isVerbose { // Only do this if abs necessary as Sprintf does not need to be done
 		p.verbose(fmt.Sprintf("File Stored:%s [%d]", file, len(body)))
 	}
-
 	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File saved", false)
 }
 
@@ -252,15 +260,17 @@ type ExecHandler struct {
 	parameters *UrlRequestParts
 	createMap  func([]byte, []byte, int) map[string]interface{}
 	verbose    func(string)
+	isVerbose  bool
 	log        func(string)
 	addLrp     func(string, string, int, bool) bool
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), isVerbose bool, verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
 		verbose:    verboseFunc,
+		isVerbose:  isVerbose,
 		log:        logFunc,
 		addLrp:     addFunc,
 	}
@@ -283,11 +293,9 @@ func (p *ExecHandler) Submit() *ResponseData {
 			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
 		}
 	})
-
-	if p.verbose != nil {
+	if p.isVerbose { // Only do this if abs necessary as execData.String() does not need to be done
 		p.verbose(execData.String())
 	}
-
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
 		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("RC:%d Error:%s", code, err.Error())))
@@ -501,7 +509,7 @@ func treeAsJson(root *TreeDirNode, params *UrlRequestParts) []byte {
 	return buffer.Bytes()
 }
 
-func listFilesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(string), path string, index int) []byte {
+func listFilesAsJson(ents []fs.DirEntry, params *UrlRequestParts, isVerbose bool, verbose func(string), path string, index int) []byte {
 	var buffer bytes.Buffer
 	entLen := len(ents)
 	buffer.WriteRune('{')
@@ -534,14 +542,14 @@ func listFilesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(s
 	}
 
 	buffer.WriteString("]}")
-	if verbose != nil {
+	if isVerbose {
 		verbose(fmt.Sprintf("List Files:%s Returned[%d]", path, count))
 	}
 
 	return buffer.Bytes()
 }
 
-func listDirectoriesAsJson(dir string, param *UrlRequestParts, verbose func(string), path string) []byte {
+func listDirectoriesAsJson(dir string, param *UrlRequestParts, isVerbose bool, verbose func(string), path string) []byte {
 	list := &[]string{}
 	listDirectoriesRec(dir, dir+string(os.PathSeparator), param.GetConfigFileFilter(), list)
 	listLen := len(*list)
@@ -563,7 +571,7 @@ func listDirectoriesAsJson(dir string, param *UrlRequestParts, verbose func(stri
 		count++
 	}
 	buffer.WriteString("]}")
-	if verbose != nil {
+	if isVerbose {
 		verbose(fmt.Sprintf("List Directories:%s Returned[%d]", path, count))
 	}
 	return buffer.Bytes()
