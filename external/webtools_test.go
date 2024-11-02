@@ -14,22 +14,22 @@ func TestDsFileData(t *testing.T) {
 
 func TestContains(t *testing.T) {
 	if !contains("Abc123", []string{"c12", "123", "abc"}) {
-		t.Fatalf("FAIL:Does not contaimn any!")
+		t.Fatalf("FAIL:Does not contain any!")
 	}
 	if !contains("Abc123", []string{"c1x2", "123", "abc"}) {
-		t.Fatalf("FAIL:Does not contaimn any!")
+		t.Fatalf("FAIL:Does not contain any!")
 	}
 	if !contains("Abc123", []string{"c1x2", "1xx23", "Abc"}) {
-		t.Fatalf("FAIL:Does not contaimn any!")
+		t.Fatalf("FAIL:Does not contain any!")
 	}
 	if contains("Abc123", []string{"c1x2", "1xx23", "abxxc"}) {
-		t.Fatalf("FAIL:Should not contaimn any!")
+		t.Fatalf("FAIL:Should not contain any!")
 	}
 }
 
 func assertIntEqual(t *testing.T, info string, exp, act int) {
 	if exp != act {
-		t.Fatalf("FAIL:assertIntEqual: Expected(%d) Actual(%d)", exp, act)
+		t.Fatalf("FAIL:assertIntEqual: %s Expected(%d) Actual(%d)", info, exp, act)
 	}
 }
 
