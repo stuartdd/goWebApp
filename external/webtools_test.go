@@ -27,12 +27,6 @@ func TestContains(t *testing.T) {
 	}
 }
 
-func assertIntEqual(t *testing.T, info string, exp, act int) {
-	if exp != act {
-		t.Fatalf("FAIL:assertIntEqual: %s Expected(%d) Actual(%d)", info, exp, act)
-	}
-}
-
 func readContent(t *testing.T, filename string) []byte {
 	content, err := os.ReadFile(filename)
 	if err != nil {

@@ -144,7 +144,7 @@ func (p *DirHandler) Submit() *ResponseData {
 		}
 		return NewResponseData(http.StatusOK).WithContentBytes(listFilesAsJson(entries, p.parameters, p.isVerbose, p.verbose, file, index)).WithMimeType("json")
 	} else {
-	return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters, p.isVerbose, p.verbose, file)).WithMimeType("json")
+		return NewResponseData(http.StatusOK).WithContentBytes(listDirectoriesAsJson(file, p.parameters, p.isVerbose, p.verbose, file)).WithMimeType("json")
 	}
 }
 
@@ -529,7 +529,7 @@ func listFilesAsJson(ents []fs.DirEntry, params *UrlRequestParts, isVerbose bool
 		}
 	} else {
 		bufLen := buffer.Len()
-		for i := 0; i < entLen; i++ {
+		for i := len(ents) - 1; i >= 0; i-- {
 			e := ents[i]
 			if filterDirNames(e, params.GetConfigFileFilter()) {
 				writeSingleFileNameToJson(e, &buffer)
