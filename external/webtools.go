@@ -8,31 +8,30 @@ import (
 	"os"
 )
 
-type Token struct {
-	Pos    int
-	Name   string
-	Quoted bool
+type JsonToken struct {
+	Pos    int    // The position of the value from the tokenised input line
+	Name   string // JSON value name
+	Quoted bool   // JSON value is quoted "name":"value" or "name":value
 }
 
 type Line struct {
-	Split    string
-	Skip     string
-	TokenPos []int
-	Tokens   []*Token
+	Split  string // Split line on these tokens. Split chars NOT written to output
+	Skip   string // Skip chars NOT written to output
+	Tokens []*JsonToken
 }
 
 type Properties struct {
-	InputFile    string
-	OutputFile   string
-	FilePrefix   string
-	FilePostfix  string
-	LinePrefix   string
-	LinePostfix  string
-	Infix        string
-	SkipLines    int
-	LineContains []string
-	MaxLines     int
-	Lines        []*Line
+	InputFile    string   // Input file. If not input from stdin
+	OutputFile   string   // Output file. If not output to stdout
+	FilePrefix   string   // Write at strat of output
+	FilePostfix  string   // Write at end of output
+	LinePrefix   string   // Write at start of each line
+	LinePostfix  string   // Write at end of each line. NL will be appended anyway.
+	Infix        string   // Write between output tokems on each line. Default is ','
+	SkipLines    int      // Skip n lines from input
+	MaxLines     int      // Max number of input lines to be read
+	LineContains []string // Include input line if it contains ANY of these values
+	Lines        []*Line  // Multiple line spec applied for each line processed
 }
 
 func (p *Properties) String() string {
@@ -94,7 +93,7 @@ func RunTextToJson(content []byte, configFileName string) {
 				buff.WriteString(properties.LinePrefix)
 			}
 			if len(properties.Lines) > 0 {
-				tokens := tokenise(count, properties.Lines, []byte(txt))
+				tokens := tokeniseToJson(count, properties.Lines, []byte(txt))
 				buff.WriteString(tokens)
 				buffLen = buff.Len()
 				if tokens != "" {
@@ -124,8 +123,9 @@ func RunTextToJson(content []byte, configFileName string) {
 			log(fmt.Sprintf("Failed to create output file: %s\n", properties.OutputFile))
 			os.Exit(1)
 		}
+	} else {
+		os.Stdout.WriteString(buff.String())
 	}
-	os.Stdout.WriteString(buff.String())
 }
 
 func main() {
@@ -182,7 +182,11 @@ func contains(line string, cont []string) bool {
 	return false
 }
 
-func tokenise(lineNum int, lines []*Line, line []byte) string {
+func tokeniseToJson(lineNum int, lines []*Line, line []byte) string {
+	//
+	// get the tokens for a line. Repeat tokens for n lines using mod function.
+	// so for eg. 3 line tokens are applied 3 times for 9 lines...
+	//
 	tokenLine := lines[lineNum%len(lines)]
 	if len(tokenLine.Tokens) == 0 {
 		os.Stderr.WriteString(fmt.Sprintf("No Tokens are defined for Line[%d]", lineNum%len(lines)))
@@ -225,7 +229,7 @@ func tokenise(lineNum int, lines []*Line, line []byte) string {
 	return buff.String()
 }
 
-func finalToken(tokDesc *Token, value string) string {
+func finalToken(tokDesc *JsonToken, value string) string {
 	var buff bytes.Buffer
 	buff.WriteRune('"')
 	buff.WriteString(tokDesc.Name)
