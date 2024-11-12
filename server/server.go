@@ -218,6 +218,9 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
+		//
+		// Script is here for backward compatibility withb older server. Use exec instead!
+		//
 		p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin().RenameParameter("script", "exec"), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)

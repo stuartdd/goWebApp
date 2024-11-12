@@ -226,8 +226,8 @@ func (p *UrlRequestParts) GetName() string {
 	return p.GetParam(NameParam)
 }
 
-func (p *UrlRequestParts) GetUserExecInfo() *config.ExecInfo {
-	return p.config.GetUserExecInfo(p.GetUser(), p.GetExecId())
+func (p *UrlRequestParts) GetExecInfo() *config.ExecInfo {
+	return p.config.GetExecInfo(p.GetExecId())
 }
 
 func (p *UrlRequestParts) GetExecId() string {

@@ -263,6 +263,7 @@ type ExecHandler struct {
 	isVerbose  bool
 	log        func(string)
 	addLrp     func(string, string, int, bool) bool
+	execInfo   *config.ExecInfo
 }
 
 func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), isVerbose bool, verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
@@ -283,11 +284,10 @@ func (p *ExecHandler) Submit() *ResponseData {
 			panic(config.NewPanicMessage("Exec already running", http.StatusForbidden, fmt.Sprintf("User:%s Exec:%s Lon running process is already running", p.parameters.GetUser(), p.parameters.GetExecId())))
 		}
 	}
-	execInfo := p.parameters.GetUserExecInfo()
-	info := fmt.Sprintf("User:%s Exec:%s", p.parameters.GetUser(), p.parameters.GetExecId())
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), info, execInfo.Detached, p.log, func(r []byte) string {
-		sq := p.parameters.SubstituteFromCachedMap(r)
-		return p.parameters.SubstituteFromUserEnv([]byte(sq))
+	p.execInfo = p.parameters.GetExecInfo()
+	info := fmt.Sprintf("Exec:%s", p.parameters.GetExecId())
+	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), info, p.execInfo.Detached, p.log, func(r []byte) string {
+		return p.parameters.SubstituteFromCachedMap(r)
 	}, func(pid int) {
 		if p.addLrp != nil {
 			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
@@ -300,37 +300,36 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("RC:%d Error:%s", code, err.Error())))
 	}
-	if execInfo.LogOut != "" {
-		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
-		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdOut, 0644)
+	if p.execInfo.LogOut != "" && len(stdOut) > 0 {
+		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
+		err = os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdOut, 0644)
 		if err != nil {
 			panic(config.NewPanicMessage("Failed to write stdOut to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdOut. RC:%d Error:%s", code, err.Error())))
 		}
 	}
-	if execInfo.LogErr != "" {
-		of := p.parameters.config.SubstituteFromMap([]byte(execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
-		err = os.WriteFile(filepath.Join(execInfo.Log, string(of)), stdErr, 0644)
+	if p.execInfo.LogErr != "" && len(stdErr) > 0 {
+		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
+		err = os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdErr, 0644)
 		if err != nil {
 			panic(config.NewPanicMessage("Failed to write stdErr to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdErr. RC:%d Error:%s", code, err.Error())))
 		}
 	}
-	if code > 0 && execInfo.NzCodeReturns >= http.StatusMultipleChoices {
-		return NewResponseData(execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
+
+	if code > 0 && p.execInfo.NzCodeReturns != 0 {
+		return NewResponseData(p.execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
 	}
-	if execInfo.StdOutType != "" && len(stdOut) > 0 {
-		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(execInfo.StdOutType).SetHasErrors(code != 0)
+
+	if p.execInfo.StdOutType != "" {
+		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(p.execInfo.StdOutType).SetHasErrors(code != 0)
 	}
+
 	var dataMap map[string]interface{}
 	if p.createMap != nil {
 		dataMap = p.createMap(stdOut, stdErr, code)
 	} else {
 		dataMap = map[string]interface{}{"error": code > 0, "exitCode": code, "stdOut": string(stdOut), "stdErr": string(stdErr)}
 	}
-	if code == 0 {
-		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetHasErrors(false)
-	} else {
-		return NewResponseData(execInfo.NzCodeReturns).WithContentMapJson(dataMap).SetHasErrors(true)
-	}
+	return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetHasErrors(false)
 }
 
 //-------------------------------------------------------------------

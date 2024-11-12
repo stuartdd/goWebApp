@@ -16,6 +16,34 @@
         "MonitorSeconds": 30,
         "LogLevel": "quiet"
     },
+    "Exec": {
+        "ls": {
+            "cmd": [
+                "ls",
+                "-lta"
+            ],
+            "logDir": "logs",
+            "logOut": "stdOutLs.txt",
+            "logErr": "stdErrLs.txt"
+        },
+        "c2": {
+            "cmd": [
+                "cmd2"
+            ],
+            "dir": "",
+            "logDir": "logs",
+            "logOut": "logOut.txt"
+        },
+        "cat": {
+            "cmd": [
+                "cat", "fileThatDoesNotExist"
+            ],
+            "dir": "",
+            "logDir": "logs",
+            "logOut": "stdOutCat.txt",
+            "logErr": "stdErrCat.txt"
+        }
+    },
     "Users": {
         "bob": {
             "name": "Bob",
@@ -25,26 +53,8 @@
                 "data": "stateData",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
-            },
-            "Exec": {
-                "ls": {
-                    "cmd": [
-                        "ls",
-                        "-lta"
-                    ],
-                    "dir": "",
-                    "log": "logs"
-                },
-                "c2": {
-                    "cmd": [
-                        "cmd2"
-                    ],
-                    "dir": "",
-                    "log": "logs",
-                    "logOut": "logOut.txt"
-                }
             }
-        },
+         },
         "stuart": {
             "name": "Stuart",
             "home": "stuart",

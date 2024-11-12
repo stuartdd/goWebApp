@@ -188,7 +188,7 @@ type ExecInfo struct {
 	Cmd           []string
 	Dir           string
 	StdOutType    string
-	Log           string
+	LogDir        string
 	LogOut        string
 	LogErr        string
 	NzCodeReturns int
@@ -196,17 +196,17 @@ type ExecInfo struct {
 }
 
 func (p *ExecInfo) GetOutLogFile() string {
-	if p.Log == "" || p.LogOut == "" {
+	if p.LogDir == "" || p.LogOut == "" {
 		return ""
 	}
-	return filepath.Join(p.Log, p.LogOut)
+	return filepath.Join(p.LogDir, p.LogOut)
 }
 
 func (p *ExecInfo) GetErrLogFile() string {
-	if p.Log == "" || p.LogErr == "" {
+	if p.LogDir == "" || p.LogErr == "" {
 		return ""
 	}
-	return filepath.Join(p.Log, p.LogErr)
+	return filepath.Join(p.LogDir, p.LogErr)
 }
 
 func (p *ExecInfo) String() string {
@@ -221,7 +221,6 @@ type UserData struct {
 	Name      string ""
 	Home      string ""
 	Locations map[string]string
-	Exec      map[string]*ExecInfo
 	Env       map[string]string
 }
 
@@ -247,6 +246,7 @@ type ConfigDataInternal struct {
 	TemplateStaticFiles *TemplateStaticFiles
 	FaviconIcoPath      string
 	Env                 map[string]string
+	Exec                map[string]*ExecInfo
 	ExecManager         *ExecManager
 }
 
@@ -330,6 +330,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		FaviconIcoPath:      "",
 		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
 		Env:                 map[string]string{},
+		Exec:                map[string]*ExecInfo{},
 	}
 
 	/*
@@ -476,6 +477,35 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		p.SetFaviconIcoPath(f)
 	}
 
+	for execName, execData := range p.internal.Exec {
+		if execData.LogDir != "" {
+			f, e := p.checkPathExists("", execData.LogDir, "", userConfigEnv, createDir)
+			if e != nil {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] log %s", execName, e.Error()))
+			} else {
+				execData.LogDir = f
+			}
+		}
+		if execData.Dir == "" {
+			execData.Dir = "exec"
+		}
+		f, e := p.checkPathExists("", execData.Dir, "", userConfigEnv, createDir)
+		if e != nil {
+			errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] directory %s", execName, e.Error()))
+		} else {
+			execData.Dir = f
+		}
+
+		for i, v := range execData.Cmd {
+			execData.Cmd[i] = p.SubstituteFromMap([]byte(v), userConfigEnv)
+		}
+		execData.LogOut = p.SubstituteFromMap([]byte(execData.LogOut), userConfigEnv)
+		execData.LogErr = p.SubstituteFromMap([]byte(execData.LogErr), userConfigEnv)
+		if execData.StdOutType != "" && !HasContentType(execData.StdOutType) {
+			errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] StdOutType [%s] not recognised", execName, execData.StdOutType))
+		}
+	}
+
 	for userId, userData := range p.internal.Users {
 		if userData.Home == "" {
 			userData.Home = userId
@@ -492,34 +522,6 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 			userData.Locations[locName] = f
 		}
 
-		for execName, execData := range userData.Exec {
-			if execData.Log != "" {
-				path := execData.Log
-				f, e := p.checkPathExists(userHome, path, userId, userConfigEnv, createDir)
-				if e != nil {
-					errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] log %s", userId, execName, e.Error()))
-				} else {
-					execData.Log = f
-				}
-			}
-
-			path := execData.Dir
-			f, e := p.checkPathExists(userHome, path, userId, userConfigEnv, createDir)
-			if e != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Exec [%s] directory %s", userId, execName, e.Error()))
-			} else {
-				execData.Dir = f
-			}
-
-			for i, v := range execData.Cmd {
-				execData.Cmd[i] = p.SubstituteFromMap([]byte(v), userConfigEnv)
-			}
-			execData.LogOut = p.SubstituteFromMap([]byte(execData.LogOut), userConfigEnv)
-			execData.LogErr = p.SubstituteFromMap([]byte(execData.LogErr), userConfigEnv)
-			if execData.StdOutType != "" && !HasContentType(execData.StdOutType) {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] StdOutType [%s] no recognised", execName, execData.StdOutType))
-			}
-		}
 	}
 	return p, errorList
 }
@@ -675,7 +677,6 @@ func (p *ConfigData) AddUser(user string) error {
 		Name:      strings.ToUpper(user[0:1]) + user[1:],
 		Home:      "",
 		Locations: map[string]string{"data": "stateData"},
-		Exec:      map[string]*ExecInfo{},
 		Env:       map[string]string{},
 	}
 	p.internal.Users[user] = ud
@@ -823,14 +824,10 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) string {
 }
 
 // PANIC
-func (p *ConfigData) GetUserExecInfo(user, execid string) *ExecInfo {
-	userData, ok := p.internal.Users[user]
+func (p *ConfigData) GetExecInfo(execid string) *ExecInfo {
+	exec, ok := p.internal.Exec[execid]
 	if !ok {
-		panic(&PanicMessage{Reason: "user not found", Status: 404, Logged: fmt.Sprintf("User=%s", user)})
-	}
-	exec, ok := userData.Exec[execid]
-	if !ok {
-		panic(&PanicMessage{Reason: "exec ID not found", Status: 404, Logged: fmt.Sprintf("User=%s exec-id=%s", user, execid)})
+		panic(&PanicMessage{Reason: "exec ID not found", Status: 404, Logged: fmt.Sprintf("exec-id=%s", execid)})
 	}
 	return exec
 }

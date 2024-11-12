@@ -113,31 +113,6 @@ func assertContains(t *testing.T, message string, actual string, contains []stri
 	}
 }
 
-func TestUserExecBadUser(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			pm, ok := r.(*PanicMessage)
-			if !ok || pm == nil {
-				t.Fatalf("TestUserExecBadUser: Should have returned a PanicMessage")
-			}
-			if pm.String() != "user not found:404:User=notbob" {
-				t.Fatalf("TestUserExecBadUser: Should have returned a PanicMessage == user not found:404:User=notbob | actual = %s", pm.String())
-			}
-		}
-	}()
-
-	conf.GetUserExecInfo("notbob", "x2")
-	t.Fatalf("Should have panicked")
-}
-
 func TestUserExecBadExecId(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
@@ -153,13 +128,13 @@ func TestUserExecBadExecId(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage")
 			}
-			if pm.String() != "exec ID not found:404:User=bob exec-id=notid" {
-				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage == exec ID not found:404:User=bob exec-id=notid | actual = %s", pm.String())
+			if pm.Reason != "exec ID not found" {
+				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage == exec ID not found | actual = %s", pm.String())
 			}
 		}
 	}()
 
-	conf.GetUserExecInfo("bob", "notid")
+	conf.GetExecInfo("notid")
 	t.Fatalf("Should have panicked")
 }
 
@@ -178,8 +153,8 @@ func TestUserExec(t *testing.T) {
 		}
 	}()
 	pre := conf.GetServerDataRoot()
-	exec := conf.GetUserExecInfo("bob", "c2")
-	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/bob/logs/logOut.txt"})
+	exec := conf.GetExecInfo("c2")
+	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/logOut.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {
@@ -190,7 +165,7 @@ func TestGetUserExecInfo(t *testing.T) {
 	if conf == nil {
 		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
 	}
-	c1 := conf.GetUserExecInfo("bob", "ls")
+	c1 := conf.GetExecInfo("ls")
 
 	if c1.Cmd[0] != "ls" {
 		t.Fatal("Command should be ls -lta")
@@ -200,7 +175,7 @@ func TestGetUserExecInfo(t *testing.T) {
 	}
 	pre := conf.GetServerDataRoot()
 
-	assertEquals(t, "TestGetUserExecInfo", c1.Dir, pre+"/bob")
+	assertEquals(t, "TestGetUserExecInfo", c1.Dir, pre+"/exec")
 
 }
 

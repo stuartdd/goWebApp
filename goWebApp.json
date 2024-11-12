@@ -5,6 +5,73 @@
     20,
     4
   ],
+  "Exec": {
+    "dmesg": {
+      "StdOutType": "json",
+      "Cmd": [
+        "./execDmesg.sh",
+        "%{find}"
+      ]
+    },
+    "echo": {
+      "StdOutType": "txt",
+      "Cmd": [
+        "echo",
+        "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
+      ]
+    },
+    "ds": {
+      "Cmd": [
+        "./diskSize.sh"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "",
+      "LogOut": "",
+      "LogErr": "",
+      "NzCodeReturns": 200,
+      "Detached": false
+    },
+    "lr1": {
+      "Cmd": [
+        "./longRun.sh",
+        "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "",
+      "LogOut": "",
+      "LogErr": "",
+      "NzCodeReturns": 0,
+      "Detached": true
+    },
+    "lr2": {
+      "Cmd": [
+        "./longRun.sh",
+        "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "logs",
+      "LogOut": "",
+      "LogErr": "",
+      "NzCodeReturns": 0,
+      "Detached": true
+    },
+    "ufs": {
+      "Cmd": [
+        "./webtools",
+        "ufsConfig.json"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "",
+      "LogOut": "",
+      "LogErr": "",
+      "NzCodeReturns": 200,
+      "Detached": false
+    }
+  },
   "Users": {
     "admin": {
       "Hidden": true,
@@ -12,72 +79,7 @@
       "Home": "",
       "Locations": {
         "cache": "cache",
-        "exec" : "cache"
-      },
-      "Exec": {
-        "dmesg": {
-          "StdOutType": "json",
-           "Cmd": [
-               "./execDmesg.sh", "%{find}"
-           ]
-         },
-         "echo": {
-          "StdOutType": "txt",
-           "Cmd": [
-               "echo", "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
-           ]
-         },
-        "ds": {
-          "Cmd": [
-            "./diskSize.sh"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 200,
-          "Detached": false
-        },
-        "lr1": {
-          "Cmd": [
-            "./longRun.sh",
-            "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 0,
-          "Detached": true
-        },
-        "lr2": {
-          "Cmd": [
-            "./longRun.sh",
-            "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 0,
-          "Detached": true
-        },
-        "ufs": {
-          "Cmd": [
-            "./webtools",
-            "ufsConfig.json"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 200,
-          "Detached": false
-        }
+        "exec": "cache"
       },
       "Env": {
         "lsargs": "-l"
@@ -138,8 +140,8 @@
   ],
   "ServerDataRoot": "./testdata",
   "StaticData": {
-    "Path":"%{WebServerHome}/static",
-    "Home" :"tgo.html"
+    "Path": "%{WebServerHome}/static",
+    "Home": "tgo.html"
   },
   "TemplateStaticFiles": {
     "Files": [

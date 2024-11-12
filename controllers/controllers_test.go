@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -41,7 +42,89 @@ func TestToJson(t *testing.T) {
 
 }
 
-func TestExec(t *testing.T) {
+func TestExecFailRcNonZero(t *testing.T) {
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatal(errlist.String())
+	}
+	if conf == nil {
+		t.Fatal("Config is nil. Load failed")
+	}
+	params := NewUrlRequestParts(conf).WithParameters(map[string]string{ExecParam: "cat"})
+
+	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
+		if ec == 0 {
+			return map[string]interface{}{"error": false, "code": ec, "out": string(out), "err": string(err)}
+		}
+		return map[string]interface{}{"error": true, "code": ec, "out": string(out), "err": string(err)}
+	}, func(s string) {
+		// Log function
+	},
+		false,
+		func(s string) {
+			// Verbose function
+		}, nil)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("TestExecFailRcNonZero: Should NOT Panic; Error:%s", r)
+		}
+	}()
+
+	res := ex.Submit()
+	if res.Status != 200 {
+		t.Fatalf("Exec status should be 200")
+	}
+	if !strings.Contains(string(res.Content()), "\"code\":1") {
+		t.Fatalf("Return code should be 1")
+	}
+	if !strings.Contains(string(res.Content()), "\"err\":\"cat: fileThatDoesNotExist") {
+		t.Fatalf("Return should have stdErr")
+	}
+	if !strings.Contains(string(res.Content()), "\"out\":\"\"") {
+		t.Fatalf("Return should NOT have stdOut")
+	}
+	testFileContains(t, conf.GetExecInfo("cat").GetOutLogFile(), []string{"No such file or directory"})
+}
+func TestExecFailCommandNotFound(t *testing.T) {
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatal(errlist.String())
+	}
+	if conf == nil {
+		t.Fatal("Config is nil. Load failed")
+	}
+	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "bob", ExecParam: "c2"})
+
+	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
+		if ec == 0 {
+			return map[string]interface{}{"error": false, "code": ec, "out": string(out), "err": string(err)}
+		}
+		return map[string]interface{}{"error": true, "code": ec, "out": string(out), "err": string(err)}
+	}, func(s string) {
+		// Log function
+	},
+		false,
+		func(s string) {
+			// Verbose function
+		}, nil)
+
+	defer func() {
+		if r := recover(); r != nil {
+			pm, ok := r.(*config.PanicMessage)
+			if !ok || pm == nil {
+				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage")
+			}
+			if pm.Logged != "RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH" {
+				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage == RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH | actual = %s", pm.String())
+			}
+		}
+	}()
+
+	ex.Submit()
+}
+
+func TestExecPass(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatal(errlist.String())
@@ -64,10 +147,15 @@ func TestExec(t *testing.T) {
 			// Verbose function
 		}, nil)
 
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("TestExecPass: Should NOT Panic")
+		}
+	}()
 	res := ex.Submit()
 
-	if !strings.Contains(string(res.Content()), "t1.JSON") {
-		t.Fatal("Exec of ls -lta should contain t1.JSON")
+	if !strings.Contains(string(res.Content()), "keepMeForTesting.txt") {
+		t.Fatalf("Exec of ls -lta should contain keepMeForTesting.txt. Actual:\n%s", string(res.Content()))
 	}
 }
 
@@ -124,4 +212,18 @@ func AssertEquals(t *testing.T, message string, actual []byte, expected string) 
 
 func verboseNil(s string) {
 
+}
+
+func testFileContains(t *testing.T, name string, contains []string) {
+	name, _ = filepath.Abs(name)
+	txt, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatalf("file %s cannot be read", name)
+	}
+	txtStr := string(txt)
+	for _, s := range contains {
+		if !strings.Contains(txtStr, s) {
+			t.Fatalf("File %s does not contain text %s", name, s)
+		}
+	}
 }
