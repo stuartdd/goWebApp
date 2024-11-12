@@ -5,6 +5,61 @@
     20,
     4
   ],
+  "Exec": {
+    "dmesg": {
+      "StdOutType": "json",
+      "Cmd": [
+        "./execDmesg.sh",
+        "%{find}"
+      ]
+    },
+    "echo": {
+      "StdOutType": "txt",
+      "Cmd": [
+        "echo",
+        "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
+      ]
+    },
+    "lr1": {
+      "Cmd": [
+        "./longRunTest.sh",
+        "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "logDir": "logs",
+      "logOut": "stdOutLr1.log",
+      "logErr": "stdErrLr1.log",
+      "NzCodeReturns": 0,
+      "Detached": true
+    },
+    "lr2": {
+      "Cmd": [
+        "./longRunTest.sh",
+        "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "logDir": "logs",
+      "logOut": "stdOutLr2.log",
+      "logErr": "stdErrLr2.log",
+      "NzCodeReturns": 0,
+      "Detached": true
+    },
+    "ufs": {
+      "Cmd": [
+        "./webtools",
+        "ufsConfig.json"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "logDir": "logs",
+      "logOut": "stdOutUfs.log",
+      "logErr": "stdErrUfs.log",
+      "NzCodeReturns": 200,
+      "Detached": false
+    }
+  },
   "Users": {
     "admin": {
       "Hidden": true,
@@ -12,92 +67,21 @@
       "Home": "",
       "Locations": {
         "cache": "cache",
-        "exec" : "cache"
-      },
-      "Exec": {
-        "dmesg": {
-          "StdOutType": "json",
-           "Cmd": [
-               "./execDmesg.sh", "%{find}"
-           ]
-         },
-         "echo": {
-          "StdOutType": "txt",
-           "Cmd": [
-               "echo", "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
-           ]
-         },
-        "ds": {
-          "Cmd": [
-            "./diskSize.sh"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 200,
-          "Detached": false
-        },
-        "lr1": {
-          "Cmd": [
-            "./longRun.sh",
-            "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 0,
-          "Detached": true
-        },
-        "lr2": {
-          "Cmd": [
-            "./longRun.sh",
-            "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 0,
-          "Detached": true
-        },
-        "ufs": {
-          "Cmd": [
-            "./webtools",
-            "ufsConfig.json"
-          ],
-          "Dir": "",
-          "StdOutType": "json",
-          "Log": "",
-          "LogOut": "",
-          "LogErr": "",
-          "NzCodeReturns": 200,
-          "Detached": false
-        },
-        "llog": {
-        "StdOutType": "txt",
-         "Cmd": [
-             "./latestLog.sh"
-         ]
-       }
+        "exec": "cache"
       },
       "Env": {
         "lsargs": "-l"
       }
     },
     "julie": {
-       "Hidden": null,
+      "Hidden": null,
       "Name": "Julie",
       "Home": "***/media/stuart/DATA/shares/%{id}",
       "Locations": {
         "thumbs": "***/home/stuart/git/thumbnails/%{id}",
         "original": "***/media/stuart/DATA/shares/%{id}",
         "base": ""
-        }
+      }
     },
     "owain": {
       "Hidden": null,
@@ -107,9 +91,9 @@
         "thumbs": "***/home/stuart/git/thumbnails/%{id}",
         "original": "***/media/stuart/DATA/shares/%{id}",
         "base": ""
-        }
+      }
     },
-   "huw": {
+    "huw": {
       "Hidden": null,
       "Name": "Huw",
       "Home": "***/media/stuart/DATA/shares/%{id}",
@@ -117,7 +101,7 @@
         "thumbs": "***/home/stuart/git/thumbnails/%{id}",
         "original": "***/media/stuart/DATA/shares/%{id}",
         "base": ""
-        }
+      }
     },
     "stuart": {
       "Hidden": null,
@@ -129,9 +113,9 @@
         "original": "***/media/stuart/DATA/shares/%{id}",
         "mydb": "mydb",
         "base": ""
-        }
+      }
     },
-   "shared": {
+    "shared": {
       "Hidden": null,
       "Name": "Shared",
       "Home": "***/media/stuart/DATA/shares/%{id}",
@@ -139,7 +123,7 @@
         "thumbs": "***/home/stuart/git/thumbnails/%{id}",
         "original": "***/media/stuart/DATA/shares/%{id}",
         "base": ""
-        }
+      }
     }
   },
   "ContentTypeCharset": "utf-8",
@@ -162,8 +146,8 @@
   ],
   "ServerDataRoot": "./testdata",
   "StaticData": {
-    "Path":"%{WebServerHome}/static",
-    "Home" :"tgo.html"
+    "Path": "%{WebServerHome}/static",
+    "Home": "tgo.html"
   },
   "TemplateStaticFiles": {
     "Files": [

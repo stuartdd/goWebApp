@@ -8,7 +8,7 @@ fi
 
 echo "--------------------------------------- Build webtools"
 cd external
-go build -o ../testdata/admin/webtools 
+go build -o ../testdata/exec/webtools 
 if [ $? -eq 1 ]; then
   echo "Build Failed"
   exit 1
