@@ -32,7 +32,8 @@
             ],
             "dir": "",
             "logDir": "logs",
-            "logOut": "logOut.txt"
+            "logOut": "stdOutC2.txt",
+            "logErr": "stdErrC2.txt"
         },
         "cat": {
             "cmd": [

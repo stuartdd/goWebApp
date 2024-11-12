@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -39,7 +38,6 @@ func TestToJson(t *testing.T) {
 	if !strings.HasPrefix(string(json), "{\"error\":false,\"user\":\"stuart\",\"loc\":\"home\",\"path\":null,\"files\":[") {
 		t.Fatalf("filesAsJson without path Invalid header in json. [%s]", string(json))
 	}
-
 }
 
 func TestExecFailRcNonZero(t *testing.T) {
@@ -50,9 +48,11 @@ func TestExecFailRcNonZero(t *testing.T) {
 	if conf == nil {
 		t.Fatal("Config is nil. Load failed")
 	}
+	os.Remove(conf.GetExecInfo("cat").GetOutLogFile())
+	os.Remove(conf.GetExecInfo("cat").GetErrLogFile())
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{ExecParam: "cat"})
 
-	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
+	ex := NewExecHandler(params.AsAdmin(), conf, func(out, err []byte, ec int) map[string]interface{} {
 		if ec == 0 {
 			return map[string]interface{}{"error": false, "code": ec, "out": string(out), "err": string(err)}
 		}
@@ -84,8 +84,10 @@ func TestExecFailRcNonZero(t *testing.T) {
 	if !strings.Contains(string(res.Content()), "\"out\":\"\"") {
 		t.Fatalf("Return should NOT have stdOut")
 	}
-	testFileContains(t, conf.GetExecInfo("cat").GetOutLogFile(), []string{"No such file or directory"})
+	testDoesNotExist(t, conf.GetExecInfo("cat").GetOutLogFile())
+	testFileContains(t, conf.GetExecInfo("cat").GetErrLogFile(), []string{"No such file or directory"})
 }
+
 func TestExecFailCommandNotFound(t *testing.T) {
 	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
@@ -94,6 +96,8 @@ func TestExecFailCommandNotFound(t *testing.T) {
 	if conf == nil {
 		t.Fatal("Config is nil. Load failed")
 	}
+	os.Remove(conf.GetExecInfo("c2").GetOutLogFile())
+	os.Remove(conf.GetExecInfo("c2").GetErrLogFile())
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "bob", ExecParam: "c2"})
 
 	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
@@ -115,11 +119,13 @@ func TestExecFailCommandNotFound(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage")
 			}
-			if pm.Logged != "RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH" {
-				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage == RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH | actual = %s", pm.String())
+			if pm.Logged != "Exec: c2 RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH" {
+				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage == Exec: c2 RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH | actual = %s", pm.String())
 			}
 		}
 	}()
+	testDoesNotExist(t, conf.GetExecInfo("c2").GetOutLogFile())
+	testDoesNotExist(t, conf.GetExecInfo("c2").GetErrLogFile())
 
 	ex.Submit()
 }
@@ -132,7 +138,10 @@ func TestExecPass(t *testing.T) {
 	if conf == nil {
 		t.Fatal("Config is nil. Load failed")
 	}
-	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "bob", ExecParam: "ls"})
+	os.Remove(conf.GetExecInfo("ls").GetOutLogFile())
+	os.Remove(conf.GetExecInfo("ls").GetErrLogFile())
+
+	params := NewUrlRequestParts(conf).WithParameters(map[string]string{ExecParam: "ls"})
 
 	ex := NewExecHandler(params, conf, func(out, err []byte, ec int) map[string]interface{} {
 		if ec == 0 {
@@ -154,9 +163,13 @@ func TestExecPass(t *testing.T) {
 	}()
 	res := ex.Submit()
 
-	if !strings.Contains(string(res.Content()), "keepMeForTesting.txt") {
-		t.Fatalf("Exec of ls -lta should contain keepMeForTesting.txt. Actual:\n%s", string(res.Content()))
+	if !strings.Contains(string(res.Content()), "keepmefortesting") {
+		t.Fatalf("Exec of ls -lta should contain keepmefortesting. Actual:\n%s", string(res.Content()))
 	}
+
+	testDoesNotExist(t, conf.GetExecInfo("ls").GetErrLogFile())
+	testFileContains(t, conf.GetExecInfo("ls").GetOutLogFile(), []string{"keepmefortesting"})
+
 }
 
 func TestMarshal(t *testing.T) {
@@ -215,7 +228,6 @@ func verboseNil(s string) {
 }
 
 func testFileContains(t *testing.T, name string, contains []string) {
-	name, _ = filepath.Abs(name)
 	txt, err := os.ReadFile(name)
 	if err != nil {
 		t.Fatalf("file %s cannot be read", name)
@@ -225,5 +237,12 @@ func testFileContains(t *testing.T, name string, contains []string) {
 		if !strings.Contains(txtStr, s) {
 			t.Fatalf("File %s does not contain text %s", name, s)
 		}
+	}
+}
+
+func testDoesNotExist(t *testing.T, name string) {
+	_, err := os.Stat(name)
+	if err == nil {
+		t.Fatalf("file %s should not exist", name)
 	}
 }

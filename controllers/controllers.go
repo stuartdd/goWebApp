@@ -278,19 +278,21 @@ func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, cr
 }
 
 func (p *ExecHandler) Submit() *ResponseData {
+	userId := p.parameters.GetOptionalUser(AdminName)
+	execId := p.parameters.GetExecId()
 	if p.addLrp != nil {
-		ok := p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), 0, false)
+		ok := p.addLrp(userId, execId, 0, false)
 		if !ok {
-			panic(config.NewPanicMessage("Exec already running", http.StatusForbidden, fmt.Sprintf("User:%s Exec:%s Lon running process is already running", p.parameters.GetUser(), p.parameters.GetExecId())))
+			panic(config.NewPanicMessage("Exec already running", http.StatusForbidden, fmt.Sprintf("User:%s Exec:%s Lon running process is already running", userId, execId)))
 		}
 	}
 	p.execInfo = p.parameters.GetExecInfo()
-	info := fmt.Sprintf("Exec:%s", p.parameters.GetExecId())
+	info := fmt.Sprintf("Exec:%s", execId)
 	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), info, p.execInfo.Detached, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromCachedMap(r)
 	}, func(pid int) {
 		if p.addLrp != nil {
-			p.addLrp(p.parameters.GetUser(), p.parameters.GetExecId(), pid, true)
+			p.addLrp(userId, execId, pid, true)
 		}
 	})
 	if p.isVerbose { // Only do this if abs necessary as execData.String() does not need to be done
@@ -298,17 +300,17 @@ func (p *ExecHandler) Submit() *ResponseData {
 	}
 	stdOut, stdErr, code, err := execData.Run()
 	if err != nil {
-		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("RC:%d Error:%s", code, err.Error())))
+		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("Exec: %s RC:%d Error:%s", execId, code, err.Error())))
 	}
 	if p.execInfo.LogOut != "" && len(stdOut) > 0 {
-		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOut), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
+		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOut), p.parameters.config.GetUserEnv(userId))
 		err = os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdOut, 0644)
 		if err != nil {
 			panic(config.NewPanicMessage("Failed to write stdOut to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdOut. RC:%d Error:%s", code, err.Error())))
 		}
 	}
 	if p.execInfo.LogErr != "" && len(stdErr) > 0 {
-		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogErr), p.parameters.config.GetUserEnv(p.parameters.GetUser()))
+		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogErr), p.parameters.config.GetUserEnv(userId))
 		err = os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdErr, 0644)
 		if err != nil {
 			panic(config.NewPanicMessage("Failed to write stdErr to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdErr. RC:%d Error:%s", code, err.Error())))

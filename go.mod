@@ -1,6 +1,6 @@
 module github.com/stuartdd/goWebApp
 
-go 1.22.0
+go 1.23.0
 
 replace github.com/stuartdd/goWebApp/config => ./config
 

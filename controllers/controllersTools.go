@@ -210,6 +210,10 @@ func (p *UrlRequestParts) GetUser() string {
 	return p.GetParam(UserParam)
 }
 
+func (p *UrlRequestParts) GetOptionalUser(fallback string) string {
+	return p.GetOptionalParam(UserParam, fallback)
+}
+
 func (p *UrlRequestParts) GetScript() string {
 	return p.GetParam(ScriptParam)
 }
