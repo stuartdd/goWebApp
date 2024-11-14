@@ -40,7 +40,7 @@ func TestInitial(t *testing.T) {
 	if lrm.AddLongRunningProcess("lrp1", testPid, true) {
 		t.Fatal("Should find lrp1")
 	}
-	s := lrm.LongRunningMap()
+	s := stringMap(lrm)
 	if len(s) != 1 {
 		t.Fatal("Map should be len 1")
 	}
@@ -57,7 +57,7 @@ func TestInitial(t *testing.T) {
 	}
 	AssertContains(t, logMessage, []string{"Loaded:", "PID: " + testPidStr + " NO longer running", "Stored:"})
 
-	s2 := lrm2.LongRunningMap()
+	s2 := stringMap(lrm2)
 	if len(s2) != 0 {
 		t.Fatal("Map should be len 0")
 	}
@@ -80,4 +80,14 @@ func TestInitial(t *testing.T) {
 	if lrm2.Len() != 1 {
 		t.Fatal("Len should be 1")
 	}
+}
+
+func stringMap(p *LongRunningManager) map[string]string {
+	list := map[string]string{}
+	if p.enabled {
+		for k, v := range p.longRunning {
+			list[k] = fmt.Sprintf("ExecId:%s Run:%s PID:%d", v.ID, v.GetStartTime(), v.PID)
+		}
+	}
+	return list
 }

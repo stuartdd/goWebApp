@@ -429,29 +429,23 @@ func GetFaveIcon(configData *config.ConfigData) *ResponseData {
 
 // "{\"Alloc\":\"2 MiB (2309672 B)\",\"Sys\":\"12 MiB (12672016 B)\",\"TotalAlloc\":\"2 MiB (2309672 B)\",\"configName\":\"goWebApp.json\",\"error\":false,\"reloadConfig\":3080.27,\"upSince\":\"Fri Apr  5 12:48:19 2024\",\"upTime\":\"00:08:39\"}"
 // "[{\"error\":false,}{\"Alloc\":\"1 MiB (1368424 B)\"}]"
-func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, upSince time.Time, longRunning map[string]string) []byte {
+func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, upSince time.Time, longRunningJson string) []byte {
 	var b bytes.Buffer
 	var st runtime.MemStats
 	runtime.ReadMemStats(&st)
 	b.WriteRune('{')
 	writeParamAsJsonString("error", "false", false, false, true, &b)
 	b.WriteString("\"status\": {")
+	writeParamAsJsonString("ConfigName", filepath.Base(configData.ConfigName), true, false, true, &b)
 	writeParamAsJsonString("UpSince", upSince.Format(time.ANSIC), true, false, true, &b)
 	writeParamAsJsonString("UpTime", fmtDuration(time.Since(upSince)), true, false, true, &b)
 	writeParamAsJsonString("Reload Config in", fmt.Sprintf("%.0f seconds", configData.GetTimeToReloadConfig()), true, false, true, &b)
 	writeParamAsJsonString("Alloc", fmtAlloc(st.Alloc), true, false, true, &b)
 	writeParamAsJsonString("TotalAlloc", fmtAlloc(st.TotalAlloc), true, false, true, &b)
 	writeParamAsJsonString("Sys", fmtAlloc(st.Sys), true, false, true, &b)
-	writeParamAsJsonString("configName", configData.ConfigName, true, false, true, &b)
-	writeParamAsJsonString("Log Dir", configData.GetLogDataPath(), true, false, true, &b)
-	for n, v := range longRunning {
-		if n == "error" {
-			writeParamAsJsonString("Long Running Process", v, true, false, true, &b)
-		} else {
-			writeParamAsJsonString(n, v, true, false, true, &b)
-		}
-	}
-	writeParamAsJsonString("Log File", logFileName, true, false, false, &b)
+	writeParamAsJsonString("Processes", longRunningJson, false, false, true, &b)
+	writeParamAsJsonString("Log_Dir", configData.GetLogDataPath()[len(configData.GetServerDataRoot()):], true, false, true, &b)
+	writeParamAsJsonString("Log_File", logFileName, true, false, false, &b)
 	b.WriteRune('}')
 	b.WriteRune('}')
 	return b.Bytes()

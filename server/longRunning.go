@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,7 +27,6 @@ type LongRunningManager struct {
 	script           string
 	longRunning      map[string]*LongRunningProcess
 	logger           func(string)
-	message          string
 	longRunningMutex sync.Mutex
 }
 
@@ -36,7 +36,6 @@ func NewLongRunningManagerDisabled() *LongRunningManager {
 		path:        "",
 		file:        "",
 		script:      "",
-		message:     "",
 		logger:      nil,
 		longRunning: map[string]*LongRunningProcess{},
 	}
@@ -65,7 +64,6 @@ func NewLongRunningManager(path string, file string, script string, log func(str
 		file:        filepath.Join(path, file),
 		script:      script,
 		logger:      log,
-		message:     "",
 		longRunning: map[string]*LongRunningProcess{},
 	}
 	lrm.UpdateLongRunningProcess()
@@ -91,6 +89,18 @@ func (p *LongRunningManager) String() string {
 		return fmt.Sprintf("File:%s. Script:%s", p.file, p.script)
 	}
 	return "Long Running Process Manager is disabled"
+}
+
+func (p *LongRunningManager) ToJson() string {
+	if len(p.longRunning) > 0 {
+		var b bytes.Buffer
+		b.WriteRune('[')
+		for n, v := range p.longRunning {
+			b.WriteString(fmt.Sprintf("{\"Name\":\"%s\", \"Started\":\"%s\", \"PID\":%d},", n, v.GetStartTime(), v.PID))
+		}
+		return b.String()[:b.Len()-1] + "]"
+	}
+	return "[]"
 }
 
 func (p *LongRunningManager) load() {
@@ -133,7 +143,7 @@ func (p *LongRunningManager) AddLongRunningProcess(id string, pid int, commit bo
 		if p.longRunning[lrp.key()] == nil {
 			if commit {
 				p.longRunning[lrp.key()] = lrp
-				p.Log("Process added. " + lrp.Strings()[1])
+				p.Log("Process added. " + lrp.ID)
 				p.store()
 			}
 			return true
@@ -155,8 +165,7 @@ func (p *LongRunningManager) UpdateLongRunningProcess() {
 			ex := runCommand.NewExecData([]string{p.script, strconv.Itoa(v.PID)}, p.path, "", "", "", false, nil, nil, nil)
 			stdout, _, _, err := ex.Run()
 			if err != nil {
-				p.message = strings.ReplaceAll(fmt.Sprintf("UpdateLongRunningProcess ERROR: %v", err), "\"", "'")
-				p.Log(p.message)
+				p.Log(strings.ReplaceAll(fmt.Sprintf("UpdateLongRunningProcess ERROR: %v", err), "\"", "'"))
 				return
 			}
 			output := strings.TrimSpace(string(stdout))
@@ -175,20 +184,6 @@ func (p *LongRunningManager) UpdateLongRunningProcess() {
 	}
 }
 
-func (p *LongRunningManager) LongRunningMap() map[string]string {
-	list := map[string]string{}
-	if p.enabled {
-		if p.message != "" {
-			list["error"] = p.message
-		}
-		for _, v := range p.longRunning {
-			vl := v.Strings()
-			list[vl[0]] = vl[1]
-		}
-	}
-	return list
-}
-
 func NewLongRunningProcess(id string, pid int) *LongRunningProcess {
 	return &LongRunningProcess{
 		ID:      id,
@@ -205,8 +200,4 @@ func (p *LongRunningProcess) GetStartTime() string {
 	return fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
 		p.Started.Year(), p.Started.Month(), p.Started.Day(),
 		p.Started.Hour(), p.Started.Minute(), p.Started.Second())
-}
-
-func (p *LongRunningProcess) Strings() []string {
-	return []string{p.key(), fmt.Sprintf("ExecId:%s Run:%s PID:%d", p.ID, p.GetStartTime(), p.PID)}
 }
