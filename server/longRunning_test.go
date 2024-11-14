@@ -8,6 +8,8 @@ import (
 )
 
 func TestInitial(t *testing.T) {
+	testPid := 12345670910
+	testPidStr := fmt.Sprintf("%d", testPid)
 	file, _ := filepath.Abs(filepath.Join("../testdata/exec", "lrm.json"))
 	os.Remove(file)
 	defer os.Remove(file)
@@ -26,16 +28,16 @@ func TestInitial(t *testing.T) {
 		t.Fatal("Len should be 0")
 	}
 
-	if !lrm.AddLongRunningProcess("lrp1", 123, false) {
+	if !lrm.AddLongRunningProcess("lrp1", testPid, false) {
 		t.Fatal("Should not find lrp1 and dont add")
 	}
-	if !lrm.AddLongRunningProcess("lrp1", 123, true) {
+	if !lrm.AddLongRunningProcess("lrp1", testPid, true) {
 		t.Fatal("Should not find lrp1 and add")
 	}
 	if lrm.Len() != 1 {
 		t.Fatal("Len should be 1")
 	}
-	if lrm.AddLongRunningProcess("lrp1", 123, true) {
+	if lrm.AddLongRunningProcess("lrp1", testPid, true) {
 		t.Fatal("Should find lrp1")
 	}
 	s := lrm.LongRunningMap()
@@ -43,7 +45,7 @@ func TestInitial(t *testing.T) {
 		t.Fatal("Map should be len 1")
 	}
 	st := fmt.Sprintf("%s", s)
-	AssertContains(t, st, []string{" PID:123", "ExecId:lrp1"})
+	AssertContains(t, st, []string{" PID:" + testPidStr, "ExecId:lrp1"})
 	lrm.store()
 
 	logMessage := ""
@@ -53,7 +55,7 @@ func TestInitial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	AssertContains(t, logMessage, []string{"Loaded:", "PID: 123 NO longer running", "Stored:"})
+	AssertContains(t, logMessage, []string{"Loaded:", "PID: " + testPidStr + " NO longer running", "Stored:"})
 
 	s2 := lrm2.LongRunningMap()
 	if len(s2) != 0 {
@@ -61,7 +63,7 @@ func TestInitial(t *testing.T) {
 	}
 	st2 := fmt.Sprintf("%s", s)
 
-	AssertContains(t, st2, []string{" PID:123", "ExecId:lrp"})
+	AssertContains(t, st2, []string{" PID:" + testPidStr, "ExecId:lrp"})
 
 	if !lrm2.AddLongRunningProcess("lrp2", 999, false) {
 		t.Fatal("Should not find lrp1 and dont add")
