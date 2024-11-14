@@ -34,7 +34,7 @@
     },
     "lr1": {
       "Cmd": [
-        "./longRun.sh",
+        "./longRunTest.sh",
         "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
       ],
       "Dir": "",
@@ -47,7 +47,7 @@
     },
     "lr2": {
       "Cmd": [
-        "./longRun.sh",
+        "./longRunTest.sh",
         "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
       ],
       "Dir": "",
@@ -77,10 +77,7 @@
       "Hidden": true,
       "Name": "Admin",
       "Home": "",
-      "Locations": {
-        "cache": "cache",
-        "exec": "cache"
-      },
+      "Locations": {},
       "Env": {
         "lsargs": "-l"
       }
@@ -158,8 +155,8 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager": {
-    "Path": "./testdata/admin",
+    "Path": "./testdata/exec",
     "File": "RunningProcs.json",
-    "TestCommand": "./checkLrp.sh"
+    "TestCommand": "./longRunCheck.sh"
   }
 }

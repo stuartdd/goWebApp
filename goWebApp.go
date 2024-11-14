@@ -135,7 +135,7 @@ func main() {
 
 	lrm := server.NewLongRunningManagerDisabled()
 	em := cfg.GetExecManager()
-	if em != nil {
+	if em.IsSet() {
 		lrm, err = server.NewLongRunningManager(em.Path, em.File, em.TestCommand, logger.Log)
 		if err != nil {
 			osExitWithMessage(1, fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))

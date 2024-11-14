@@ -8,11 +8,11 @@ import (
 )
 
 func TestInitial(t *testing.T) {
-	file := filepath.Join("../testdata/admin", "lrm.json")
+	file, _ := filepath.Abs(filepath.Join("../testdata/exec", "lrm.json"))
 	os.Remove(file)
 	defer os.Remove(file)
 
-	lrm, err := NewLongRunningManager("../testdata/admin", "lrm.json", "./checkLrp.sh", nil)
+	lrm, err := NewLongRunningManager("../testdata/exec", "lrm.json", "./longRunCheck.sh", nil)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -26,16 +26,16 @@ func TestInitial(t *testing.T) {
 		t.Fatal("Len should be 0")
 	}
 
-	if !lrm.AddLongRunningProcess("adnin", "lrp1", 123, false) {
+	if !lrm.AddLongRunningProcess("lrp1", 123, false) {
 		t.Fatal("Should not find lrp1 and dont add")
 	}
-	if !lrm.AddLongRunningProcess("adnin", "lrp1", 123, true) {
+	if !lrm.AddLongRunningProcess("lrp1", 123, true) {
 		t.Fatal("Should not find lrp1 and add")
 	}
 	if lrm.Len() != 1 {
 		t.Fatal("Len should be 1")
 	}
-	if lrm.AddLongRunningProcess("adnin", "lrp1", 123, true) {
+	if lrm.AddLongRunningProcess("lrp1", 123, true) {
 		t.Fatal("Should find lrp1")
 	}
 	s := lrm.LongRunningMap()
@@ -43,50 +43,39 @@ func TestInitial(t *testing.T) {
 		t.Fatal("Map should be len 1")
 	}
 	st := fmt.Sprintf("%s", s)
-	AssertContains(t, st, []string{" PID:123", "ExecId:lrp1", "User:adnin"})
+	AssertContains(t, st, []string{" PID:123", "ExecId:lrp1"})
 	lrm.store()
 
-	lrm2, err := NewLongRunningManager("../testdata/admin", "lrm.json", "./checkLrp.sh", nil)
+	logMessage := ""
+	lrm2, err := NewLongRunningManager("../testdata/exec", "lrm.json", "./longRunCheck.sh", func(s string) {
+		logMessage = logMessage + " : " + s
+	})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	lrm2.load()
+	AssertContains(t, logMessage, []string{"Loaded:", "PID: 123 NO longer running", "Stored:"})
 
 	s2 := lrm2.LongRunningMap()
-	if len(s2) != 2 {
-		t.Fatal("Map should be len 2")
-	}
-	_, ok := s2["error"]
-	if !ok {
-		t.Fatal("Map should have an error entry")
+	if len(s2) != 0 {
+		t.Fatal("Map should be len 0")
 	}
 	st2 := fmt.Sprintf("%s", s)
 
-	AssertContains(t, st2, []string{" PID:123", "ExecId:lrp", "User:adnin"})
+	AssertContains(t, st2, []string{" PID:123", "ExecId:lrp"})
 
-	if !lrm2.AddLongRunningProcess("bob", "lrp2", 999, false) {
+	if !lrm2.AddLongRunningProcess("lrp2", 999, false) {
 		t.Fatal("Should not find lrp1 and dont add")
 	}
-	if !lrm2.AddLongRunningProcess("bob", "lrp2", 999, true) {
+	if !lrm2.AddLongRunningProcess("lrp2", 999, true) {
 		t.Fatal("Should not find lrp2 and add")
 	}
-	if lrm2.Len() != 2 {
-		t.Fatal("Len should be 2")
+	if lrm2.Len() != 1 {
+		t.Fatal("Len should be 1")
 	}
-	if lrm2.AddLongRunningProcess("bob", "lrp2", 999, true) {
+	if lrm2.AddLongRunningProcess("lrp2", 999, true) {
 		t.Fatal("Should find lrp2")
 	}
-
-	lrm2.store()
-	lrm.load()
-
-	st = fmt.Sprintf("%s", lrm.LongRunningMap())
-	lrm2Map := lrm2.LongRunningMap()
-	delete(lrm2Map, "error") // Purge the error message so they can match
-	st2 = fmt.Sprintf("%s", lrm2Map)
-
-	if st != st2 {
-		t.Fatal("Should be the same")
+	if lrm2.Len() != 1 {
+		t.Fatal("Len should be 1")
 	}
-
 }

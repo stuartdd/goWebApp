@@ -14,7 +14,6 @@ import (
 )
 
 type LongRunningProcess struct {
-	User    string
 	ID      string
 	Started time.Time
 	PID     int
@@ -106,6 +105,8 @@ func (p *LongRunningManager) load() {
 			p.longRunning = map[string]*LongRunningProcess{}
 			return
 		}
+		p.Log("LongRunningManager Loaded: " + p.file)
+
 	}
 }
 
@@ -119,15 +120,16 @@ func (p *LongRunningManager) store() error {
 		if err != nil {
 			return err
 		}
+		p.Log("LongRunningManager Stored: " + p.file)
 	}
 	return nil
 }
 
-func (p *LongRunningManager) AddLongRunningProcess(user string, id string, pid int, commit bool) bool {
+func (p *LongRunningManager) AddLongRunningProcess(id string, pid int, commit bool) bool {
 	if p.enabled {
 		p.longRunningMutex.Lock()
 		defer p.longRunningMutex.Unlock()
-		lrp := NewLongRunningProcess(user, id, pid)
+		lrp := NewLongRunningProcess(id, pid)
 		if p.longRunning[lrp.key()] == nil {
 			if commit {
 				p.longRunning[lrp.key()] = lrp
@@ -150,7 +152,7 @@ func (p *LongRunningManager) UpdateLongRunningProcess() {
 		upd := false
 		lrp := map[string]*LongRunningProcess{}
 		for _, v := range p.longRunning {
-			ex := runCommand.NewExecData([]string{p.script, strconv.Itoa(v.PID)}, "", "", "", "", false, nil, nil, nil)
+			ex := runCommand.NewExecData([]string{p.script, strconv.Itoa(v.PID)}, p.path, "", "", "", false, nil, nil, nil)
 			stdout, _, _, err := ex.Run()
 			if err != nil {
 				p.message = strings.ReplaceAll(fmt.Sprintf("UpdateLongRunningProcess ERROR: %v", err), "\"", "'")
@@ -187,9 +189,8 @@ func (p *LongRunningManager) LongRunningMap() map[string]string {
 	return list
 }
 
-func NewLongRunningProcess(user, id string, pid int) *LongRunningProcess {
+func NewLongRunningProcess(id string, pid int) *LongRunningProcess {
 	return &LongRunningProcess{
-		User:    user,
 		ID:      id,
 		PID:     pid,
 		Started: time.Now(),
@@ -197,7 +198,7 @@ func NewLongRunningProcess(user, id string, pid int) *LongRunningProcess {
 }
 
 func (p *LongRunningProcess) key() string {
-	return p.User + "-" + p.ID
+	return p.ID
 }
 
 func (p *LongRunningProcess) GetStartTime() string {
@@ -207,5 +208,5 @@ func (p *LongRunningProcess) GetStartTime() string {
 }
 
 func (p *LongRunningProcess) Strings() []string {
-	return []string{p.key(), fmt.Sprintf("User:%s ExecId:%s Run:%s PID:%d", p.User, p.ID, p.GetStartTime(), p.PID)}
+	return []string{p.key(), fmt.Sprintf("ExecId:%s Run:%s PID:%d", p.ID, p.GetStartTime(), p.PID)}
 }

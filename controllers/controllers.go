@@ -75,15 +75,13 @@ type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
 	verbose    func(string)
-	addLrp     func(string, string, int, bool) bool
 }
 
-func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
+func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
 	return &ReadFileHandler{
 		parameters: urlParts,
 		configData: configData,
 		verbose:    verboseFunc,
-		addLrp:     addFunc,
 	}
 }
 
@@ -262,11 +260,11 @@ type ExecHandler struct {
 	verbose    func(string)
 	isVerbose  bool
 	log        func(string)
-	addLrp     func(string, string, int, bool) bool
+	addLrp     func(string, int, bool) bool
 	execInfo   *config.ExecInfo
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), isVerbose bool, verboseFunc func(string), addFunc func(string, string, int, bool) bool) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), isVerbose bool, verboseFunc func(string), addFunc func(string, int, bool) bool) Handler {
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
@@ -281,7 +279,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 	userId := p.parameters.GetOptionalUser(AdminName)
 	execId := p.parameters.GetExecId()
 	if p.addLrp != nil {
-		ok := p.addLrp(userId, execId, 0, false)
+		ok := p.addLrp(execId, 0, false)
 		if !ok {
 			panic(config.NewPanicMessage("Exec already running", http.StatusForbidden, fmt.Sprintf("User:%s Exec:%s Lon running process is already running", userId, execId)))
 		}
@@ -292,7 +290,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return p.parameters.SubstituteFromCachedMap(r)
 	}, func(pid int) {
 		if p.addLrp != nil {
-			p.addLrp(userId, execId, pid, true)
+			p.addLrp(execId, pid, true)
 		}
 	})
 	if p.isVerbose { // Only do this if abs necessary as execData.String() does not need to be done

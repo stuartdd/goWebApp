@@ -128,8 +128,8 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager":{
-    "Path" : "./testdata/admin",
+    "Path" : "./testdata/exec",
     "File" : "RunningProcs.json",
-    "TestCommand" : "./checkLrp.sh"
+    "TestCommand" : "./longRunCheck.sh"
   }
 }

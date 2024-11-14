@@ -65,10 +65,7 @@
       "Hidden": true,
       "Name": "Admin",
       "Home": "",
-      "Locations": {
-        "cache": "cache",
-        "exec": "cache"
-      },
+      "Locations": {},
       "Env": {
         "lsargs": "-l"
       }
@@ -161,8 +158,8 @@
   },
   "FaviconIcoPath": "tgo.ico",
   "ExecManager": {
-    "Path": "./testdata/admin",
+    "Path": "./testdata/exec",
     "File": "RunningProcs.json",
-    "TestCommand": "./checkLrp.sh"
+    "TestCommand": "./longRunCheck.sh"
   }
 }

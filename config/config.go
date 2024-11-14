@@ -120,6 +120,10 @@ type ExecManager struct {
 	TestCommand string
 }
 
+func (ex *ExecManager) IsSet() bool {
+	return ex.Path != ""
+}
+
 type LogData struct {
 	FileNameMask   string
 	Path           string
@@ -304,7 +308,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		fmt.Printf("Config file name is %s\n", fn)
 	}
 
-	configDataExtternal := &ConfigData{
+	configDataExternal := &ConfigData{
 		Debugging:        debugging,
 		CurrentPath:      wd,
 		ModuleName:       moduleName,
@@ -331,24 +335,25 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
 		Env:                 map[string]string{},
 		Exec:                map[string]*ExecInfo{},
+		ExecManager:         &ExecManager{Path: "", File: "", TestCommand: ""},
 	}
 
 	/*
 		load the config object
 	*/
-	content, err := os.ReadFile(configDataExtternal.ConfigName)
+	content, err := os.ReadFile(configDataExternal.ConfigName)
 	if err != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExtternal.ConfigName, err.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
 	}
 
 	err = json.Unmarshal(content, &configDataInternal)
 	if err != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExtternal.ConfigName, err.Error()))
+		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
 	}
 
-	configDataExtternal.internal = configDataInternal
+	configDataExternal.internal = configDataInternal
 
-	if len(configDataExtternal.internal.ThumbnailTrim) < 2 {
+	if len(configDataExternal.internal.ThumbnailTrim) < 2 {
 		return nil, NewConfigErrorData().AddError("Config data entry ThumbnailTrim data has less than 2 entries")
 	}
 
@@ -357,12 +362,12 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		Add config data Env to the Environment variables
 	*/
 	for n, v := range configDataInternal.Env {
-		configDataExtternal.Environment[n] = v
+		configDataExternal.Environment[n] = v
 	}
 
-	configDataExtternal.NextLoadTime = configDataExtternal.getNextReloadConfigMillis()
+	configDataExternal.NextLoadTime = configDataExternal.getNextReloadConfigMillis()
 	if dontResolve {
-		return configDataExtternal, NewConfigErrorData()
+		return configDataExternal, NewConfigErrorData()
 	}
 	for i := 0; i < len(configDataInternal.FilterFiles); i++ {
 		f := strings.ToLower(configDataInternal.FilterFiles[i])
@@ -372,7 +377,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 	}
 
 	if verbose {
-		ret, cfgErr := configDataExtternal.resolveLocations(createDir)
+		ret, cfgErr := configDataExternal.resolveLocations(createDir)
 		if ret != nil {
 			fmt.Println("Final Config Data -------")
 			s, err := ret.String()
@@ -385,7 +390,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		}
 		return ret, cfgErr
 	} else {
-		return configDataExtternal.resolveLocations(createDir)
+		return configDataExternal.resolveLocations(createDir)
 	}
 }
 

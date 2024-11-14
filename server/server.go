@@ -122,7 +122,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	verboseFunc := h.logger.GetVerbose()
 
 	urlPath := strings.TrimSpace(r.URL.Path)
-	
+
 	defer func() {
 		if r := recover(); r != nil {
 			pm := r.(*config.PanicMessage)
@@ -185,22 +185,22 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getTestUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = postFileUserLocNameLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
