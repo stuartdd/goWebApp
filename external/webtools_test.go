@@ -8,6 +8,11 @@ import (
 func TestUfsFileData(t *testing.T) {
 	RunTextToJson(readContent(t, "ufsConfig.json"), "ufsConfig.json")
 }
+
+func TestFreeCommand(t *testing.T) {
+	RunTextToJson(readContent(t, "freeConfig.json"), "freeConfig.json")
+}
+
 func TestDsFileData(t *testing.T) {
 	RunTextToJson(readContent(t, "ufsConfig.json"), "ufsConfig.json")
 }

@@ -25,9 +25,9 @@ type Properties struct {
 	OutputFile   string   // Output file. If not output to stdout
 	FilePrefix   string   // Write at strat of output
 	FilePostfix  string   // Write at end of output
-	LinePrefix   string   // Write at start of each line
-	LinePostfix  string   // Write at end of each line. NL will be appended anyway.
-	Infix        string   // Write between output tokems on each line. Default is ','
+	LinePrefix   string   // At the start of each input line write to the output
+	LinePostfix  string   // At the end of each input line write to the output
+	LineInfix    string   // At the end of each input line write to the output except the last line
 	SkipLines    int      // Skip n lines from input
 	MaxLines     int      // Max number of input lines to be read
 	LineContains []string // Include input line if it contains ANY of these values
@@ -51,9 +51,9 @@ func RunTextToJson(content []byte, configFileName string) {
 		OutputFile:  "",
 		FilePrefix:  "",
 		FilePostfix: "",
-		LinePrefix:  "",
-		LinePostfix: "",
-		Infix:       ",",
+		LinePrefix:  "",  // At the start of each input line write to the output
+		LinePostfix: "",  // At the end of each input line write to the output
+		LineInfix:   ",", // At the end of each input line write to the output except the last line
 	}
 	err := json.Unmarshal(content, &properties)
 	if err != nil {
@@ -61,12 +61,9 @@ func RunTextToJson(content []byte, configFileName string) {
 		os.Exit(1)
 	}
 	count := 0
-	txt := ""
+	theLine := ""
 	var scanner *bufio.Scanner
-	var buff bytes.Buffer
-	if properties.FilePrefix != "" {
-		buff.WriteString(properties.FilePrefix)
-	}
+	var outputBuff bytes.Buffer
 
 	if properties.InputFile == "" {
 		scanner = bufio.NewScanner(os.Stdin)
@@ -85,46 +82,40 @@ func RunTextToJson(content []byte, configFileName string) {
 		scanner.Text()
 	}
 
-	buffLen := buff.Len()
+	outputBuff.WriteString(properties.FilePrefix)
+	outputBuffLen := outputBuff.Len()
+	// For each input line
 	for scanner.Scan() && count < properties.MaxLines {
-		txt = scanner.Text()
-		if contains(txt, properties.LineContains) {
-			if properties.LinePrefix != "" {
-				buff.WriteString(properties.LinePrefix)
-			}
+		theLine = scanner.Text()
+		if contains(theLine, properties.LineContains) {
+
+			outputBuff.WriteString(properties.LinePrefix)
 			if len(properties.Lines) > 0 {
-				tokens := tokeniseToJson(count, properties.Lines, []byte(txt))
-				buff.WriteString(tokens)
-				buffLen = buff.Len()
-				if tokens != "" {
-					buff.WriteString(properties.Infix)
-				}
+				tokensOnLine := tokeniseLineToJson(count, properties, []byte(theLine))
+				outputBuff.WriteString(tokensOnLine)
 			} else {
-				if txt != "" {
-					buff.WriteString(txt)
-					buffLen = buff.Len()
+				if theLine != "" {
+					outputBuff.WriteString(theLine)
 				}
 			}
-			if properties.LinePostfix != "" {
-				buff.WriteString(properties.LinePostfix)
-				buffLen = buff.Len()
-			}
+			outputBuff.WriteString(properties.LinePostfix)
+			outputBuffLen = outputBuff.Len()
+
+			outputBuff.WriteString(properties.LineInfix)
 			count++
 		}
 	}
 
-	buff.Truncate(buffLen)
-	if properties.FilePostfix != "" {
-		buff.WriteString(properties.FilePostfix)
-	}
+	outputBuff.Truncate(outputBuffLen)
+	outputBuff.WriteString(properties.FilePostfix)
 	if properties.OutputFile != "" {
-		err = os.WriteFile(properties.OutputFile, buff.Bytes(), 0644)
+		err = os.WriteFile(properties.OutputFile, outputBuff.Bytes(), 0644)
 		if err != nil {
 			log(fmt.Sprintf("Failed to create output file: %s\n", properties.OutputFile))
 			os.Exit(1)
 		}
 	} else {
-		os.Stdout.WriteString(buff.String())
+		os.Stdout.WriteString(outputBuff.String())
 	}
 }
 
@@ -182,14 +173,14 @@ func contains(line string, cont []string) bool {
 	return false
 }
 
-func tokeniseToJson(lineNum int, lines []*Line, line []byte) string {
+func tokeniseLineToJson(lineNum int, p *Properties, line []byte) string {
 	//
 	// get the tokens for a line. Repeat tokens for n lines using mod function.
 	// so for eg. 3 line tokens are applied 3 times for 9 lines...
 	//
-	tokenLine := lines[lineNum%len(lines)]
+	tokenLine := p.Lines[lineNum%len(p.Lines)]
 	if len(tokenLine.Tokens) == 0 {
-		os.Stderr.WriteString(fmt.Sprintf("No Tokens are defined for Line[%d]", lineNum%len(lines)))
+		os.Stderr.WriteString(fmt.Sprintf("No Tokens are defined for Line[%d]", lineNum%len(p.Lines)))
 		os.Exit(1)
 	}
 	tokens := tokenLine.Tokens
@@ -215,7 +206,7 @@ func tokeniseToJson(lineNum int, lines []*Line, line []byte) string {
 		resp = append(resp, buff.String())
 	}
 	buff.Reset()
-	buff.WriteRune('{')
+	// buff.WriteString(p.LinePrefix)
 	for i, tok := range tokens {
 		p := tok.Pos
 		if p >= 0 && p < len(resp) {
@@ -225,7 +216,7 @@ func tokeniseToJson(lineNum int, lines []*Line, line []byte) string {
 			}
 		}
 	}
-	buff.WriteRune('}')
+	// buff.WriteString(p.LinePostfix)
 	return buff.String()
 }
 
@@ -242,7 +233,6 @@ func finalToken(tokDesc *JsonToken, value string) string {
 	} else {
 		buff.WriteString(value)
 	}
-
 	return buff.String()
 }
 

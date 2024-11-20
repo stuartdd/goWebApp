@@ -13,6 +13,12 @@
         "%{find}"
       ]
     },
+    "free": {
+      "StdOutType": "json",
+      "Cmd": [
+        "./free.sh"
+      ]
+    },
     "echo": {
       "StdOutType": "txt",
       "Cmd": [

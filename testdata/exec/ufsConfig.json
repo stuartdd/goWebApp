@@ -1,7 +1,9 @@
 {
     "FilePrefix": "[",
     "FilePostFix": "]",
-    "Infix": ",",
+    "LinePrefix": "{",
+    "LinePostFix": "}",
+    "LineInfix": ",",
     "SkipLines": 0,
     "InputFile": "ufs.raw",
     "MaxLines": 5,
