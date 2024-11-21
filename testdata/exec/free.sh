@@ -1,6 +1,9 @@
 #!/bin/bash
 
-free | grep -i "$1" > freeOut.raw
+free > freeOut.raw
+uname -r >> freeOut.raw
+uname -v >> freeOut.raw
+uname -p >> freeOut.raw
 
 ./webtools freeConfig.json
 

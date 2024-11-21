@@ -2,7 +2,7 @@
     "FilePrefix": "{",
     "FilePostFix": "}",
     "SkipLines": 1,
-    "MaxLines": 2,
+    "MaxLines": 5,
     "InputFile": "freeOut.raw",   
     "Lines": [
         {
@@ -12,7 +12,7 @@
                 {
                     "pos": 1,
                     "name": "MemTotal",
-                    "quoted": false
+                    "quoted": true
                 },
                 {
                     "pos": 2,
@@ -58,7 +58,35 @@
                 {
                     "pos": 3,
                     "name": "SwapFree",
-                    "quoted": false
+                    "quoted": true
+                }
+            ]
+        },
+        {
+            "Tokens": [
+                {
+                    "pos": 0,
+                    "name": "Kernal Release",
+                    "quoted": true
+                }
+            ]
+        },
+        {
+            "Split": " ",
+            "Tokens": [
+                {
+                    "pos": 0,
+                    "name": "Kernal",
+                    "quoted": true
+                }
+            ]
+        },
+        {
+            "Tokens": [
+                {
+                    "pos": 0,
+                    "name": "Architecture",
+                    "quoted": true
                 }
             ]
         }
