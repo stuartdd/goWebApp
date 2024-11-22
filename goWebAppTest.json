@@ -94,11 +94,11 @@
     },
     "ServerDataRoot": "../testdata",
     "StaticData": {
-        "Path":"../static",
+        "Path":"../testdata/static",
         "Home" :"dart.html"
       },
     
-    "ServerStaticRoot": "../static",
+    "ServerStaticRoot": "../testdata/static",
     "TemplateStaticFiles":{
         "Files":["dart.html", "dart.css"],
         "DataFile":"../testdata/configDataPI.json"

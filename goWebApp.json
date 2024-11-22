@@ -26,6 +26,19 @@
         "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
       ]
     },
+    "ltpStop": {
+      "Cmd": [
+        "./longRunStop.sh",
+        "%{hvalue}"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "",
+      "LogOut": "",
+      "LogErr": "",
+      "NzCodeReturns": 200,
+      "Detached": false
+    },
     "ds": {
       "Cmd": [
         "./diskSize.sh"
@@ -152,9 +165,7 @@
       "tgoimage.html",
       "tgo.css"
     ],
-    "DataFile": "%{WebServerHome}/static/templateData.json",
-    "Data": null,
-    "FullFileName": ""
+    "DataFile": "%{WebServerHome}/static/templateData.json"
   },
   "FaviconIcoPath": "favicon1.ico",
   "Env": {

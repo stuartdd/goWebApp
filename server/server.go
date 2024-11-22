@@ -394,7 +394,7 @@ func (p *WebAppServer) Start() int {
 		p.Log("Static Data       :Undefined. Add StaticData.Home to config")
 	}
 	if p.Handler.config.IsTemplating() {
-		p.Log(fmt.Sprintf("Server Templating :%s.", p.Handler.config.GetTemplateData().FullFileName))
+		p.Log(fmt.Sprintf("Server Templating :%s.", p.Handler.config.GetTemplateData().String()))
 	} else {
 		p.Log("Server Templating :OFF.")
 	}

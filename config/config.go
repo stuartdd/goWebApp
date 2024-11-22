@@ -65,10 +65,9 @@ func (p *PanicMessage) Error() string {
 Template data read from configuration data JSONn file.
 */
 type TemplateStaticFiles struct {
-	Files        []string
-	DataFile     string
-	data         map[string]string
-	FullFileName string
+	Files    []string
+	DataFile string
+	data     map[string]string
 }
 
 func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
@@ -86,12 +85,13 @@ func (t *TemplateStaticFiles) Init() (*TemplateStaticFiles, error) {
 		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
 	}
 	t.data = FlattenMap(m, "")
-	t.FullFileName = f
+
 	return t, nil
 }
 
 func (t *TemplateStaticFiles) String() string {
-	return fmt.Sprintf("%s. Templates:%s", t.FullFileName, t.Files)
+	f, _ := filepath.Abs(t.DataFile)
+	return fmt.Sprintf("%s. Templates:%s", f, t.Files)
 }
 
 func (t *TemplateStaticFiles) Data(plus map[string]string) map[string]string {

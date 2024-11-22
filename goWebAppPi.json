@@ -132,9 +132,7 @@
       "tgoimage.html",
       "tgo.css"
     ],
-    "DataFile": "static/templateData.json",
-    "Data": null,
-    "FullFileName": ""
+    "DataFile": "static/templateData.json"
   },
   "FaviconIcoPath": "favicon1.ico"
 }

@@ -6,7 +6,15 @@ cd $CONTROL_DIR
 
 while true
 do
-  ./goWebApp config=tgo.json -vr
+
+  if [ $USER == pi ]; then
+    echo "Config file:goWebAppPi.json"
+  ./goWebApp config=goWebAppPi.json
+  else
+    echo "Config file:goWebApp.json"
+  ./goWebApp config=goWebApp.json -vr
+  fi
+  
   RESP=$?
   echo "########################################################"
   echo "Response: $RESP"

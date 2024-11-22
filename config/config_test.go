@@ -6,6 +6,16 @@ import (
 	"testing"
 )
 
+func TestTemplateStaticFiles(t *testing.T) {
+	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	if errlist.ErrorCount() != 1 {
+		t.Fatalf("Config failed\n%s", errlist.String())
+	}
+	if conf == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
+	}
+
+}
 func TestThumbNailTrim(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
 	if errlist.ErrorCount() != 1 {
