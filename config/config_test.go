@@ -164,7 +164,10 @@ func TestUserExec(t *testing.T) {
 	}()
 	pre := conf.GetServerDataRoot()
 	exec := conf.GetExecInfo("c2")
-	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/logOut.txt"})
+	if exec.CanStop {
+		t.Fatalf("Exec canstop should default to false")
+	}
+ 	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/logOut.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {

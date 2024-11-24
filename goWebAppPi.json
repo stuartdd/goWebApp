@@ -123,7 +123,7 @@
   ],
   "ServerDataRoot": "/home/pi/server/goWebAppRoot",
   "StaticData": {
-    "Path": "static",
+    "Path": "/home/pi/server/goWebAppRoot/static",
     "Home": "tgo.html"
   },
   "TemplateStaticFiles": {

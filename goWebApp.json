@@ -62,7 +62,8 @@
       "LogOut": "",
       "LogErr": "",
       "NzCodeReturns": 0,
-      "Detached": true
+      "Detached": true,
+      "CanStop": true
     },
     "lr2": {
       "Cmd": [
@@ -139,7 +140,7 @@
   "ContentTypeCharset": "utf-8",
   "LogData": {
     "FileNameMask": "goWebServer-%y-%m-%d.log",
-    "Path": "admin/logs",
+    "Path": "logs",
     "MonitorSeconds": 30,
     "ConsoleOut": true
   },

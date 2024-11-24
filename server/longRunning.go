@@ -18,6 +18,7 @@ type LongRunningProcess struct {
 	ID      string
 	Started time.Time
 	PID     int
+	CanStop bool
 }
 
 type LongRunningManager struct {
@@ -96,7 +97,7 @@ func (p *LongRunningManager) ToJson() string {
 		var b bytes.Buffer
 		b.WriteRune('[')
 		for n, v := range p.longRunning {
-			b.WriteString(fmt.Sprintf("{\"Name\":\"%s\", \"Started\":\"%s\", \"PID\":%d},", n, v.GetStartTime(), v.PID))
+			b.WriteString(fmt.Sprintf("{\"Name\":\"%s\", \"Started\":\"%s\", \"PID\":%d, \"CanStop\":%t},", n, v.GetStartTime(), v.PID, v.CanStop))
 		}
 		return b.String()[:b.Len()-1] + "]"
 	}
@@ -135,11 +136,11 @@ func (p *LongRunningManager) store() error {
 	return nil
 }
 
-func (p *LongRunningManager) AddLongRunningProcess(id string, pid int, commit bool) bool {
+func (p *LongRunningManager) AddLongRunningProcess(id string, pid int, canStop bool, commit bool) bool {
 	if p.enabled {
 		p.longRunningMutex.Lock()
 		defer p.longRunningMutex.Unlock()
-		lrp := NewLongRunningProcess(id, pid)
+		lrp := NewLongRunningProcess(id, pid, canStop)
 		if p.longRunning[lrp.key()] == nil {
 			if commit {
 				p.longRunning[lrp.key()] = lrp
@@ -162,7 +163,7 @@ func (p *LongRunningManager) UpdateLongRunningProcess() {
 		upd := false
 		lrp := map[string]*LongRunningProcess{}
 		for _, v := range p.longRunning {
-			ex := runCommand.NewExecData([]string{p.script, strconv.Itoa(v.PID)}, p.path, "", "", "", false, nil, nil, nil)
+			ex := runCommand.NewExecData([]string{p.script, strconv.Itoa(v.PID)}, p.path, "", "", "", false, false, nil, nil, nil)
 			stdout, _, _, err := ex.Run()
 			if err != nil {
 				p.Log(strings.ReplaceAll(fmt.Sprintf("UpdateLongRunningProcess ERROR: %v", err), "\"", "'"))
@@ -184,11 +185,12 @@ func (p *LongRunningManager) UpdateLongRunningProcess() {
 	}
 }
 
-func NewLongRunningProcess(id string, pid int) *LongRunningProcess {
+func NewLongRunningProcess(id string, pid int, canStop bool) *LongRunningProcess {
 	return &LongRunningProcess{
 		ID:      id,
 		PID:     pid,
 		Started: time.Now(),
+		CanStop: canStop,
 	}
 }
 

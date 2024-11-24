@@ -17,13 +17,14 @@ type execData struct {
 	add       func(int)
 	info      string
 	detached  bool
+	canStop   bool
 }
 
 func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, detached bool, logFunc func(string), substitute func([]byte) string, addFunc func(int)) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string, addFunc func(int)) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -45,6 +46,7 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 		add:       addFunc,
 		info:      info,
 		detached:  detached,
+		canStop:   canStop,
 	}
 }
 

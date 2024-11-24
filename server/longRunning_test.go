@@ -28,16 +28,16 @@ func TestInitial(t *testing.T) {
 		t.Fatal("Len should be 0")
 	}
 
-	if !lrm.AddLongRunningProcess("lrp1", testPid, false) {
+	if !lrm.AddLongRunningProcess("lrp1", testPid, false, false) {
 		t.Fatal("Should not find lrp1 and dont add")
 	}
-	if !lrm.AddLongRunningProcess("lrp1", testPid, true) {
+	if !lrm.AddLongRunningProcess("lrp1", testPid, false, true) {
 		t.Fatal("Should not find lrp1 and add")
 	}
 	if lrm.Len() != 1 {
 		t.Fatal("Len should be 1")
 	}
-	if lrm.AddLongRunningProcess("lrp1", testPid, true) {
+	if lrm.AddLongRunningProcess("lrp1", testPid, false, true) {
 		t.Fatal("Should find lrp1")
 	}
 	s := stringMap(lrm)
@@ -65,16 +65,16 @@ func TestInitial(t *testing.T) {
 
 	AssertContains(t, st2, []string{" PID:" + testPidStr, "ExecId:lrp"})
 
-	if !lrm2.AddLongRunningProcess("lrp2", 999, false) {
+	if !lrm2.AddLongRunningProcess("lrp2", 999, false, false) {
 		t.Fatal("Should not find lrp1 and dont add")
 	}
-	if !lrm2.AddLongRunningProcess("lrp2", 999, true) {
+	if !lrm2.AddLongRunningProcess("lrp2", 999, false, true) {
 		t.Fatal("Should not find lrp2 and add")
 	}
 	if lrm2.Len() != 1 {
 		t.Fatal("Len should be 1")
 	}
-	if lrm2.AddLongRunningProcess("lrp2", 999, true) {
+	if lrm2.AddLongRunningProcess("lrp2", 999, false, true) {
 		t.Fatal("Should find lrp2")
 	}
 	if lrm2.Len() != 1 {

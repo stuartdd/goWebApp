@@ -197,6 +197,7 @@ type ExecInfo struct {
 	LogErr        string
 	NzCodeReturns int
 	Detached      bool
+	CanStop       bool
 }
 
 func (p *ExecInfo) GetOutLogFile() string {
