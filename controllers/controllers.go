@@ -389,7 +389,7 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 
 	var b bytes.Buffer
 	for i, v := range list {
-		b.WriteString("Offset[")
+		b.WriteString("## Offset[")
 		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))
 		b.WriteString("] ")
 		b.WriteString(v[len(ld.Path):])
@@ -402,11 +402,11 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 		previous = len(list) - 1
 	}
 	fileName := list[len(list)-(previous+1)]
-	b.WriteString("Displaying log File at Offset[")
+	b.WriteString("## Displaying log File at Offset[")
 	b.WriteString(fmt.Sprintf("%2d", previous))
 	b.WriteString("] ")
 	b.WriteString(fileName[len(ld.Path):])
-	b.WriteString("\n\n")
+	b.WriteString("\n## ## ##\n\n")
 
 	fileContent, err := os.ReadFile(fileName)
 	if err != nil {

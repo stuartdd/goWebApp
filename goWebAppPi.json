@@ -132,9 +132,9 @@
       "tgoimage.html",
       "tgo.css"
     ],
-    "DataFile": "static/templateData.json"
+    "DataFile": "/home/pi/server/goWebAppRoot/static/templateData.json"
   },
-  "FaviconIcoPath": "favicon1.ico",
+  "FaviconIcoPath": "static/favicon1.ico",
   "ExecManager": {
     "Path": "./testdata/exec",
     "File": "RunningProcs.json",

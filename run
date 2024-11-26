@@ -7,12 +7,12 @@ cd $CONTROL_DIR
 while true
 do
 
-  if [ $USER == pi ]; then
+  if [ $USER == stuart ]; then
     echo "Config file:goWebAppPi.json"
-  ./goWebApp config=goWebAppPi.json
+  ./goWebApp config=goWebApp.json -vr
   else
     echo "Config file:goWebApp.json"
-  ./goWebApp config=goWebApp.json -vr
+  ./goWebApp config=goWebAppPi.json -vr
   fi
   
   RESP=$?

@@ -53,28 +53,26 @@
     },
     "lr1": {
       "Cmd": [
-        "./longRunTest.sh",
-        "../stuart/logs/longRun1_%{doy}_%{hour}_%{min}_%{sec}.log"
+        "./longRunTest.sh"
       ],
       "Dir": "",
       "StdOutType": "json",
-      "LogDir": "",
-      "LogOut": "",
-      "LogErr": "",
+      "LogDir": "logs",
+      "LogOut": "stdOut1.log",
+      "LogErr": "stdErr1.log",
       "NzCodeReturns": 0,
       "Detached": true,
       "CanStop": true
     },
     "lr2": {
       "Cmd": [
-        "./longRunTest.sh",
-        "../stuart/logs/longRun2_%{doy}_%{hour}_%{min}_%{sec}.log"
+        "./longRunTest.sh"
       ],
       "Dir": "",
       "StdOutType": "json",
       "LogDir": "logs",
-      "LogOut": "",
-      "LogErr": "",
+      "LogOut": "stdOut2.log",
+      "LogErr": "stdErr2.log",
       "NzCodeReturns": 0,
       "Detached": true
     },
