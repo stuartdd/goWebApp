@@ -8,10 +8,10 @@ while true
 do
 
   if [ $USER == stuart ]; then
-    echo "Config file:goWebAppPi.json"
+    echo "Config file:goWebApp.json"
   ./goWebApp config=goWebApp.json -vr
   else
-    echo "Config file:goWebApp.json"
+    echo "Config file:goWebAppPi.json"
   ./goWebApp config=goWebAppPi.json -vr
   fi
   

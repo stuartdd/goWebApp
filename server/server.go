@@ -41,9 +41,10 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 }
 
 var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET", shouldLog)
-var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldLog)
+var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldNotLog)
 var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET", shouldNotLog)
-var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET", shouldLog)
+
+// var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET", shouldLog)
 var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLog)
 
 var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLog)
@@ -219,13 +220,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		//
-		// Script is here for backward compatibility withb older server. Use exec instead!
+		// Script is here for backward compatibility with older server. Use exec instead!
 		//
-		p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin().RenameParameter("script", "exec"), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
-			return
-		}
+		// p, ok, shouldLog = getScriptMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+		// if ok {
+		// 	h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin().RenameParameter("script", "exec"), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+		// 	return
+		// }
 		p, ok, shouldLog = getExecMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)

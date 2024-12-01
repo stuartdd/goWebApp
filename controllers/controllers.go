@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +19,11 @@ import (
 	"github.com/stuartdd/goWebApp/logging"
 	"github.com/stuartdd/goWebApp/runCommand"
 )
+
+type FileInfo struct {
+	modTime time.Time
+	path    string
+}
 
 type Handler interface {
 	Submit() *ResponseData
@@ -375,24 +380,27 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 
 func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 	ld := configData.GetLogData()
-	list := []string{}
+	list := []*FileInfo{}
 	filepath.Walk(ld.Path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".log") {
-			list = append(list, path)
+			list = append(list, &FileInfo{modTime: info.ModTime(), path: path})
 		}
 		return nil
 	})
 	if len(list) == 0 {
 		return NewResponseData(http.StatusUnprocessableEntity).WithContentReasonAsJson("No log files were found", true)
 	}
-	slices.Sort(list)
+
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].modTime.Before(list[j].modTime)
+	})
 
 	var b bytes.Buffer
 	for i, v := range list {
-		b.WriteString("## Offset[")
+		b.WriteString("##! Offset[")
 		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))
 		b.WriteString("] ")
-		b.WriteString(v[len(ld.Path):])
+		b.WriteString(v.path[len(ld.Path):])
 		b.WriteString("\n")
 	}
 	if previous < 0 {
@@ -401,12 +409,12 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 	if previous >= (len(list)) {
 		previous = len(list) - 1
 	}
-	fileName := list[len(list)-(previous+1)]
-	b.WriteString("## Displaying log File at Offset[")
+	fileName := list[len(list)-(previous+1)].path
+	b.WriteString("##! Displaying log File at Offset[")
 	b.WriteString(fmt.Sprintf("%2d", previous))
 	b.WriteString("] ")
 	b.WriteString(fileName[len(ld.Path):])
-	b.WriteString("\n## ## ##\n\n")
+	b.WriteString("\n##! -- --\n\n")
 
 	fileContent, err := os.ReadFile(fileName)
 	if err != nil {

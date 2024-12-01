@@ -459,6 +459,15 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		}
 	}()
 
+	if p.GetExecManager().Path != "" {
+		f, e = p.checkRootPathExists(p.GetExecManager().Path, userConfigEnv) // Will check ServerStaticRoot
+		if e != nil {
+			errorList.AddError(fmt.Sprintf("Config Error: ExecManager.Path %s", e))
+		} else {
+			p.GetExecManager().Path = f
+		}
+	}
+
 	if p.IsTemplating() {
 		templ := p.GetTemplateData()
 		templ.DataFile = p.SubstituteFromMap([]byte(templ.DataFile), userConfigEnv)
@@ -492,14 +501,19 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 				execData.LogDir = f
 			}
 		}
-		if execData.Dir == "" {
-			execData.Dir = "exec"
-		}
-		f, e := p.checkPathExists("", execData.Dir, "", userConfigEnv, createDir)
-		if e != nil {
-			errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] directory %s", execName, e.Error()))
+
+		if execData.Dir == "" && p.internal.ExecManager != nil && p.internal.ExecManager.Path != "" {
+			execData.Dir = p.internal.ExecManager.Path
 		} else {
-			execData.Dir = f
+			if execData.Dir == "" {
+				execData.Dir = "exec"
+			}
+			f, e := p.checkPathExists("", execData.Dir, "", userConfigEnv, createDir)
+			if e != nil {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] directory %s", execName, e.Error()))
+			} else {
+				execData.Dir = f
+			}
 		}
 
 		for i, v := range execData.Cmd {

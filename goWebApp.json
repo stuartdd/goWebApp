@@ -171,7 +171,7 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager": {
-    "Path": "./testdata/exec",
+    "Path": "testdata/exec",
     "File": "RunningProcs.json",
     "TestCommand": "./longRunCheck.sh"
   }
