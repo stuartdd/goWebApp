@@ -23,6 +23,7 @@ import (
 type FileInfo struct {
 	modTime time.Time
 	path    string
+	size    int64
 }
 
 type Handler interface {
@@ -383,7 +384,7 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 	list := []*FileInfo{}
 	filepath.Walk(ld.Path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".log") {
-			list = append(list, &FileInfo{modTime: info.ModTime(), path: path})
+			list = append(list, &FileInfo{modTime: info.ModTime(), path: path, size: info.Size()})
 		}
 		return nil
 	})
@@ -401,6 +402,9 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))
 		b.WriteString("] ")
 		b.WriteString(v.path[len(ld.Path):])
+		b.WriteString(" (")
+		b.WriteString(strconv.Itoa(int(v.size)))
+		b.WriteRune(')')
 		b.WriteString("\n")
 	}
 	if previous < 0 {
