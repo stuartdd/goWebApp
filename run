@@ -4,6 +4,16 @@ echo "########################################################"
 echo "Running in: $CONTROL_DIR"
 cd $CONTROL_DIR
 
+if [ x"${WebServerHome}" == "x" ]; then 
+    echo "Value 'WebServerHome' is not assigned to a variable"
+	exit 1
+fi
+
+if [ x"${WebServerPictures}" == "x" ]; then 
+    echo "Value 'WebServerPictures' is not assigned to a variable"
+    exit 1
+fi
+
 while true
 do
 
