@@ -153,7 +153,7 @@
     ".info",
     ".log"
   ],
-  "ServerDataRoot": "./testdata",
+  "ServerDataRoot": "%{WebServerData}",
   "StaticData": {
     "Path": "%{WebServerHome}/static",
     "Home": "tgo.html"
@@ -171,7 +171,7 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager": {
-    "Path": "testdata/exec",
+    "Path": "exec",
     "File": "RunningProcs.json",
     "TestCommand": "./longRunCheck.sh"
   }

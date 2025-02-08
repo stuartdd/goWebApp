@@ -6,4 +6,6 @@ __*
 textToJson
 webtools
 goWebApp
+.deploy
 RunningProcs.json
+nohup.out
