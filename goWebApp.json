@@ -2,7 +2,7 @@
   "ReloadConfigSeconds": 3600,
   "Port": 8082,
   "ThumbnailTrim": [
-    20,
+    22,
     4
   ],
   "Exec": {
@@ -64,6 +64,18 @@
       "Detached": true,
       "CanStop": true
     },
+    "Thumbnails": {
+      "Cmd": [
+        "./thumbnails.sh"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "../logs",
+      "LogOut": "thumbnailsOut1.log",
+      "LogErr": "thumbnailsErr1.log",
+      "NzCodeReturns": 0,
+      "Detached": true
+    },
     "lr2": {
       "Cmd": [
         "./longRunTest.sh"
@@ -122,7 +134,6 @@
       "Locations": {
         "cache": "cache",
         "data": "stateData",
-        "dev": "***%{WebServerPictures}/dev/%{id}",
         "home": "",
         "logs": "logs",
         "original": "***%{WebServerPictures}/originals/%{id}",
@@ -171,7 +182,7 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager": {
-    "Path": "exec",
+    "Path": "%{WebServerData}/exec",
     "File": "RunningProcs.json",
     "TestCommand": "./longRunCheck.sh"
   }
