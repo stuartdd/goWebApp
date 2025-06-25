@@ -6,12 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
+	"syscall"
 	"time"
-
-	"github.com/stuartdd/goWebApp/runCommand"
 )
 
 type LongRunningProcess struct {
@@ -93,6 +90,7 @@ func (p *LongRunningManager) String() string {
 }
 
 func (p *LongRunningManager) ToJson() string {
+	p.UpdateLongRunningProcess()
 	if len(p.longRunning) > 0 {
 		var b bytes.Buffer
 		b.WriteRune('[')
@@ -162,20 +160,14 @@ func (p *LongRunningManager) UpdateLongRunningProcess() {
 		p.load()
 		upd := false
 		lrp := map[string]*LongRunningProcess{}
-		for _, v := range p.longRunning {
-			ex := runCommand.NewExecData([]string{p.script, strconv.Itoa(v.PID)}, p.path, "", "", "", false, false, nil, nil, nil)
-			stdout, _, _, err := ex.Run()
+		for _, v := range p.longRunning { // Example pid
+			process, _ := os.FindProcess(v.PID) // Always succeeds on Unix systems
+			err := process.Signal(syscall.Signal(0))
 			if err != nil {
-				p.Log(strings.ReplaceAll(fmt.Sprintf("UpdateLongRunningProcess ERROR: %v", err), "\"", "'"))
-				return
-			}
-			output := strings.TrimSpace(string(stdout))
-			running := output != "" && !strings.Contains(output, "defunct")
-			if running {
 				lrp[v.key()] = v
 			} else {
 				upd = true
-				p.Log(fmt.Sprintf("UpdateLongRunningProcess PID: %d NO longer running [%s]", v.PID, output))
+				p.Log(fmt.Sprintf("UpdateLongRunningProcess PID: %d NO longer running [%s]", v.PID, v.ID))
 			}
 		}
 		if upd {

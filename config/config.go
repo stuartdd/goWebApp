@@ -493,6 +493,17 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	}
 
 	for execName, execData := range p.internal.Exec {
+		if execData.Detached {
+			if execData.LogDir != "" {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", execName, execData.LogDir))
+			}
+			if execData.LogOut != "" {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogOut='%s'", execName, execData.LogOut))
+			}
+			if execData.LogErr != "" {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogErr='%s'", execName, execData.LogErr))
+			}
+		}
 		if execData.LogDir != "" {
 			f, e := p.checkPathExists("", execData.LogDir, "", userConfigEnv, createDir)
 			if e != nil {
