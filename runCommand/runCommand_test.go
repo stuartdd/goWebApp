@@ -1,9 +1,28 @@
 package runCommand
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
+
+func TestDetatch(t *testing.T) {
+	wd, _ := os.Getwd()
+	tc := NewExecData([]string{"longRunTest.sh"}, "/home/stuart/git/goWebApp/testdata/exec", "../testdata/logs/cmdout.txt", "../testdata/logs/cmderr.txt", "info", true, true, nil, nil, nil)
+	_, _, _, err := tc.RunNew()
+	if err != nil {
+		t.Fatalf("Run Should NOT throw error %s", err.Error())
+	}
+	cd, _ := os.Getwd()
+	if wd != cd {
+		t.Fatalf("Working dis has changed. From %s To %s", wd, cd)
+	}
+	s, err := tc.Kill("longRunTest.sh")
+	if err != nil {
+		t.Fatalf("Kill Should NOT throw error %s", err.Error())
+	}
+	t.Fatal(s)
+}
 
 func TestNoCommands(t *testing.T) {
 	tc := NewExecData([]string{}, "..", "../testdata/logs/cmdout.txt", "../testdata/logs/cmderr.txt", "info", false, true, nil, nil, nil)
