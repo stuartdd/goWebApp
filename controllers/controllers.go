@@ -302,7 +302,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if p.isVerbose { // Only do this if abs necessary as execData.String() does not need to be done
 		p.verbose(execData.String())
 	}
-	stdOut, stdErr, code, err := execData.Run()
+	stdOut, stdErr, code, err := execData.RunNew()
 	if err != nil {
 		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("Exec: %s RC:%d Error:%s", execId, code, err.Error())))
 	}
@@ -448,7 +448,7 @@ func GetOSFreeData(configData *config.ConfigData, logFunc func(string)) (res str
 	}()
 	execInfo := configData.GetExecInfo("free")
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run systen free command", false, false, nil, nil, nil)
-	stdOut, _, code, err := execData.Run()
+	stdOut, _, code, err := execData.RunNew()
 	if err != nil || code != 0 {
 		if logFunc != nil {
 			logFunc(fmt.Sprintf("Get System status via 'free' exec failed. RC: %d. StdErr: %s", code, err.Error()))
