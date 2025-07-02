@@ -266,43 +266,31 @@ type ExecHandler struct {
 	verbose    func(string)
 	isVerbose  bool
 	log        func(string)
-	addLrp     func(string, int, bool, bool) bool
 	execInfo   *config.ExecInfo
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), isVerbose bool, verboseFunc func(string), addFunc func(string, int, bool, bool) bool) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, createMapFunc func([]byte, []byte, int) map[string]interface{}, logFunc func(string), isVerbose bool, verboseFunc func(string)) Handler {
 	return &ExecHandler{
 		parameters: urlParts,
 		createMap:  createMapFunc,
 		verbose:    verboseFunc,
 		isVerbose:  isVerbose,
 		log:        logFunc,
-		addLrp:     addFunc,
 	}
 }
 
 func (p *ExecHandler) Submit() *ResponseData {
 	userId := p.parameters.GetOptionalUser(AdminName)
 	execId := p.parameters.GetExecId()
-	if p.addLrp != nil {
-		ok := p.addLrp(execId, 0, false, false)
-		if !ok {
-			panic(config.NewPanicMessage("Exec already running", http.StatusForbidden, fmt.Sprintf("User:%s Exec:%s Lon running process is already running", userId, execId)))
-		}
-	}
 	p.execInfo = p.parameters.GetExecInfo()
 	info := fmt.Sprintf("Exec:%s", execId)
 	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), info, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromCachedMap(r)
-	}, func(pid int) {
-		if p.addLrp != nil {
-			p.addLrp(execId, pid, p.execInfo.CanStop, true)
-		}
 	})
 	if p.isVerbose { // Only do this if abs necessary as execData.String() does not need to be done
 		p.verbose(execData.String())
 	}
-	stdOut, stdErr, code, err := execData.RunNew()
+	stdOut, stdErr, code, err := execData.RunSystemProcess()
 	if err != nil {
 		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("Exec: %s RC:%d Error:%s", execId, code, err.Error())))
 	}
@@ -447,8 +435,8 @@ func GetOSFreeData(configData *config.ConfigData, logFunc func(string)) (res str
 		}
 	}()
 	execInfo := configData.GetExecInfo("free")
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run systen free command", false, false, nil, nil, nil)
-	stdOut, _, code, err := execData.RunNew()
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run systen free command", false, false, nil, nil)
+	stdOut, _, code, err := execData.RunSystemProcess()
 	if err != nil || code != 0 {
 		if logFunc != nil {
 			logFunc(fmt.Sprintf("Get System status via 'free' exec failed. RC: %d. StdErr: %s", code, err.Error()))

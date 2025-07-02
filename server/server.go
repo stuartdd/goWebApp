@@ -10,6 +10,7 @@ import (
 	"github.com/stuartdd/goWebApp/config"
 	"github.com/stuartdd/goWebApp/controllers"
 	"github.com/stuartdd/goWebApp/logging"
+	"github.com/stuartdd/goWebApp/runCommand"
 )
 
 const shouldLog = true
@@ -221,7 +222,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		p, ok, shouldLog = getExecMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc, h.longRunning.AddLongRunningProcess).Submit(), shouldLog)
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 	}
@@ -254,7 +255,19 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok, shouldLog = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		h.longRunning.UpdateLongRunningProcess()
+
+		if h.longRunning.enabled {
+			for _, v := range h.longRunning.longRunningProcess {
+				v.PID = 0
+				runCommand.ForEachSystemProcess(func(cmd string, p int) bool {
+					if strings.HasSuffix(cmd, v.ID) {
+						v.PID = p
+						return true
+					}
+					return false
+				})
+			}
+		}
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentBytes(controllers.GetServerStatusAsJson(h.config, h.logger.LogFileName(), h.GetUpSince(), h.longRunning.ToJson(), h.logger.Log)), shouldLog)
 		return
 	}
@@ -352,6 +365,13 @@ type WebAppServer struct {
 }
 
 func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *LongRunningManager, logger logging.Logger) *WebAppServer {
+	if lrm.enabled {
+		for n, v := range configData.GetExecData() {
+			if v.Detached {
+				lrm.AddLongRunningProcessData(n, v.Cmd[0], v.CanStop)
+			}
+		}
+	}
 	return &WebAppServer{
 		Handler: NewServerHandler(configData, actionQueue, lrm, logger, time.Now()),
 	}

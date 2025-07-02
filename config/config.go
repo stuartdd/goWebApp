@@ -863,6 +863,10 @@ func (p *ConfigData) GetExecInfo(execid string) *ExecInfo {
 	return exec
 }
 
+func (p *ConfigData) GetExecData() map[string]*ExecInfo {
+	return p.internal.Exec
+}
+
 func (p *ConfigData) String() (string, error) {
 	data, err := p.internal.String()
 	if err != nil {

@@ -63,7 +63,7 @@ func TestExecFailRcNonZero(t *testing.T) {
 		false,
 		func(s string) {
 			// Verbose function
-		}, nil)
+		})
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -111,7 +111,7 @@ func TestExecFailCommandNotFound(t *testing.T) {
 		false,
 		func(s string) {
 			// Verbose function
-		}, nil)
+		})
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -154,7 +154,7 @@ func TestExecPass(t *testing.T) {
 		false,
 		func(s string) {
 			// Verbose function
-		}, nil)
+		})
 
 	defer func() {
 		if r := recover(); r != nil {

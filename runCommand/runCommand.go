@@ -17,7 +17,6 @@ type execData struct {
 	StdOutLog string
 	StdErrLog string
 	log       func(string)
-	add       func(int)
 	info      string
 	detached  bool
 	canStop   bool
@@ -27,7 +26,7 @@ func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string, addFunc func(int)) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -44,7 +43,6 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 		StdOutLog: stdOut,
 		StdErrLog: stdErr,
 		log:       logFunc,
-		add:       addFunc,
 		info:      info,
 		detached:  detached,
 		canStop:   canStop,
@@ -119,9 +117,6 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 			stdout.WriteString(fmt.Sprintf(", \"P%d\":\"%s\"", i, v))
 		}
 		stdout.WriteString("}")
-		if p.add != nil {
-			p.add(pid)
-		}
 		return stdout.Bytes(), stderr.Bytes(), 0, nil
 	}
 
