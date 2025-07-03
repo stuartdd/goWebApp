@@ -255,7 +255,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok, shouldLog = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-
 		if h.longRunning.enabled {
 			for _, v := range h.longRunning.longRunningProcess {
 				v.PID = 0
@@ -365,10 +364,10 @@ type WebAppServer struct {
 }
 
 func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *LongRunningManager, logger logging.Logger) *WebAppServer {
-	if lrm.enabled {
+	if lrm != nil && lrm.enabled {
 		for n, v := range configData.GetExecData() {
 			if v.Detached {
-				lrm.AddLongRunningProcessData(n, v.Cmd[0], v.CanStop)
+				lrm.AddLongRunningProcessData(n, v.Cmd, v.CanStop)
 			}
 		}
 	}

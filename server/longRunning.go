@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,7 +24,6 @@ type LongRunningManager struct {
 	script             string
 	longRunningProcess map[string]*LongRunningProcess
 	logger             func(string)
-	longRunningMutex   sync.Mutex
 }
 
 func NewLongRunningManagerDisabled() *LongRunningManager {
@@ -65,12 +65,22 @@ func NewLongRunningManager(path string, file string, script string, log func(str
 	return lrm, nil
 }
 
-func (p *LongRunningManager) AddLongRunningProcessData(id, cmd string, canStop bool) {
+func (p *LongRunningManager) AddLongRunningProcessData(id string, cmd []string, canStop bool) {
 	p.longRunningProcess[id] = &LongRunningProcess{
-		ID:      cmd,
+		ID:      "",
 		PID:     0,
-		Started: time.Now(),
+		Started: time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
 		CanStop: canStop,
+	}
+	var buf bytes.Buffer
+	for i, c := range cmd {
+		if strings.HasPrefix(c,"./") {
+			c = c[2:]
+		}
+ggit		buf.WriteString(strings.TrimSpace(c))
+		if i < (len(cmd) - 1) {
+			buf.WriteString(" ")
+		}
 	}
 }
 
@@ -100,7 +110,19 @@ func (p *LongRunningManager) ToJson() string {
 		var b bytes.Buffer
 		b.WriteRune('[')
 		for n, v := range p.longRunningProcess {
-			b.WriteString(fmt.Sprintf("{\"Name\":\"%s\", \"Started\":\"%s\", \"PID\":%d, \"CanStop\":%t},", n, v.GetStartTime(), v.PID, v.CanStop))
+			b.WriteString("{\"Name\":\"")
+			b.WriteString(n)
+			b.WriteString("\",\"Started\":\"")
+			b.WriteString(v.GetStartTime())
+			b.WriteString("\",\"PID\":")
+			b.WriteString(strconv.Itoa(v.PID))
+			b.WriteString(",\"CanStop\":")
+			if v.CanStop {
+				b.WriteString("true")
+			} else {
+				b.WriteString("false")
+			}
+			b.WriteString("},")
 		}
 		return b.String()[:b.Len()-1] + "]"
 	}
@@ -196,6 +218,9 @@ func (p *LongRunningManager) ToJson() string {
 // }
 
 func (p *LongRunningProcess) GetStartTime() string {
+	if p.Started.Year() == 0 {
+		return ""
+	}
 	return fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
 		p.Started.Year(), p.Started.Month(), p.Started.Day(),
 		p.Started.Hour(), p.Started.Minute(), p.Started.Second())

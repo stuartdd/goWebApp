@@ -17,6 +17,16 @@
         "LogLevel": "quiet"
     },
     "Exec": {
+        "lr": {
+            "Cmd": [
+                "./longRunTest.sh"
+            ],
+            "Dir": "",
+            "StdOutType": "json",
+            "NzCodeReturns": 0,
+            "Detached": true,
+            "CanStop": true
+        },
         "ls": {
             "cmd": [
                 "ls",
@@ -37,7 +47,8 @@
         },
         "cat": {
             "cmd": [
-                "cat", "fileThatDoesNotExist"
+                "cat",
+                "fileThatDoesNotExist"
             ],
             "dir": "",
             "logDir": "logs",
@@ -55,7 +66,7 @@
                 "usr": "b-testfolder",
                 "pics": "b-pics"
             }
-         },
+        },
         "stuart": {
             "name": "Stuart",
             "home": "stuart",
@@ -80,8 +91,10 @@
                 "echo": {
                     "StdOutType": "txt",
                     "Cmd": [
-                         "echo", "Hello World"
-                    ]},
+                        "echo",
+                        "Hello World"
+                    ]
+                },
                 "c2": {
                     "cmd": [
                         "cmd2"
@@ -94,15 +107,21 @@
     },
     "ServerDataRoot": "../testdata",
     "StaticData": {
-        "Path":"../testdata/static",
-        "Home" :"dart.html"
-      },
-    
+        "Path": "../testdata/static",
+        "Home": "dart.html"
+    },
     "ServerStaticRoot": "../testdata/static",
-    "TemplateStaticFiles":{
-        "Files":["dart.html", "dart.css"],
-        "DataFile":"../testdata/configDataPI.json"
+    "TemplateStaticFiles": {
+        "Files": [
+            "dart.html",
+            "dart.css"
+        ],
+        "DataFile": "../testdata/configDataPI.json"
+    },
+    "ExecManager": {
+        "Path": "%{WebServerData}/exec",
+        "File": "RunningProcs.json",
+        "TestCommand": "./longRunCheck.sh"
     },
     "Env": {}
-
 }

@@ -9,14 +9,14 @@
     "dmesg": {
       "StdOutType": "json",
       "Cmd": [
-        "./execDmesg.sh",
+        "execDmesg.sh",
         "%{find}"
       ]
     },
     "free": {
       "StdOutType": "json",
       "Cmd": [
-        "./free.sh"
+        "free.sh"
       ]
     },
     "echo": {
@@ -28,7 +28,7 @@
     },
     "ltpStop": {
       "Cmd": [
-        "./longRunStop.sh",
+        "longRunStop.sh",
         "%{hvalue}"
       ],
       "Dir": "",
@@ -41,7 +41,7 @@
     },
     "ds": {
       "Cmd": [
-        "./diskSize.sh"
+        "diskSize.sh"
       ],
       "Dir": "",
       "StdOutType": "json",
@@ -53,7 +53,8 @@
     },
     "lr1": {
       "Cmd": [
-        "./longRunTest.sh"
+        "longRunTest.sh",
+        "pass"
       ],
       "Dir": "",
       "StdOutType": "json",
@@ -63,7 +64,7 @@
     },
     "Thumbnails": {
       "Cmd": [
-        "./thumbnails.sh"
+        "thumbnails.sh"
       ],
       "Dir": "",
       "StdOutType": "json",
@@ -73,7 +74,7 @@
     },
     "lr2": {
       "Cmd": [
-        "./longRunTest.sh"
+        "longRunTest.sh"
       ],
       "Dir": "",
       "StdOutType": "json",
@@ -82,7 +83,7 @@
     },
     "ufs": {
       "Cmd": [
-        "./webtools",
+        "webtools",
         "ufsConfig.json"
       ],
       "Dir": "",

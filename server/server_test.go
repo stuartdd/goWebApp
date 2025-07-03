@@ -108,7 +108,25 @@ func TestServerPostLog(t *testing.T) {
 	}
 
 }
+func TestServerStatus(t *testing.T) {
+	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
 
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	url := "server/status"
+	_, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	AssertContains(t, respBody, []string{
+		"\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"",
+		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,",
+	})
+
+}
 func TestServer(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
@@ -461,7 +479,7 @@ func TestServerTime(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 180, 5)
+	_, resBody := RunClientGet(t, configData, "server/time", 200, "?", 170, 5)
 	if !strings.HasPrefix(trimString(resBody), "{\"time\":{") {
 		t.Fatalf("Respons body does not start with...")
 	}
@@ -608,8 +626,17 @@ func RunServer(config *config.ConfigData, logger logging.Logger) {
 			}
 		}
 	}()
+	var lrm *LongRunningManager
+	var err error
+	em := config.GetExecManager()
+	if em.IsSet() {
+		lrm, err = NewLongRunningManager(em.Path, em.File, em.TestCommand, logger.Log)
+		if err != nil {
+			panic(fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))
+		}
+	}
 
-	server := NewWebAppServer(config, actionQueue, nil, logger)
+	server := NewWebAppServer(config, actionQueue, lrm, logger)
 	serverState = "Running"
 	server.Start()
 }
