@@ -7,12 +7,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type LongRunningProcess struct {
 	ID      string
-	Started time.Time
+	PS      string
 	PID     int
 	CanStop bool
 }
@@ -20,8 +19,6 @@ type LongRunningProcess struct {
 type LongRunningManager struct {
 	enabled            bool
 	path               string
-	file               string
-	script             string
 	longRunningProcess map[string]*LongRunningProcess
 	logger             func(string)
 }
@@ -30,18 +27,15 @@ func NewLongRunningManagerDisabled() *LongRunningManager {
 	return &LongRunningManager{
 		enabled:            false,
 		path:               "",
-		file:               "",
-		script:             "",
 		logger:             nil,
 		longRunningProcess: map[string]*LongRunningProcess{},
 	}
 }
 
-func NewLongRunningManager(path string, file string, script string, log func(string)) (*LongRunningManager, error) {
-	if file == "" {
+func NewLongRunningManager(path string, log func(string)) (*LongRunningManager, error) {
+	if path == "" {
 		return NewLongRunningManagerDisabled(), nil
 	}
-
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return NewLongRunningManagerDisabled(), err
@@ -53,35 +47,46 @@ func NewLongRunningManager(path string, file string, script string, log func(str
 	if !st.IsDir() {
 		return NewLongRunningManagerDisabled(), fmt.Errorf("LongRunningManager:Path %s is not a directory", path)
 	}
-
 	lrm := &LongRunningManager{
 		enabled:            true,
 		path:               path,
-		file:               filepath.Join(path, file),
-		script:             script,
 		logger:             log,
 		longRunningProcess: map[string]*LongRunningProcess{},
 	}
 	return lrm, nil
 }
 
-func (p *LongRunningManager) AddLongRunningProcessData(id string, cmd []string, canStop bool) {
+func (p *LongRunningManager) AddLongRunningProcessData(id string, cmdList []string, canStop bool) error {
+	if len(cmdList) == 0 {
+		return fmt.Errorf("detached command: Exec:%s is empty", id)
+	}
+	exec := strings.TrimSpace(cmdList[0])
+	if exec == "" {
+		return fmt.Errorf("detached command: Exec:%s has no command: %s", id, cmdList)
+	}
+	if strings.HasPrefix(exec, ".") || strings.HasPrefix(exec, string(os.PathSeparator)) {
+		return fmt.Errorf("detached command: Exec:%s command MUST be in the ExecManager:Path dir and not hidden: %s", id, cmdList)
+	}
+	for _, v := range p.longRunningProcess {
+		if v.ID == exec {
+			return fmt.Errorf("detached command: Exec:%s has duplicate executable. Cannot reliably identify the process: %s", id, exec)
+		}
+	}
+	execFile := filepath.Join(p.path, exec)
+	st, err := os.Stat(execFile)
+	if err != nil {
+		return fmt.Errorf("detached command: Exec:%s Not found in the ExecManager:Path dir: %s", id, exec)
+	}
+	if st.IsDir() {
+		return fmt.Errorf("detached command: Exec:%s Exec is a directory in the ExecManager:Path dir: %s", id, exec)
+	}
 	p.longRunningProcess[id] = &LongRunningProcess{
-		ID:      "",
+		ID:      exec,
 		PID:     0,
-		Started: time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
+		PS:      "",
 		CanStop: canStop,
 	}
-	var buf bytes.Buffer
-	for i, c := range cmd {
-		if strings.HasPrefix(c,"./") {
-			c = c[2:]
-		}
-ggit		buf.WriteString(strings.TrimSpace(c))
-		if i < (len(cmd) - 1) {
-			buf.WriteString(" ")
-		}
-	}
+	return nil
 }
 
 func (p *LongRunningManager) Log(m string) {
@@ -100,7 +105,7 @@ func (p *LongRunningManager) Len() int {
 
 func (p *LongRunningManager) String() string {
 	if p.enabled {
-		return fmt.Sprintf("File:%s. Script:%s", p.file, p.script)
+		return fmt.Sprintf("ExecPath:%s", p.path)
 	}
 	return "Long Running Process Manager is disabled"
 }
@@ -112,8 +117,8 @@ func (p *LongRunningManager) ToJson() string {
 		for n, v := range p.longRunningProcess {
 			b.WriteString("{\"Name\":\"")
 			b.WriteString(n)
-			b.WriteString("\",\"Started\":\"")
-			b.WriteString(v.GetStartTime())
+			b.WriteString("\",\"PS\":\"")
+			b.WriteString(v.PS)
 			b.WriteString("\",\"PID\":")
 			b.WriteString(strconv.Itoa(v.PID))
 			b.WriteString(",\"CanStop\":")
@@ -127,101 +132,4 @@ func (p *LongRunningManager) ToJson() string {
 		return b.String()[:b.Len()-1] + "]"
 	}
 	return "[]"
-}
-
-// func (p *LongRunningManager) loadX() {
-// 	if p.enabled {
-// 		content, err := os.ReadFile(p.file)
-// 		if err != nil {
-// 			p.longRunningProcess = map[string]*LongRunningProcess{}
-// 			return
-// 		}
-// 		err = json.Unmarshal(content, &p.longRunningProcess)
-// 		if err != nil {
-// 			p.longRunningProcess = map[string]*LongRunningProcess{}
-// 			return
-// 		}
-// 		p.Log("LongRunningManager Loaded: " + p.file)
-
-// 	}
-// }
-
-// func (p *LongRunningManager) storeX() error {
-// 	if p.enabled {
-// 		data, err := json.MarshalIndent(p.longRunningProcess, "", "  ")
-// 		if err != nil {
-// 			return err
-// 		}
-// 		err = os.WriteFile(p.file, data, os.ModePerm)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		p.Log("LongRunningManager Stored: " + p.file)
-// 	}
-// 	return nil
-// }
-
-// func (p *LongRunningManager) AddLongRunningProcess(id string, pid int, canStop bool, commit bool) bool {
-// 	if p.enabled {
-// 		p.longRunningMutex.Lock()
-// 		defer p.longRunningMutex.Unlock()
-// 		lrp := NewLongRunningProcess(id, pid, canStop)
-// 		if p.longRunningProcess[lrp.key()] == nil {
-// 			if commit {
-// 				p.longRunningProcess[lrp.key()] = lrp
-// 				p.Log("Process added. " + lrp.ID)
-// 				p.store()
-// 			}
-// 			return true
-// 		}
-// 	} else {
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (p *LongRunningManager) UpdateLongRunningProcess() {
-// 	if p.enabled {
-// 		p.longRunningMutex.Lock()
-// 		defer p.longRunningMutex.Unlock()
-// 		p.load()
-// 		upd := false
-// 		lrp := map[string]*LongRunningProcess{}
-// 		for _, v := range p.longRunningProcess { // Example pid
-// 			process, _ := os.FindProcess(v.PID) // Always succeeds on Unix systems
-// 			err := process.Signal(syscall.Signal(0))
-// 			if err != nil {
-// 				lrp[v.key()] = v
-// 			} else {
-// 				upd = true
-// 				p.Log(fmt.Sprintf("UpdateLongRunningProcess PID: %d NO longer running [%s]", v.PID, v.ID))
-// 			}
-// 		}
-// 		if upd {
-// 			p.longRunningProcess = lrp
-// 			p.store()
-// 		}
-// 	}
-// }
-
-// func NewLongRunningProcess(id string, pid int, canStop bool) *LongRunningProcess {
-// 	return &LongRunningProcess{
-// 		ID:      id,
-// 		PID:     pid,
-// 		Started: time.Now(),
-// 		CanStop: canStop,
-// 	}
-// }
-
-// func (p *LongRunningProcess) key() string {
-// 	return p.ID
-// }
-
-func (p *LongRunningProcess) GetStartTime() string {
-	if p.Started.Year() == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
-		p.Started.Year(), p.Started.Month(), p.Started.Day(),
-		p.Started.Hour(), p.Started.Minute(), p.Started.Second())
 }

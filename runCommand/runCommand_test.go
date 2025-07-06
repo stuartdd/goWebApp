@@ -13,12 +13,12 @@ const PROC_PATH = "exec/" + PROC_NAME
 func TestDetatch(t *testing.T) {
 	wd, _ := os.Getwd()
 
-	ForEachSystemProcess(func(cmd string, p int) bool {
+	ForEachSystemProcess(func(cmd string, p int) (bool, error) {
 		if strings.HasSuffix(cmd, PROC_NAME) {
 			KillrocessWithId(p)
-			return true
+			return true, nil
 		}
-		return false
+		return false, nil
 	})
 
 	tc := NewExecData([]string{PROC_NAME}, "../testdata/exec", "", "", "info", true, true, nil, nil)
@@ -33,13 +33,13 @@ func TestDetatch(t *testing.T) {
 	s := ""
 	pid := 0
 
-	count, err := ForEachSystemProcess(func(cmd string, p int) bool {
+	count, err := ForEachSystemProcess(func(cmd string, p int) (bool, error) {
 		if strings.HasSuffix(cmd, PROC_NAME) {
 			s = cmd
 			pid = p
-			return true
+			return true, nil
 		}
-		return false
+		return false, nil
 	})
 	if err != nil {
 		t.Fatal("FindProcessWithName Should NOT throw an error")
@@ -78,13 +78,13 @@ func TestDetatch(t *testing.T) {
 
 	pid = 0
 	s = ""
-	count, err = ForEachSystemProcess(func(cmd string, p int) bool {
+	count, err = ForEachSystemProcess(func(cmd string, p int) (bool, error) {
 		if strings.HasSuffix(cmd, PROC_NAME) {
 			s = cmd
 			pid = p
-			return true
+			return true, nil
 		}
-		return false
+		return false, nil
 	})
 	if err != nil {
 		t.Fatal("ForEachSystemProcess Should NOT throw error")

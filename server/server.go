@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -258,12 +259,15 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if h.longRunning.enabled {
 			for _, v := range h.longRunning.longRunningProcess {
 				v.PID = 0
-				runCommand.ForEachSystemProcess(func(cmd string, p int) bool {
-					if strings.HasSuffix(cmd, v.ID) {
+				v.PS = ""
+				runCommand.ForEachSystemProcess(func(cmd string, p int) (bool, error) {
+					if strings.Contains(cmd, filepath.Join(h.longRunning.path, v.ID)) {
+						pos := strings.Index(cmd, h.longRunning.path)
 						v.PID = p
-						return true
+						v.PS = fmt.Sprintf("%s %s",strings.TrimSpace(cmd[0:pos]),v.ID)
+						return true, nil
 					}
-					return false
+					return false, nil
 				})
 			}
 		}
@@ -363,17 +367,20 @@ type WebAppServer struct {
 	LongRunning int
 }
 
-func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *LongRunningManager, logger logging.Logger) *WebAppServer {
+func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *LongRunningManager, logger logging.Logger) (*WebAppServer, error) {
 	if lrm != nil && lrm.enabled {
 		for n, v := range configData.GetExecData() {
 			if v.Detached {
-				lrm.AddLongRunningProcessData(n, v.Cmd, v.CanStop)
+				err := lrm.AddLongRunningProcessData(n, v.Cmd, v.CanStop)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
 	return &WebAppServer{
 		Handler: NewServerHandler(configData, actionQueue, lrm, logger, time.Now()),
-	}
+	}, nil
 }
 
 func (p *WebAppServer) Log(s string) {

@@ -630,13 +630,13 @@ func RunServer(config *config.ConfigData, logger logging.Logger) {
 	var err error
 	em := config.GetExecManager()
 	if em.IsSet() {
-		lrm, err = NewLongRunningManager(em.Path, em.File, em.TestCommand, logger.Log)
+		lrm, err = NewLongRunningManager(em.Path, logger.Log)
 		if err != nil {
 			panic(fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))
 		}
 	}
 
-	server := NewWebAppServer(config, actionQueue, lrm, logger)
+	server, _ := NewWebAppServer(config, actionQueue, lrm, logger)
 	serverState = "Running"
 	server.Start()
 }

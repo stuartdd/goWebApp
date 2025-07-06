@@ -115,9 +115,7 @@ func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
 }
 
 type ExecManager struct {
-	Path        string
-	File        string
-	TestCommand string
+	Path string
 }
 
 func (ex *ExecManager) IsSet() bool {
@@ -336,7 +334,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
 		Env:                 map[string]string{},
 		Exec:                map[string]*ExecInfo{},
-		ExecManager:         &ExecManager{Path: "", File: "", TestCommand: ""},
+		ExecManager:         &ExecManager{Path: ""},
 	}
 
 	/*
@@ -502,6 +500,15 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 			}
 			if execData.LogErr != "" {
 				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogErr='%s'", execName, execData.LogErr))
+			}
+			if execData.StdOutType != "" {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have StdOutType='%s'", execName, execData.StdOutType))
+			}
+			if execData.NzCodeReturns != 0 {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have NzCodeReturns='%d'", execName, execData.NzCodeReturns))
+			}
+			if execData.Dir != "" {
+				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have Dir='%s'", execName, execData.Dir))
 			}
 		}
 		if execData.LogDir != "" {

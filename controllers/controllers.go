@@ -292,7 +292,10 @@ func (p *ExecHandler) Submit() *ResponseData {
 	}
 	stdOut, stdErr, code, err := execData.RunSystemProcess()
 	if err != nil {
-		panic(config.NewPanicMessage("Exec Failed", http.StatusFailedDependency, fmt.Sprintf("Exec: %s RC:%d Error:%s", execId, code, err.Error())))
+		if code < 400 {
+			code = http.StatusFailedDependency
+		}
+		panic(config.NewPanicMessage("Exec Failed", code, fmt.Sprintf("Exec: %s RC:%d Error:%s", execId, code, err.Error())))
 	}
 	if p.execInfo.LogOut != "" && len(stdOut) > 0 {
 		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOut), p.parameters.config.GetUserEnv(userId))
@@ -313,7 +316,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return NewResponseData(p.execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
 	}
 
-	if p.execInfo.StdOutType != "" {
+	if p.execInfo.Detached {
 		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(p.execInfo.StdOutType).SetHasErrors(code != 0)
 	}
 

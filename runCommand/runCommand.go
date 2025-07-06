@@ -74,6 +74,7 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 		return nil, nil, -1, fmt.Errorf("exec failed: Get Working Dir. %s", err.Error())
 	}
 
+	commandX := pruned[0]
 	if p.Dir != "" {
 		fp, err := filepath.Abs(p.Dir)
 		if err != nil {
@@ -86,14 +87,14 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 		os.Chdir(fp)
 		defer os.Chdir(currentDir)
 
-		pruned[0] = filepath.Join(fp, pruned[0])
+		commandX = filepath.Join(fp, pruned[0])
 	}
 
 	var cmd *exec.Cmd
 	if len(pruned) == 1 {
-		cmd = exec.Command(pruned[0])
+		cmd = exec.Command(commandX)
 	} else {
-		cmd = exec.Command(pruned[0], p.Cmd[1:]...)
+		cmd = exec.Command(commandX, p.Cmd[1:]...)
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -101,10 +102,19 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if p.detached {
-		err := cmd.Start()
+		_, err := ForEachSystemProcess(func(cmd string, i int) (bool, error) {
+			if strings.HasSuffix(cmd, pruned[0]) {
+				return true, fmt.Errorf("process %s is already running", pruned[0])
+			}
+			return false, nil
+		})
+		if err != nil {
+			return nil, nil, 429, err
+		}
+		err = cmd.Start()
 		if err != nil {
 			stdout.WriteString("{\"Error\":true")
-			for i, v := range pruned[0 : len(pruned)-1] {
+			for i, v := range pruned {
 				stdout.WriteString(fmt.Sprintf(", \"P%d\":\"%s\"", i, v))
 			}
 			stdout.WriteString("}")
@@ -113,7 +123,7 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 		pid := cmd.Process.Pid
 		cmd.Process.Release()
 		stdout.WriteString(fmt.Sprintf("{\"Error\":false, \"pid\":%d", pid))
-		for i, v := range pruned[0 : len(pruned)-1] {
+		for i, v := range pruned {
 			stdout.WriteString(fmt.Sprintf(", \"P%d\":\"%s\"", i, v))
 		}
 		stdout.WriteString("}")
@@ -169,9 +179,9 @@ func KillrocessWithId(id int) error {
 	return nil
 }
 
-func ForEachSystemProcess(fe func(string, int) bool) (int, error) {
+func ForEachSystemProcess(fe func(string, int) (bool, error)) (int, error) {
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("ps", "-eo", "pid,command")
+	cmd := exec.Command("ps", "-eo", "pid,start,cmd")
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
@@ -184,18 +194,25 @@ func ForEachSystemProcess(fe func(string, int) bool) (int, error) {
 	for scanner.Scan() {
 		l := scanner.Text()
 		id := 0
+		idEnd := 0
 		// Skip lines with ] at the end of the command and line 0
 		if !strings.HasSuffix(l, "]") && lc > 0 {
 			for i, c := range l {
 				if c >= '0' && c <= '9' {
 					id = id*10 + int(c) - '0'
-				}
-				if i > 10 {
-					break
+				} else {
+					if id > 0 && i < 10 {
+						idEnd = i
+						break
+					}
 				}
 			}
 			if id > 100 {
-				if fe(l, id) {
+				found, err := fe(l[idEnd:], id)
+				if err != nil {
+					return count, err
+				}
+				if found {
 					count++
 				}
 			}

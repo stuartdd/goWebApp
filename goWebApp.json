@@ -53,12 +53,8 @@
     },
     "lr1": {
       "Cmd": [
-        "longRunTest.sh",
-        "pass"
+        "longRunTest1.sh"
       ],
-      "Dir": "",
-      "StdOutType": "json",
-      "NzCodeReturns": 0,
       "Detached": true,
       "CanStop": true
     },
@@ -66,19 +62,14 @@
       "Cmd": [
         "thumbnails.sh"
       ],
-      "Dir": "",
-      "StdOutType": "json",
-      "NzCodeReturns": 0,
       "Detached": true,
       "CanStop": true
     },
     "lr2": {
       "Cmd": [
-        "longRunTest.sh"
+        "longRunTest2.sh",
+        "PASS"
       ],
-      "Dir": "",
-      "StdOutType": "json",
-      "NzCodeReturns": 0,
       "Detached": true
     },
     "ufs": {
@@ -175,8 +166,6 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager": {
-    "Path": "%{WebServerData}/exec",
-    "File": "RunningProcs.json",
-    "TestCommand": "./longRunCheck.sh"
+    "Path": "%{WebServerData}/exec"
   }
 }
