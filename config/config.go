@@ -26,39 +26,94 @@ type PanicMessage struct {
 	Logged string
 }
 
-func NewPanicMessageFromString(message string) *PanicMessage {
-	s := strings.SplitN(message, ":", 3)
-	switch len(s) {
-	case 1:
-		return &PanicMessage{Reason: message, Status: 404, Logged: message}
-	case 2:
-		i, err := strconv.Atoi(s[1])
-		if err != nil {
-			return &PanicMessage{Reason: s[0], Status: 500, Logged: fmt.Sprintf("%s (Unable to parse status code)", message)}
+func NewPanicMessageFromRecover(rec interface{}, fallback int) *PanicMessage {
+	switch x := rec.(type) {
+	case *PanicMessage:
+		return rec.(*PanicMessage)
+	case string:
+		return newPanicMessageFromString(x, fallback)
+	case error:
+		return newPanicMessageFromString(x.Error(), fallback)
+	default:
+		// Fallback err (per specs, error strings should be lowercase w/o punctuation
+		return newPanicMessageFromString(fmt.Sprintf("%v", rec), fallback)
+	}
+}
+
+func newPanicMessageFromString(message string, fallback int) *PanicMessage {
+	mLc := strings.ToLower(message)
+	sp := strings.Index(mLc, "status")
+	lp := strings.Index(mLc, "log:")
+
+	lm := ""
+	if lp >= 0 {
+		lm = message[lp+4:]
+	}
+	if sp < 0 {
+		if lp >= 0 {
+			message = message[0:lp]
 		}
-		return &PanicMessage{Reason: s[0], Status: i, Logged: message}
+		return NewPanicMessage(message, fallback, lm)
 	}
-	i, err := strconv.Atoi(s[1])
-	if err != nil {
-		return &PanicMessage{Reason: s[0], Status: 500, Logged: fmt.Sprintf("%s (Unable to parse status code '%s')", s[2], s[1])}
+	status, end := parseInt(message, sp+6, fallback)
+	m := ""
+	if end > sp {
+		m = message[0:sp] + message[end+1:]
+	} else {
+		m = message
 	}
-	return &PanicMessage{Reason: s[0], Status: i, Logged: s[2]}
+	lp = strings.Index(strings.ToLower(m), "log:")
+	if lp >= 0 {
+		m = m[0:lp]
+	}
+
+	return NewPanicMessage(m, status, lm)
 }
 
 func NewPanicMessage(reason string, status int, logged string) *PanicMessage {
 	r := strings.ReplaceAll(reason, ":", ";")
-	return &PanicMessage{Reason: r, Status: status, Logged: logged}
+	return &PanicMessage{Reason: strings.TrimSpace(r), Status: status, Logged:  strings.TrimSpace(logged)}
 }
 
 func (p *PanicMessage) String() string {
-	if strings.Contains(p.Logged, "stat") {
-		return fmt.Sprintf("%s:%d", p.Reason, p.Status)
+	if p.Logged == "" || strings.Contains(strings.ToLower(p.Logged), "stat") {
+		return fmt.Sprintf("%s Status:%d", strings.TrimSpace(p.Reason), p.Status)
 	}
-	return fmt.Sprintf("%s:%d:%s", p.Reason, p.Status, p.Logged)
+	return fmt.Sprintf("%s Status:%d Log:%s", strings.TrimSpace(p.Reason), p.Status, strings.TrimSpace(p.Logged))
 }
 
-func (p *PanicMessage) Error() string {
-	return p.String()
+func parseInt(s string, pos int, fallback int) (int, int) {
+	b := []byte(s)
+	n := -1
+	p := -1
+	for i := pos; i < len(b); i++ {
+		p = i
+		c := b[i]
+		if c >= '0' && c <= '9' {
+			if n == -1 {
+				n = int(c) - '0'
+			} else {
+				n = n*10 + int(c) - '0'
+			}
+			if n > math.MaxInt16 {
+				return math.MaxInt16, p
+			}
+		} else {
+			if c == ' ' {
+				if n >= 0 {
+					return n, p
+				}
+			} else {
+				if c != '.' && c != ':' && c != '_' {
+					break
+				}
+			}
+		}
+	}
+	if n == -1 {
+		return fallback, -1
+	}
+	return n, p
 }
 
 /*
@@ -448,11 +503,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	errorList := NewConfigErrorData()
 	defer func() {
 		if r := recover(); r != nil {
-			pm := r.(*PanicMessage)
-			if pm == nil {
-				err := r.(error)
-				pm = NewPanicMessageFromString(err.Error())
-			}
+			pm := NewPanicMessageFromRecover(r, 500)
 			errorList.AddError(fmt.Sprintf("Config Error: %s", pm))
 		}
 	}()

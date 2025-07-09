@@ -22,7 +22,6 @@
                 "./longRunTest.sh"
             ],
             "Dir": "",
-            "StdOutType": "json",
             "NzCodeReturns": 0,
             "Detached": true,
             "CanStop": true

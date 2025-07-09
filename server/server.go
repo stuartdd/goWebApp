@@ -128,11 +128,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			pm := r.(*config.PanicMessage)
-			if pm == nil {
-				err := r.(error)
-				pm = config.NewPanicMessageFromString(err.Error())
-			}
+			pm := config.NewPanicMessageFromRecover(r,400)
 			logFunc("Panic:" + pm.String())
 			h.writeResponse(w, controllers.NewResponseData(pm.Status).WithContentReasonAsJson(pm.Reason, true), shouldLog)
 		}
@@ -264,7 +260,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					if strings.Contains(cmd, filepath.Join(h.longRunning.path, v.ID)) {
 						pos := strings.Index(cmd, h.longRunning.path)
 						v.PID = p
-						v.PS = fmt.Sprintf("%s %s",strings.TrimSpace(cmd[0:pos]),v.ID)
+						v.PS = fmt.Sprintf("%s %s", strings.TrimSpace(cmd[0:pos]), v.ID)
 						return true, nil
 					}
 					return false, nil

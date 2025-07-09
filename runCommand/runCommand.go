@@ -167,16 +167,30 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 	return sob, seb, code, nil
 }
 
-func KillrocessWithId(id int) error {
+func KillrocessWithName(path, execid string) {
+	id := 0
+	ForEachSystemProcess(func(cmd string, i int) (bool, error) {
+		if strings.Contains(cmd, filepath.Join(path, execid)) {
+			id = i
+			return true, nil
+		}
+		return false, nil
+	})
+	if id == 0 {
+		panic(fmt.Errorf("running process with ID:%s could not be found", execid))
+	}
+	 KillrocessWithPid(id)
+}
+
+func KillrocessWithPid(id int)  {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("kill", strconv.Itoa(id))
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("process with ID:%d could not be stopped. Cmd error: %s", id, err)
+		panic(fmt.Errorf("process with PID:%d could not be stopped. Cmd error: %s", id, err))
 	}
-	return nil
 }
 
 func ForEachSystemProcess(fe func(string, int) (bool, error)) (int, error) {

@@ -1,10 +1,53 @@
 package config
 
 import (
+	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestPanicMessage(t *testing.T) {
+	pm := NewPanicMessageFromRecover("ABC log:LM", 500)
+	assertEquals(t, "Recover 1", pm.String(), "ABC Status:500 Log:LM")
+	
+	pm = NewPanicMessageFromRecover("ABC: log:LM Status 404", 500)
+	assertEquals(t, "Recover 2", pm.String(), "ABC; Status:404")
+
+	pm = NewPanicMessageFromRecover("ABC: Status 32768", 500)
+	assertEquals(t, "Recover 3", pm.String(), fmt.Sprintf("ABC; Status:%d", math.MaxInt16))
+
+	pm = NewPanicMessageFromRecover("ABC: Status 4.9 4", 500)
+	assertEquals(t, "Recover 4", pm.String(), "ABC; 4 Status:49")
+	
+	pm = NewPanicMessageFromRecover("ABC: Status 4.0.4", 500)
+	assertEquals(t, "Recover 5", pm.String(), "ABC; Status:404")
+
+	pm = NewPanicMessageFromRecover("ABC: Status 404. log:LM", 500)
+	assertEquals(t, "Recover 6", pm.String(), "ABC; Status:404 Log:LM")
+	pm = NewPanicMessageFromRecover("ABC", 500)
+	assertEquals(t, "Recover 7", pm.String(), "ABC Status:500")
+
+	pm = &PanicMessage{Reason: "R:X", Status: 400, Logged: "LM"}
+	assertEquals(t, "Simple 1", pm.String(), "R:X Status:400 Log:LM")
+	
+	pm = &PanicMessage{Reason: "R:X Status", Status: 400, Logged: "LM"}
+	assertEquals(t, "Simple 2", pm.String(), "R:X Status Status:400 Log:LM")
+	
+	pm = &PanicMessage{Reason: "R:X Status", Status: 400, Logged: "L Status:500"}
+	assertEquals(t, "Simple 3", pm.String(), "R:X Status Status:400")
+
+	pm = NewPanicMessage("R:X", 400, "LM")
+	assertEquals(t, "Simple 4", pm.String(), "R;X Status:400 Log:LM")
+	
+	pm = NewPanicMessage("R:X Status", 400, "LM")
+	assertEquals(t, "Simple 5", pm.String(), "R;X Status Status:400 Log:LM")
+	
+	pm = NewPanicMessage("R:X Status", 400, "L Status:500")
+	assertEquals(t, "Simple 6", pm.String(), "R;X Status Status:400")
+
+}
 
 func TestTemplateStaticFiles(t *testing.T) {
 	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
@@ -167,7 +210,7 @@ func TestUserExec(t *testing.T) {
 	if exec.CanStop {
 		t.Fatalf("Exec canstop should default to false")
 	}
- 	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/logOut.txt"})
+	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/logOut.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {

@@ -283,7 +283,13 @@ func (p *ExecHandler) Submit() *ResponseData {
 	userId := p.parameters.GetOptionalUser(AdminName)
 	execId := p.parameters.GetExecId()
 	p.execInfo = p.parameters.GetExecInfo()
-	info := fmt.Sprintf("Exec:%s", execId)
+	action := p.parameters.GetOptionalQuery("action", "start")
+	info := fmt.Sprintf("Exec:%s Action:%s", execId, action)
+	if action == "stop" {
+		runCommand.KillrocessWithName(p.execInfo.Dir, p.execInfo.Cmd[0])
+		dataMap := map[string]interface{}{"error": false, "exitCode": 0, "stdOut": "Stop process complete", "stdErr": ""}
+		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetHasErrors(false)
+	}
 	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), info, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromCachedMap(r)
 	})

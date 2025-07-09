@@ -1,13 +1,14 @@
 package runCommand
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
-const PROC_NAME = "longRunTest.sh"
+const PROC_NAME = "longRunTest1.sh"
 const PROC_PATH = "exec/" + PROC_NAME
 
 func TestDetatch(t *testing.T) {
@@ -15,7 +16,7 @@ func TestDetatch(t *testing.T) {
 
 	ForEachSystemProcess(func(cmd string, p int) (bool, error) {
 		if strings.HasSuffix(cmd, PROC_NAME) {
-			KillrocessWithId(p)
+			KillrocessWithPid(p)
 			return true, nil
 		}
 		return false, nil
@@ -57,24 +58,21 @@ func TestDetatch(t *testing.T) {
 	var filSize int64 = 0
 	for range 2 {
 		time.Sleep(time.Millisecond * 1030)
-		st, err := os.Stat("../testdata/exec/LongRunTest.txt")
+		st, err := os.Stat("../testdata/exec/LongRunTest1.txt")
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 		if st == nil {
-			t.Fatal("os.Stat(\"../testdata/exec/LongRunTest.txt\") returned nil")
+			t.Fatal("os.Stat(\"../testdata/exec/LongRunTest1.txt\") returned nil")
 		}
 		if st.Size() > filSize {
 			filSize = st.Size()
 		} else {
-			t.Fatal("../testdata/exec/LongRunTest.txt is not increasing in size")
+			t.Fatal("../testdata/exec/LongRunTest1.txt is not increasing in size")
 		}
 	}
 
-	err = KillrocessWithId(pid)
-	if err != nil {
-		t.Fatalf("Kill Should NOT throw error %s", err.Error())
-	}
+	wrapKillrocessWithPid(t,pid,"")
 
 	pid = 0
 	s = ""
@@ -99,9 +97,21 @@ func TestDetatch(t *testing.T) {
 		t.Fatalf("ForEachSystemProcess should return an empty string. Not %s", s)
 	}
 
-	err = KillrocessWithId(89476486749)
-	if err == nil {
-		t.Fatalf("Kill Should throw an error:")
+	wrapKillrocessWithPid(t, 89476486749, "process with PID:89476486749 could not be stopped")
+}
+
+func wrapKillrocessWithPid(t *testing.T, id int, e string) {
+	defer func() {
+		if r := recover(); r != nil {
+			s := fmt.Sprintf("%v", r)
+			if !strings.Contains(s, e) {
+				t.Fatalf("Should panic with string:%s", e)
+			}
+		}
+	}()
+	KillrocessWithPid(id)
+	if e != "" {
+		t.Fatalf("Did not panic with string:%s", e)
 	}
 }
 
