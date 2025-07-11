@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -177,19 +178,19 @@ func KillrocessWithName(path, execid string) {
 		return false, nil
 	})
 	if id == 0 {
-		panic(fmt.Errorf("running process with ID:%s could not be found", execid))
+		panic(fmt.Errorf("status:%d Running process with ID:%s could not be found", http.StatusFailedDependency, execid))
 	}
-	 KillrocessWithPid(id)
+	KillrocessWithPid(id)
 }
 
-func KillrocessWithPid(id int)  {
+func KillrocessWithPid(id int) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("kill", strconv.Itoa(id))
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		panic(fmt.Errorf("process with PID:%d could not be stopped. Cmd error: %s", id, err))
+		panic(fmt.Errorf("status:%d Process with PID:%d could not be stopped. Cmd error: %s", http.StatusFailedDependency, id, err))
 	}
 }
 

@@ -26,19 +26,7 @@
         "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
       ]
     },
-    "ltpStop": {
-      "Cmd": [
-        "longRunStop.sh",
-        "%{hvalue}"
-      ],
-      "Dir": "",
-      "StdOutType": "json",
-      "LogDir": "",
-      "LogOut": "",
-      "LogErr": "",
-      "NzCodeReturns": 200,
-      "Detached": false
-    },
+
     "ds": {
       "Cmd": [
         "diskSize.sh"

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -72,7 +73,7 @@ func newPanicMessageFromString(message string, fallback int) *PanicMessage {
 
 func NewPanicMessage(reason string, status int, logged string) *PanicMessage {
 	r := strings.ReplaceAll(reason, ":", ";")
-	return &PanicMessage{Reason: strings.TrimSpace(r), Status: status, Logged:  strings.TrimSpace(logged)}
+	return &PanicMessage{Reason: strings.TrimSpace(r), Status: status, Logged: strings.TrimSpace(logged)}
 }
 
 func (p *PanicMessage) String() string {
@@ -104,7 +105,7 @@ func parseInt(s string, pos int, fallback int) (int, int) {
 					return n, p
 				}
 			} else {
-				if c != '.' && c != ':' && c != '_' {
+				if c != '.' && c != ':'&& c != ';' && c != '_' {
 					break
 				}
 			}
@@ -903,11 +904,11 @@ func (p *ConfigData) GetPortString() string {
 func (p *ConfigData) GetUserLocPath(user string, loc string) string {
 	userData, ok := p.internal.Users[user]
 	if !ok {
-		panic(&PanicMessage{Reason: "user not found", Status: 404, Logged: fmt.Sprintf("User=%s", user)})
+		panic(NewPanicMessage("user not found", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
 	}
 	locData, ok := userData.Locations[loc]
 	if !ok {
-		panic(&PanicMessage{Reason: "location not found", Status: 404, Logged: fmt.Sprintf("User=%s Location=%s", user, loc)})
+		panic(NewPanicMessage("location not found", http.StatusNotFound, fmt.Sprintf("User=%s Location=%s", user, loc)))
 	}
 	return locData
 }
@@ -916,7 +917,7 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) string {
 func (p *ConfigData) GetExecInfo(execid string) *ExecInfo {
 	exec, ok := p.internal.Exec[execid]
 	if !ok {
-		panic(&PanicMessage{Reason: "exec ID not found", Status: 404, Logged: fmt.Sprintf("exec-id=%s", execid)})
+		panic(NewPanicMessage("exec ID not found", http.StatusNotFound, fmt.Sprintf("exec-id=%s", execid)))
 	}
 	return exec
 }

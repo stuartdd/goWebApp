@@ -1,6 +1,6 @@
 module github.com/stuartdd/goWebApp/controllers
 
-go 1.23.0
+go 1.24.0
 
 replace github.com/stuartdd/goWebApp/runCommand => ../runCommand
 
