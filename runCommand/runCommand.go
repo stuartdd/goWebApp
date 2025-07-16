@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type execData struct {
@@ -112,6 +113,7 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 		if err != nil {
 			return nil, nil, 429, err
 		}
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err = cmd.Start()
 		if err != nil {
 			stdout.WriteString("{\"Error\":true")
