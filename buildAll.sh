@@ -15,9 +15,6 @@ if [ $? -eq 1 ]; then
   exit 1
 fi
 
-
-
-
 cd $homeDir
 if ! test -f goWebApp; then
   echo "Build Deploy Failed. Cannot find goWebApp"
