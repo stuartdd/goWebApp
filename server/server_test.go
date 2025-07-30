@@ -30,6 +30,7 @@ func (l *TLog) GetVerbose() func(string) {
 	return l.LogNil
 }
 func (l *TLog) Get() string {
+
 	return l.B.String()
 }
 func (l *TLog) LogNil(s string) {
@@ -122,8 +123,10 @@ func TestServerStatus(t *testing.T) {
 	url := "server/status"
 	_, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
 	AssertContains(t, respBody, []string{
-		"\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"",
-		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,",
+		"\"error\":false,",
+		"\"ConfigName\":\"goWebAppTest.json\"",
+		"\"Processes\":[]",
+		"\"Log_File\":\"DummyLogger.log\"",
 	})
 
 }
@@ -414,7 +417,7 @@ func TestReadFileNotUser(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 74, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", "\"reason\":\"user not found\""})
-	AssertLogContains(t, logger, []string{"user not found:404:User=nouser", "\"reason\":\"user not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true","\"status\":404",  "\"reason\":\"user not found\""})
 }
 
 func TestReadFileNotLoc(t *testing.T) {
@@ -431,7 +434,7 @@ func TestReadFileNotLoc(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 78, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"location not found\""})
-	AssertLogContains(t, logger, []string{"location not found:404:User=stuart Location=noloc", "\"reason\":\"location not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404","\"reason\":\"location not found\""})
 }
 
 func TestReadFileNotName(t *testing.T) {
@@ -448,7 +451,7 @@ func TestReadFileNotName(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 74, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"File not found\""})
-	AssertLogContains(t, logger, []string{"File not found:404", "Error: Status:404"})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"reason\":\"File not found\""})
 }
 
 func TestReadFileIsDir(t *testing.T) {
@@ -465,7 +468,7 @@ func TestReadFileIsDir(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusForbidden, "?", 74, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"Is a directory\""})
-	AssertLogContains(t, logger, []string{":Is a directory:403:", "s-testfolder is a Directory"})
+	AssertLogContains(t, logger, []string{"Panic:Is a directory Status:403", "s-testfolder is a Directory","\"error\":true", "\"status\":403", "\"reason\":\"Is a directory\""})
 }
 
 func TestServerTime(t *testing.T) {
@@ -628,9 +631,8 @@ func RunServer(config *config.ConfigData, logger logging.Logger) {
 	}()
 	var lrm *LongRunningManager
 	var err error
-	em := config.GetExecManager()
-	if em.IsSet() {
-		lrm, err = NewLongRunningManager(em.Path, logger.Log)
+	if config.GetExecPath() != "" {
+		lrm, err = NewLongRunningManager(config.GetExecPath(), logger.Log)
 		if err != nil {
 			panic(fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))
 		}

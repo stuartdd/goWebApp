@@ -105,7 +105,7 @@ func parseInt(s string, pos int, fallback int) (int, int) {
 					return n, p
 				}
 			} else {
-				if c != '.' && c != ':'&& c != ';' && c != '_' {
+				if c != '.' && c != ':' && c != ';' && c != '_' {
 					break
 				}
 			}
@@ -168,14 +168,6 @@ func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
 		}
 	}
 	return false
-}
-
-type ExecManager struct {
-	Path string
-}
-
-func (ex *ExecManager) IsSet() bool {
-	return ex.Path != ""
 }
 
 type LogData struct {
@@ -306,7 +298,7 @@ type ConfigDataInternal struct {
 	FaviconIcoPath      string
 	Env                 map[string]string
 	Exec                map[string]*ExecInfo
-	ExecManager         *ExecManager
+	ExecPath            string
 }
 
 func (p *ConfigDataInternal) String() (string, error) {
@@ -390,7 +382,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
 		Env:                 map[string]string{},
 		Exec:                map[string]*ExecInfo{},
-		ExecManager:         &ExecManager{Path: ""},
+		ExecPath:            "",
 	}
 
 	/*
@@ -509,12 +501,12 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		}
 	}()
 
-	if p.GetExecManager().Path != "" {
-		f, e = p.checkRootPathExists(p.GetExecManager().Path, userConfigEnv) // Will check ServerStaticRoot
+	if p.internal.ExecPath != "" {
+		f, e = p.checkRootPathExists(p.internal.ExecPath, userConfigEnv) // Will check ServerStaticRoot
 		if e != nil {
 			errorList.AddError(fmt.Sprintf("Config Error: ExecManager.Path %s", e))
 		} else {
-			p.GetExecManager().Path = f
+			p.internal.ExecPath = f
 		}
 	}
 
@@ -572,8 +564,8 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 			}
 		}
 
-		if execData.Dir == "" && p.internal.ExecManager != nil && p.internal.ExecManager.Path != "" {
-			execData.Dir = p.internal.ExecManager.Path
+		if execData.Dir == "" && p.GetExecPath() != "" {
+			execData.Dir = p.GetExecPath()
 		} else {
 			if execData.Dir == "" {
 				execData.Dir = "exec"
@@ -742,8 +734,8 @@ func (p *ConfigData) GetServerName() string {
 	return p.internal.ServerName
 }
 
-func (p *ConfigData) GetExecManager() *ExecManager {
-	return p.internal.ExecManager
+func (p *ConfigData) GetExecPath() string {
+	return p.internal.ExecPath
 }
 
 func (p *ConfigData) GetUserData(user string) *UserData {

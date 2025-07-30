@@ -128,7 +128,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			pm := config.NewPanicMessageFromRecover(r,400)
+			pm := config.NewPanicMessageFromRecover(r, 400)
 			logFunc("Panic:" + pm.String())
 			h.writeResponse(w, controllers.NewResponseData(pm.Status).WithContentReasonAsJson(pm.Reason, true), shouldLog)
 		}
@@ -413,7 +413,7 @@ func (p *WebAppServer) Start() int {
 	} else {
 		p.Log("Server Templating :OFF.")
 	}
-	p.Log(fmt.Sprintf("LR Process Manager:%s", p.Handler.longRunning.String()))
+	p.Log(fmt.Sprintf("Exec Manager      :%s", p.Handler.longRunning.String()))
 	for _, un := range p.Handler.config.GetUserNamesList() {
 		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}

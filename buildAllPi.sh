@@ -22,6 +22,7 @@ if ! test -f $dpDir/goWebApp; then
   exit 1
 fi
 
+
 echo "--------------------------------------- Build webtools"
 cd external
 env GOOS=linux GOARCH=arm go build -o ../testdata/exec/webtools  -ldflags="-s -w" . 

@@ -154,6 +154,6 @@
     "linuxUserGit": "/home/stuart/git"
   },
   "ExecManager": {
-    "Path": "%{WebServerData}/exec"
+    "Path": "%{WebServerRoot}/exec"
   }
 }

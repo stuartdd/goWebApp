@@ -1,67 +1,66 @@
 #!/bin/bash
+echo "*******************"
+echo "* Build WebApp"
+env | grep WebSer
+
+if [ x"${WebServerRoot}" == "x" ]; then 
+  echo "Value 'WebServerRoot' is not assigned to a variable"
+	exit 1
+fi
+
+echo "*******************"
+
 homeDir=$(pwd)
-echo "--------------------------------------- Build goWebApp"
-go build -o goWebApp goWebApp.go 
-if [ $? -eq 1 ]; then
-  echo "Build Failed"
-  exit 1
-fi
+dpDir=$WebServerRoot
 
-echo "--------------------------------------- Build webtools"
-cd external
-go build -o ../testdata/exec/webtools 
-if [ $? -eq 1 ]; then
-  echo "Build Failed"
-  exit 1
-fi
-
-cd $homeDir
-if ! test -f goWebApp; then
-  echo "Build Deploy Failed. Cannot find goWebApp"
-  exit 1
-fi
-
-dpDir=.deploy
-echo "--------------------------------------- Build Deploy $dpDir"
-if [ -e $dpDir ]; then
+echo "Deploy to $WebServerRoot"
+if [ -e $WebServerRoot/exec ]; then
   echo Clean
-  rm -rf $dpDir
+  rm -rf $WebServerRoot
 fi
 
-mkdir $dpDir
-cd $dpDir
+mkdir $WebServerRoot
+cd $WebServerRoot
 
-echo "COPY goWebApp to $dpDir/goWebApp"
-cp ../goWebApp .
-if [ $? -eq 1 ]; then
-  echo "Copy goWebApp Failed"
-  exit 1
-fi
-
-echo "COPY run to $dpDir/goWebApp"
-cp ../run .
-if [ $? -eq 1 ]; then
-  echo "Copy run Failed"
-  exit 1
-fi
-
-echo "COPY exec to $dpDir/goWebApp/exec"
+echo "COPY exec to $WebServerRoot"
 cp -r ../testdata/exec .
 if [ $? -eq 1 ]; then
   echo "Copy webtools Failed"
   exit 1
 fi
 
-echo "COPY goWebApp.json to $dpDir/goWebApp"
+echo "COPY goWebApp.json to $WebServerRoot"
 cp ../goWebApp.json .
 if [ $? -eq 1 ]; then
   echo "Copy goWebApp.json Failed"
   exit 1
 fi
 
-echo "COPY helptext.md to $dpDir/goWebApp"
+echo "COPY helptext.md to $WebServerRoot"
 cp ../helptext.md .
 if [ $? -eq 1 ]; then
   echo "Copy helptext.md Failed"
   exit 1
 fi
+
+cd $homeDir
+echo "Build goWebApp to $WebServerRoot/goWebApp"
+go build  -o $WebServerRoot/goWebApp goWebApp.go
+if [ $? -eq 1 ]; then
+  echo "Build Failed"
+  exit 1
+fi
+
+echo "Build webtools to $WebServerRoot/exec/webtools"
+cd $homeDir/external
+go build -o $WebServerRoot/exec/webtools 
+if [ $? -eq 1 ]; then
+  echo "Build Failed"
+  exit 1
+fi
+
+echo "Enable exec *.sh in $WebServerRoot/exec"
+cd $WebServerRoot/exec
+chmod +x *.sh
+
+echo "*******************"

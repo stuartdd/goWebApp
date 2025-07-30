@@ -97,7 +97,7 @@ func TestDetatch(t *testing.T) {
 		t.Fatalf("ForEachSystemProcess should return an empty string. Not %s", s)
 	}
 
-	wrapKillrocessWithPid(t, 89476486749, "process with PID:89476486749 could not be stopped")
+	wrapKillrocessWithPid(t, 89476486749, "status:424 Process with PID:89476486749 could not be stopped")
 }
 
 func wrapKillrocessWithPid(t *testing.T, id int, e string) {
