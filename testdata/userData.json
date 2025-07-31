@@ -1,0 +1,35 @@
+{
+    "bob": {
+      "Hidden": null,
+      "Name": "Bob",
+      "Home": "",
+      "Locations": {
+        "data": "stateData",
+        "home": "",
+        "original": "***%{WebServerPictures}/originals/%{id}",
+        "pics": "b-pics",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
+        "usr": "b-testfolder"
+      },
+      "Exec": null,
+      "Env": null
+    },
+    "stuart": {
+      "Hidden": null,
+      "Name": "Stuart",
+      "Home": "",
+      "Locations": {
+        "cache": "cache",
+        "data": "stateData",
+        "home": "",
+        "logs": "logs",
+        "original": "***%{WebServerPictures}/originals/%{id}",
+        "pics": "s-pics",
+        "testtree": "***%{WebServerPictures}",
+        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
+        "usr": "s-testfolder"
+      },
+      "Exec": null,
+      "Env": null
+    }
+  }

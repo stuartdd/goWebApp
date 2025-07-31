@@ -286,6 +286,7 @@ type ConfigDataInternal struct {
 	ReloadConfigSeconds int64
 	Port                int
 	ThumbnailTrim       []int
+	UserDataPath        string
 	Users               map[string]UserData
 	ContentTypeCharset  string
 	LogData             *LogData
@@ -369,6 +370,7 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 	configDataInternal := &ConfigDataInternal{
 		ReloadConfigSeconds: defaultConfigReloadTime,
 		Port:                8080,
+		UserDataPath:        "",
 		Users:               make(map[string]UserData),
 		LogData:             &LogData{},
 		ContentTypeCharset:  "utf-8",
@@ -422,9 +424,9 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 			configDataInternal.FilterFiles[i] = fmt.Sprintf(".%s", f)
 		}
 	}
+	ret, cfgErr := configDataExternal.resolveLocations(createDir)
 
 	if verbose {
-		ret, cfgErr := configDataExternal.resolveLocations(createDir)
 		if ret != nil {
 			fmt.Println("Final Config Data -------")
 			s, err := ret.String()
@@ -435,10 +437,34 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 			}
 			fmt.Println("Final Config Data -------")
 		}
-		return ret, cfgErr
-	} else {
-		return configDataExternal.resolveLocations(createDir)
 	}
+
+	err = configDataExternal.loadUserData()
+	if err != nil {
+		cfgErr.AddError(fmt.Sprintf("Config file:%s. UserDataPath: Failed to load user data: %s", configDataExternal.ConfigName, err.Error()))
+	}
+
+	return ret, cfgErr
+}
+
+func (p *ConfigData) loadUserData() error {
+	content, err := os.ReadFile(p.internal.UserDataPath)
+	if err != nil {
+		return fmt.Errorf("failed to read user data file:%s. Error:%s", p.internal.UserDataPath, err.Error())
+	}
+	userData := make(map[string]UserData)
+	err = json.Unmarshal(content, &userData)
+	if err != nil {
+		return fmt.Errorf("failed to understand user data file:%s. Error:%s", p.internal.UserDataPath, err.Error())
+	}
+	for n, v := range userData {
+		_, ok := p.internal.Users[n]
+		if ok {
+			return fmt.Errorf("duplicate User '%s' defined in Users and UserDataPath. Config file:%s", n, p.ConfigName)
+		}
+		p.internal.Users[n] = v
+	}
+	return nil
 }
 
 /*
@@ -468,7 +494,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 
 	userConfigEnv := p.GetUserEnv("")
 
-	f, e := p.checkRootPathExists(p.GetServerDataRoot(), userConfigEnv) // Will check GetServerDataRoot
+	f, e := p.checkRootPathExists(p.GetServerDataRoot(), userConfigEnv, true) // Will check GetServerDataRoot
 	if e != nil {
 		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find ServerDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
@@ -476,7 +502,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	}
 
 	if p.HasStaticData() {
-		f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv) // Will check ServerStaticRoot
+		f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv, true) // Will check ServerStaticRoot
 		if e != nil {
 			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Path in config file:%s. Cause:%s", p.ConfigName, e.Error()))
 		} else {
@@ -502,11 +528,20 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	}()
 
 	if p.internal.ExecPath != "" {
-		f, e = p.checkRootPathExists(p.internal.ExecPath, userConfigEnv) // Will check ServerStaticRoot
+		f, e = p.checkRootPathExists(p.internal.ExecPath, userConfigEnv, true) // Will check ExecPath
 		if e != nil {
-			errorList.AddError(fmt.Sprintf("Config Error: ExecManager.Path %s", e))
+			errorList.AddError(fmt.Sprintf("Config Error: ExecManager %s", e))
 		} else {
 			p.internal.ExecPath = f
+		}
+	}
+
+	if p.internal.UserDataPath != "" {
+		f, e = p.checkRootPathExists(p.internal.UserDataPath, userConfigEnv, false) // Will check UserDataPath
+		if e != nil {
+			errorList.AddError(fmt.Sprintf("Config Error: UserDataPath %s. %s", f, e))
+		} else {
+			p.internal.UserDataPath = f
 		}
 	}
 
@@ -608,7 +643,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	return p, errorList
 }
 
-func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string) (string, error) {
+func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string, mustBeDir bool) (string, error) {
 	if rootPath == "" {
 		return "", fmt.Errorf("path is empty")
 	}
@@ -625,7 +660,9 @@ func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]str
 		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
 	} else {
 		if !stats.IsDir() {
-			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
+			if mustBeDir {
+				return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
+			}
 		}
 	}
 	return absPathPath, nil
