@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# Required for test in controllers_test.go --> TestExecFailRcNonZero
+#
+cat $1
+exit 1
