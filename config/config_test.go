@@ -232,7 +232,7 @@ func TestUserExec(t *testing.T) {
 	if exec.CanStop {
 		t.Fatalf("Exec canstop should default to false")
 	}
-	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/logOut.txt"})
+	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/stdOutC2.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {
@@ -272,7 +272,8 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a PanicMessage")
 			}
-			if pm.String() != "user not found:404:User=fred" {
+			// {Status: 404, Reason: "user not found", Logged: "User=fred"}
+			if pm.String() != "user not found Status:404 Log:User=fred" {
 				t.Fatalf("Should have returned a PanicMessage == user not found:404:User=fred | actual = %s", pm.String())
 
 			}
@@ -298,8 +299,8 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a PanicMessage")
 			}
-			if pm.String() != "location not found:404:User=stuart Location=nothome" {
-				t.Fatalf("Should have returned a PanicMessage == location not found:404:User=stuart Location=nothome | actual = %s", pm.String())
+			if pm.String() != "location not found Status:404 Log:User=stuart Location=nothome" {
+				t.Fatalf("Should have returned a PanicMessage == location not found Status:404 Log:User=stuart Location=nothome | actual = %s", pm.String())
 			}
 		}
 	}()

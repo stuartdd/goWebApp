@@ -409,8 +409,9 @@ func (p *TreeDirNode) Len() int {
 
 // --- 120 -- 012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
 const tabs = "                                                                                                                        "
-const namePrefix = "{\"name\":\""
-const subsPrefix = "\"subs\":["
+
+var namePrefix = []byte("{\"name\":\"")
+var subsPrefix = []byte("\"subs\":[")
 
 func (p *TreeDirNode) toJson(tab int, indented bool) []byte {
 	var buffer bytes.Buffer
@@ -422,42 +423,43 @@ func (p *TreeDirNode) toJson(tab int, indented bool) []byte {
 		} else {
 			tabStr = "\n" + tabs
 		}
-		pad = " "
+		pad = "  "
 	}
 	if indented {
 		buffer.WriteString(tabStr)
 	}
-	buffer.WriteString(namePrefix)
+	buffer.Write(namePrefix)
 	buffer.WriteString(p.Name)
 
 	subC := p.Len()
 	if subC > 0 {
-		buffer.WriteString("\",")
+		buffer.WriteRune('"')
+		buffer.WriteRune(',')
 		if indented {
 			buffer.WriteString(tabStr)
 			buffer.WriteString(pad)
 		}
-		buffer.WriteString(subsPrefix)
-		for i := 0; i < subC; i++ {
+		buffer.Write(subsPrefix)
+		for i := range subC {
 			buffer.Write(p.Subs[i].toJson(tab+1, indented))
 			if i <= subC-2 {
-				buffer.WriteString(",")
+				buffer.WriteRune(',')
 			}
 		}
 		if indented {
 			buffer.WriteString(tabStr)
 			buffer.WriteString(pad)
 		}
-		buffer.WriteString("]")
+		buffer.WriteRune(']')
 		if indented {
 			buffer.WriteString(tabStr)
 		}
-		buffer.WriteString("}")
+		buffer.WriteRune('}')
 	} else {
-		buffer.WriteString("\"}")
+		buffer.WriteRune('"')
+		buffer.WriteRune('}')
 	}
 	return buffer.Bytes()
-
 }
 
 func findInSubs(subs []*TreeDirNode, name string) *TreeDirNode {

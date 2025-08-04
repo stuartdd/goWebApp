@@ -447,7 +447,17 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 	return ret, cfgErr
 }
 
+/*
+Load user data from external file defined in p.internal.UserDataPath.
+
+Update default values (Home & Hidden)
+
+For each user.location substitute the environment var and check the resolved location exists.
+*/
 func (p *ConfigData) loadUserData() error {
+	if p.internal.UserDataPath == "" {
+		return nil
+	}
 	content, err := os.ReadFile(p.internal.UserDataPath)
 	if err != nil {
 		return fmt.Errorf("failed to read user data file:%s. Error:%s", p.internal.UserDataPath, err.Error())
@@ -457,12 +467,31 @@ func (p *ConfigData) loadUserData() error {
 	if err != nil {
 		return fmt.Errorf("failed to understand user data file:%s. Error:%s", p.internal.UserDataPath, err.Error())
 	}
+
 	for n, v := range userData {
 		_, ok := p.internal.Users[n]
 		if ok {
 			return fmt.Errorf("duplicate User '%s' defined in Users and UserDataPath. Config file:%s", n, p.ConfigName)
 		}
+		if v.Home == "" {
+			v.Home = n
+		}
+		if v.Hidden == nil {
+			b := false
+			v.Hidden = &b
+		}
 		p.internal.Users[n] = v
+	}
+	for userId, userData := range p.internal.Users {
+		userConfigEnv := p.GetUserEnv(userId)
+		for locName := range userData.Locations {
+			location := p.GetUserLocPath(userId, locName)
+			f, e := p.checkPathExists(userData.Home, location, userId, userConfigEnv, false)
+			if e != nil {
+				return fmt.Errorf("config Error: User [%s] Location [%s]. Config file: %s, Error: %s", userId, locName, p.internal.UserDataPath, e.Error())
+			}
+			userData.Locations[locName] = f
+		}
 	}
 	return nil
 }
@@ -540,9 +569,8 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		f, e = p.checkRootPathExists(p.internal.UserDataPath, userConfigEnv, false) // Will check UserDataPath
 		if e != nil {
 			errorList.AddError(fmt.Sprintf("Config Error: UserDataPath %s. %s", f, e))
-		} else {
-			p.internal.UserDataPath = f
 		}
+		p.internal.UserDataPath = f
 	}
 
 	if p.IsTemplating() {
@@ -627,19 +655,21 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		if userData.Home == "" {
 			userData.Home = userId
 		}
-		userHome := userData.Home
-
+		if userData.Hidden == nil {
+			b := false
+			userData.Hidden = &b
+		}
 		userConfigEnv = p.GetUserEnv(userId)
 		for locName := range userData.Locations {
 			location := p.GetUserLocPath(userId, locName)
-			f, e := p.checkPathExists(userHome, location, userId, userConfigEnv, createDir)
+			f, e := p.checkPathExists(userData.Home, location, userId, userConfigEnv, createDir)
 			if e != nil {
 				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] %s", userId, locName, e.Error()))
 			}
 			userData.Locations[locName] = f
 		}
-
 	}
+
 	return p, errorList
 }
 

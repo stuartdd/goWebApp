@@ -11,7 +11,6 @@
         "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "usr": "b-testfolder"
       },
-      "Exec": null,
       "Env": null
     },
     "stuart": {
@@ -29,7 +28,6 @@
         "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
         "usr": "s-testfolder"
       },
-      "Exec": null,
       "Env": null
     }
   }

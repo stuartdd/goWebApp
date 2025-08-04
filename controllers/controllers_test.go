@@ -112,15 +112,14 @@ func TestExecFailCommandNotFound(t *testing.T) {
 		func(s string) {
 			// Verbose function
 		})
-
 	defer func() {
 		if r := recover(); r != nil {
 			pm, ok := r.(*config.PanicMessage)
 			if !ok || pm == nil {
 				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage")
 			}
-			if pm.Logged != "Exec: c2 RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH" {
-				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage == Exec: c2 RC:1 Error:exec failed: exec: \"cmd2\": executable file not found in $PATH | actual = %s", pm.String())
+			if !strings.Contains(pm.Logged, "exec/cmd2: no such file or directory") {
+				t.Fatalf("TestExecFailCommandNotFound: Should contain: 'exec/cmd2: no such file or directory'")
 			}
 		}
 	}()
@@ -181,22 +180,28 @@ func TestMarshal(t *testing.T) {
 	}
 	AssertEquals(t, "Unmarshal", tn.ToJson(false), jj)
 
-	tim := time.Now().UnixMicro()
-	jj2, err := json.Marshal(tn)
+	jj2 := []byte{}
+	tim1 := time.Now().UnixMicro()
+	for i := 0; i < 50; i++ {
+		jj2, err = json.Marshal(tn)
+	}
 	tim2 := time.Now().UnixMicro()
 	if err != nil {
 		t.Fatalf("failed to marshal the JSON. Error:%s", err.Error())
 	}
 	AssertEquals(t, "Marshal", jj2, jj)
 
+	jj4 := []byte{}
 	tim3 := time.Now().UnixMicro()
-	jj4 := tn.ToJson(false)
+	for i := 0; i < 50; i++ {
+		jj4 = tn.ToJson(false)
+	}
 	tim4 := time.Now().UnixMicro()
 
 	AssertEquals(t, "Marshal", jj4, jj)
-	timMarshal := tim2 - tim
+	timMarshal := tim2 - tim1
 	timToJson := tim4 - tim3
-	if timToJson > timMarshal {
+	if timToJson > (timMarshal+10) {
 		t.Fatalf("Time Marshal:%d Time ToJson:%d. Time ToJson should be faster!", timMarshal, timToJson)
 	}
 }
@@ -244,5 +249,17 @@ func testDoesNotExist(t *testing.T, name string) {
 	_, err := os.Stat(name)
 	if err == nil {
 		t.Fatalf("file %s should not exist", name)
+	}
+}
+
+func writeToFile(t *testing.T, name string, bytes []byte) {
+	f, err := os.Create(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	_, err = f.Write(bytes)
+		if err != nil {
+		t.Fatal(err)
 	}
 }

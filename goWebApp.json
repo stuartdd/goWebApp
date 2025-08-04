@@ -74,7 +74,7 @@
       "Detached": false
     }
   },
-  "UserDataPath":"%{WebServerHome}/userData.json",
+  "UserDataPath":"%{WebServerData}/userData.json",
   "Users": {
     "admin": {
       "Hidden": true,
