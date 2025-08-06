@@ -1,6 +1,13 @@
 #!/bin/bash
 echo "*******************"
-echo "* Build WebApp"
+if [ "$1" == "ARM" ]; then 
+  echo "* Build WebApp $1"
+  arch=ARM
+else
+  echo "* Build WebApp INTEL (Default)"
+  arch=INTEL
+fi
+
 env | grep WebSer
 
 if [ x"${WebServerRoot}" == "x" ]; then 
@@ -25,7 +32,7 @@ cd $WebServerRoot
 echo "COPY exec to $WebServerRoot"
 cp -r ../testdata/exec .
 if [ $? -eq 1 ]; then
-  echo "Copy webtools Failed"
+  echo "Copy exec directory Failed"
   exit 1
 fi
 
@@ -44,23 +51,66 @@ if [ $? -eq 1 ]; then
 fi
 
 cd $homeDir
-echo "Build goWebApp to $WebServerRoot/goWebApp"
-go build  -o $WebServerRoot/goWebApp goWebApp.go
-if [ $? -eq 1 ]; then
-  echo "Build Failed"
-  exit 1
-fi
-
-echo "Build webtools to $WebServerRoot/exec/webtools"
-cd $homeDir/external
-go build -o $WebServerRoot/exec/webtools 
-if [ $? -eq 1 ]; then
-  echo "Build Failed"
-  exit 1
+if [ "$arch" == "ARM" ]; then 
+  echo "Build ARM goWebApp to $WebServerRoot/goWebApp"
+  env GOOS=linux GOARCH=arm go build  -o $WebServerRoot/goWebApp goWebApp.go
+  if [ $? -eq 1 ]; then
+    echo "Build Failed: goWebApp ARM build failed"
+    exit 1
+  fi
+else
+  echo "Build INTEL goWebApp to $WebServerRoot/goWebApp"
+  go build  -o $WebServerRoot/goWebApp goWebApp.go
+  if [ $? -eq 1 ]; then
+    echo "Build Failed: goWebApp INTEL build failed"
+    exit 1
+  fi
 fi
 
 echo "Enable exec *.sh in $WebServerRoot/exec"
 cd $WebServerRoot/exec
 chmod +x *.sh
+if [ $? -eq 1 ]; then
+  echo "Enable exec Failed"
+  exit 1
+fi
+
+cd $homeDir/external
+
+if [ "$arch" == "ARM" ]; then 
+  echo "Build ARM webtools to $WebServerRoot/exec/webtools"
+  env GOOS=linux GOARCH=arm go build -o $WebServerRoot/exec/webtools 
+  if [ $? -eq 1 ]; then
+    echo "Build Failed: webtools ARM build failed"
+    exit 1
+  fi
+else
+  echo "Build INTEL webtools to $WebServerRoot/exec/webtools"
+  go build -o $WebServerRoot/exec/webtools 
+  if [ $? -eq 1 ]; then
+    echo "Build Failed: webtools INTEL build failed"
+    exit 1
+  fi
+fi
+
+cd $homeDir
+if [ -e ../goThumbnailTool ]; then
+    cd ../goThumbnailTool
+    echo "Build Thumbnail tools '../goThumbnailTool'. Deploy to $arch $WebServerRoot/exec"
+    sh ./build.sh $arch $WebServerRoot/exec/goThumbnailTool
+    if [ $? -eq 1 ]; then
+      echo "Build Failed: ../goThumbnailTool/build.sh returned an error"
+      exit 1
+    fi
+    cp configThumbnail.json $WebServerRoot/exec
+  if [ $? -eq 1 ]; then
+    echo "Build Failed: Failed to copy configThumbnail.json to $WebServerRoot/exec"
+    exit 1
+  fi
+else
+    echo "Build Failed: Thumbnail Nail tools project 'goThumbnailTool' does not exist in same dir as goWebApp!"
+    exit 1
+fi
+
 
 echo "*******************"
