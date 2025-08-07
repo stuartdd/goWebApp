@@ -14,21 +14,22 @@ import (
 )
 
 type execData struct {
-	Cmd       []string
-	Dir       string
-	StdOutLog string
-	StdErrLog string
-	log       func(string)
-	info      string
-	detached  bool
-	canStop   bool
+	Cmd            []string
+	Dir            string
+	StdOutLog      string
+	StdErrLog      string
+	StartErrorFile string
+	log            func(string)
+	info           string
+	detached       bool
+	canStop        bool
 }
 
 func (p *execData) String() string {
 	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
 }
 
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string) *execData {
+func NewExecData(commands []string, dir string, stdOut string, stdErr string, info string, startErrofFile string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -44,6 +45,7 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 		Dir:       dir,
 		StdOutLog: stdOut,
 		StdErrLog: stdErr,
+		StartErrorFile: startErrofFile,
 		log:       logFunc,
 		info:      info,
 		detached:  detached,
@@ -122,6 +124,16 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 			}
 			stdout.WriteString("}")
 			return stdout.Bytes(), stderr.Bytes(), -1, err
+		}
+
+		if p.StartErrorFile != "" {
+			dat, err := os.ReadFile(p.StartErrorFile)
+			if err == nil && len(dat) > 2 {
+				stdout.Write(dat)
+				// stdout.WriteString(fmt.Sprintf("{\"Error\":true, \"pid\":0 ,\"errorFile\":\"%s\", \"data\":\"%s\"", p.StartErrorFile, dat))
+				// stdout.WriteString("}")
+				return stdout.Bytes(), stderr.Bytes(), 1, nil
+			}
 		}
 		pid := cmd.Process.Pid
 		cmd.Process.Release()

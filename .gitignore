@@ -5,7 +5,10 @@ __*
 *.txt
 textToJson
 webtools
-goWebApp
 .deploy
 RunningProcs.json
 nohup.out
+
+goWebApp
+goThumbnailTool
+configThumbnail.json

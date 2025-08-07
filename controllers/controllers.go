@@ -290,7 +290,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		dataMap := map[string]interface{}{"error": false, "exitCode": 0, "stdOut": "Stop process complete", "stdErr": ""}
 		return NewResponseData(http.StatusOK).WithContentMapJson(dataMap).SetHasErrors(false)
 	}
-	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), info, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
+	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), info, p.execInfo.StartErrorFile, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromCachedMap(r)
 	})
 	if p.isVerbose { // Only do this if abs necessary as execData.String() does not need to be done
@@ -322,6 +322,10 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return NewResponseData(p.execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
 	}
 
+	if code > 0 && len(stdOut) >0  {
+		return NewResponseData(code).WithContentReasonAsJson(fmt.Sprintf("Exec returned %s", string(stdOut)), true)
+	}
+	
 	if p.execInfo.Detached {
 		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(p.execInfo.StdOutType).SetHasErrors(code != 0)
 	}
@@ -444,7 +448,7 @@ func GetOSFreeData(configData *config.ConfigData, logFunc func(string)) (res str
 		}
 	}()
 	execInfo := configData.GetExecInfo("free")
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run systen free command", false, false, nil, nil)
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run systen free command", execInfo.StartErrorFile, false, false, nil, nil)
 	stdOut, _, code, err := execData.RunSystemProcess()
 	if err != nil || code != 0 {
 		if logFunc != nil {

@@ -103,10 +103,22 @@ if [ -e ../goThumbnailTool ]; then
       exit 1
     fi
     cp configThumbnail.json $WebServerRoot/exec
-  if [ $? -eq 1 ]; then
-    echo "Build Failed: Failed to copy configThumbnail.json to $WebServerRoot/exec"
-    exit 1
-  fi
+    if [ $? -eq 1 ]; then
+      echo "Build Failed: Failed to copy configThumbnail.json to $WebServerRoot/exec"
+      exit 1
+    fi
+    cd $homeDir
+    cp $WebServerRoot/exec/goThumbnailTool testdata/exec
+    if [ $? -eq 1 ]; then
+      echo "Build Failed: Failed to copy configThumbnail to ../testdata/exec"
+      exit 1
+    fi
+    cp $WebServerRoot/exec/configThumbnail.json testdata/exec
+    if [ $? -eq 1 ]; then
+      echo "Build Failed: Failed to copy configThumbnail.json to ../testdata/exec"
+      exit 1
+    fi
+
 else
     echo "Build Failed: Thumbnail Nail tools project 'goThumbnailTool' does not exist in same dir as goWebApp!"
     exit 1

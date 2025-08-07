@@ -235,15 +235,16 @@ func NewLogData() *LogData {
 Users can have Exex actions. Derived from JSON!
 */
 type ExecInfo struct {
-	Cmd           []string
-	Dir           string
-	StdOutType    string
-	LogDir        string
-	LogOut        string
-	LogErr        string
-	NzCodeReturns int
-	Detached      bool
-	CanStop       bool
+	Cmd            []string
+	Dir            string
+	StdOutType     string
+	LogDir         string
+	LogOut         string
+	LogErr         string
+	StartErrorFile string
+	NzCodeReturns  int
+	Detached       bool
+	CanStop        bool
 }
 
 func (p *ExecInfo) GetOutLogFile() string {
