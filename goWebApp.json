@@ -50,7 +50,7 @@
       "Cmd": [
         "thumbnails.sh"
       ],
-      "StartErrorFile": "thumbnailsError.json",
+      "StartErrorFile": "thumbnailsError.txt",
       "Detached": true,
       "CanStop": true
     },

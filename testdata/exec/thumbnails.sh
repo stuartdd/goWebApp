@@ -1,8 +1,7 @@
 #!/bin/bash
 
-echo "goThumbnailTool" >> thumbnailsError.json
-./goThumbnailTool >thumbnailsError.json 2>&1
+./goThumbnailTool configThumbnail.json > thumbnails.txt 2>thumbnailsError.txt
 if [ $? -eq 1 ]; then
-  echo "goThumbnailTool Failed"
+  echo ": goThumbnailTool Failed" >> thumbnailsError.txt
   exit 1
 fi

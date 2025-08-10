@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type execData struct {
@@ -41,15 +42,15 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, in
 	}
 
 	return &execData{
-		Cmd:       subCmd,
-		Dir:       dir,
-		StdOutLog: stdOut,
-		StdErrLog: stdErr,
+		Cmd:            subCmd,
+		Dir:            dir,
+		StdOutLog:      stdOut,
+		StdErrLog:      stdErr,
 		StartErrorFile: startErrofFile,
-		log:       logFunc,
-		info:      info,
-		detached:  detached,
-		canStop:   canStop,
+		log:            logFunc,
+		info:           info,
+		detached:       detached,
+		canStop:        canStop,
 	}
 }
 
@@ -126,14 +127,9 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 			return stdout.Bytes(), stderr.Bytes(), -1, err
 		}
 
-		if p.StartErrorFile != "" {
-			dat, err := os.ReadFile(p.StartErrorFile)
-			if err == nil && len(dat) > 2 {
-				stdout.Write(dat)
-				// stdout.WriteString(fmt.Sprintf("{\"Error\":true, \"pid\":0 ,\"errorFile\":\"%s\", \"data\":\"%s\"", p.StartErrorFile, dat))
-				// stdout.WriteString("}")
-				return stdout.Bytes(), stderr.Bytes(), 1, nil
-			}
+		err = p.readErrorDataFile()
+		if err != nil {
+			return stdout.Bytes(), stderr.Bytes(), 1, err
 		}
 		pid := cmd.Process.Pid
 		cmd.Process.Release()
@@ -180,6 +176,36 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int, error) {
 		}
 	}
 	return sob, seb, code, nil
+}
+
+func (p *execData) readErrorDataFile() error {
+	if p.StartErrorFile != "" {
+		time.Sleep(time.Second)
+		file, err := os.Open(p.StartErrorFile)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		var buff bytes.Buffer
+		scanner := bufio.NewScanner(file)
+		len := buff.Len()
+		for scanner.Scan() {
+			buff.WriteString(strings.TrimSpace(scanner.Text()))
+			len = buff.Len()
+			if len > 100 {
+				break
+			}
+			buff.WriteString(": ")
+		}
+		b := buff.String()[0:len]
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("readErrorDataFile:Scanner:%s: %s", err.Error(), b)
+		}
+		if buff.Len() > 0 {
+			return fmt.Errorf("%s", b)
+		}
+	}
+	return nil
 }
 
 func KillrocessWithName(path, execid string) {
