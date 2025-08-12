@@ -293,33 +293,34 @@ func TestPostFile(t *testing.T) {
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
-
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	file := fmt.Sprintf("%s/%s", testdatapath, testdatafile)
+	file := fmt.Sprintf("%s/%s", configData.GetUserData("stuart").Locations["picsPlus"], testdatafile)
 	_, err := os.Stat(file)
 	if err == nil {
 		os.Remove(file)
 		time.Sleep(100 * time.Millisecond)
 	}
-
 	url := fmt.Sprintf("files/user/stuart/loc/picsPlus/name/%s", testdatafile)
 
 	RunClientPost(t, configData, url, 202, postDataFile1)
 	_, resBody := RunClientGet(t, configData, url, 200, "?", -1, 0)
 	if resBody != postDataFile1 {
-		t.Fatalf("Respons body does not equal postDataFile1")
+		t.Fatalf("Response body does not equal postDataFile1")
 	}
 	RunClientPost(t, configData, url, 202, postDataFile2)
 	_, resBody = RunClientGet(t, configData, url, 200, "?", -1, 0)
 	if resBody != postDataFile2 {
-		t.Fatalf("Respons body does not equal postDataFile2")
+		t.Fatalf("Response body does not equal postDataFile2")
 	}
-
+	_, err = os.Stat(file)
+	if err != nil {
+		t.Fatalf("File was not created")
+	}
+	// TODO
 	os.Remove(file)
-
 }
 func TestReadDir(t *testing.T) {
 
@@ -417,7 +418,7 @@ func TestReadFileNotUser(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 74, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", "\"reason\":\"user not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true","\"status\":404",  "\"reason\":\"user not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"reason\":\"user not found\""})
 }
 
 func TestReadFileNotLoc(t *testing.T) {
@@ -434,7 +435,7 @@ func TestReadFileNotLoc(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 78, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"location not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404","\"reason\":\"location not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"reason\":\"location not found\""})
 }
 
 func TestReadFileNotName(t *testing.T) {
@@ -468,7 +469,7 @@ func TestReadFileIsDir(t *testing.T) {
 
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusForbidden, "?", 74, 0)
 	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"Is a directory\""})
-	AssertLogContains(t, logger, []string{"Panic:Is a directory Status:403", "s-testfolder is a Directory","\"error\":true", "\"status\":403", "\"reason\":\"Is a directory\""})
+	AssertLogContains(t, logger, []string{"Panic:Is a directory Status:403", "s-testfolder is a Directory", "\"error\":true", "\"status\":403", "\"reason\":\"Is a directory\""})
 }
 
 func TestServerTime(t *testing.T) {

@@ -201,7 +201,7 @@ func TestMarshal(t *testing.T) {
 	AssertEquals(t, "Marshal", jj4, jj)
 	timMarshal := tim2 - tim1
 	timToJson := tim4 - tim3
-	if timToJson > (timMarshal+10) {
+	if timToJson > (timMarshal + 10) {
 		t.Fatalf("Time Marshal:%d Time ToJson:%d. Time ToJson should be faster!", timMarshal, timToJson)
 	}
 }
@@ -259,7 +259,7 @@ func writeToFile(t *testing.T, name string, bytes []byte) {
 	}
 	defer f.Close()
 	_, err = f.Write(bytes)
-		if err != nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 }

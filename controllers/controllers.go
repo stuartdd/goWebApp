@@ -81,6 +81,16 @@ type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
 	verbose    func(string)
+	delete     bool
+}
+
+func NewDeleteFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
+	return &ReadFileHandler{
+		parameters: urlParts,
+		configData: configData,
+		verbose:    verboseFunc,
+		delete:     true,
+	}
 }
 
 func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
@@ -88,6 +98,7 @@ func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 		parameters: urlParts,
 		configData: configData,
 		verbose:    verboseFunc,
+		delete:     false,
 	}
 }
 
@@ -103,15 +114,19 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 		p.verbose(fmt.Sprintf("%s Must not be a dir", stats.Name()))
 		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", file)))
 	}
-	fileContent, err := os.ReadFile(file)
-	if err != nil {
-		p.verbose(err.Error())
-		panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, err.Error()))
+	if p.delete {
+		return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File deleted", false)
+	} else {
+		fileContent, err := os.ReadFile(file)
+		if err != nil {
+			p.verbose(err.Error())
+			panic(config.NewPanicMessage("File could not be read", http.StatusUnprocessableEntity, err.Error()))
+		}
+		if p.configData.IsVerbose { // Only do this if abs necessary as Sprintf does not need to be done
+			p.verbose(fmt.Sprintf("Read File:%s Mime[%s] Len[%d]", file, config.LookupContentType(p.parameters.GetName()), len(fileContent)))
+		}
+		return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.parameters.GetName())
 	}
-	if p.configData.IsVerbose { // Only do this if abs necessary as Sprintf does not need to be done
-		p.verbose(fmt.Sprintf("Read File:%s Mime[%s] Len[%d]", file, config.LookupContentType(p.parameters.GetName()), len(fileContent)))
-	}
-	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.parameters.GetName())
 }
 
 type DirHandler struct {
@@ -322,10 +337,10 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return NewResponseData(p.execInfo.NzCodeReturns).WithContentReasonAsJson(fmt.Sprintf("Exec returned %d", code), true)
 	}
 
-	if code > 0 && len(stdOut) >0  {
+	if code > 0 && len(stdOut) > 0 {
 		return NewResponseData(code).WithContentReasonAsJson(fmt.Sprintf("Exec returned %s", string(stdOut)), true)
 	}
-	
+
 	if p.execInfo.Detached {
 		return NewResponseData(http.StatusOK).WithContentBytes(stdOut).WithMimeType(p.execInfo.StdOutType).SetHasErrors(code != 0)
 	}

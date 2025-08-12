@@ -61,6 +61,7 @@ var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", sho
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLog)
 var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLog)
+var delFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "DELETE", shouldLog)
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLog)
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLog)
 var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLog)
@@ -180,6 +181,11 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p, ok, shouldLog = getFileUserLocTreeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config).Submit(), shouldLog)
+			return
+		}
+		p, ok, shouldLog = delFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+		if ok {
+			h.writeResponse(w, controllers.NewDeleteFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
 		p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
