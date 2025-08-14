@@ -115,7 +115,16 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 		panic(config.NewPanicMessage("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", file)))
 	}
 	if p.delete {
-		return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File deleted", false)
+		err = os.Remove(file)
+		if err != nil {
+			p.verbose(err.Error())
+			panic(config.NewPanicMessage("File could not be deleted", http.StatusUnprocessableEntity, err.Error()))
+		}
+		_, err = os.Stat(file)
+		if err == nil {
+			panic(config.NewPanicMessage("File was not be deleted", http.StatusUnprocessableEntity, fmt.Sprintf("File %s was not deleted",file)))
+		}
+		return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File deleted OK", false)
 	} else {
 		fileContent, err := os.ReadFile(file)
 		if err != nil {

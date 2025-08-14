@@ -288,7 +288,7 @@ func TestGetFavicon(t *testing.T) {
 
 }
 
-func TestPostFile(t *testing.T) {
+func TestPostFileAndDelete(t *testing.T) {
 	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
@@ -320,7 +320,11 @@ func TestPostFile(t *testing.T) {
 		t.Fatalf("File was not created")
 	}
 	// TODO
-	os.Remove(file)
+	RunClientDelete(t,configData,url, 202, "\"reason\":\"File deleted OK\"")
+	_, err = os.Stat(file)
+	if err == nil {
+		t.Fatalf("File was not deleted")
+	}
 }
 func TestReadDir(t *testing.T) {
 
@@ -354,7 +358,7 @@ func TestReadDir(t *testing.T) {
 	AssertContains(t, resBody, []string{
 		"\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\"",
 		"{\"name\":\"t5.json\", \"encName\":\"X0XdDUuanNvbg==\"}",
-		"{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}",
+		"{\"name\":\"testdata2.json\", \"encName\":\"X0XdGVzdGRhdGEyLmpzb24=\"}",
 	})
 
 	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
@@ -571,6 +575,31 @@ func RunClientPost(t *testing.T, config *config.ConfigData, path string, expecte
 		t.Fatalf("Status for path http://localhost%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
 	}
 	return res, ""
+}
+
+func RunClientDelete(t *testing.T, config *config.ConfigData, path string, expectedStatus int, data string) (*http.Response, string) {
+	myReader := strings.NewReader(data)
+	requestURL := fmt.Sprintf("http://localhost%s/%s", config.GetPortString(), path)
+	req, err := http.NewRequest("DELETE", requestURL, myReader)
+	if err != nil {
+		t.Fatalf("Client DELETE request: %s", err.Error())
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Client Post error: %s", err.Error())
+	}
+	if res.StatusCode != expectedStatus {
+		t.Fatalf("Status for path http://localhost%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
+	}
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("client: could not read response body: %s\n", err)
+	}
+	if !strings.Contains(string(resBody), data) {
+		t.Fatalf("\nResponse:      %s\ndoesNotContain:%s\n",resBody, data)
+	}
+	return res, string(resBody)
 }
 
 func RunClientGet(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int, plusMinus int) (*http.Response, string) {
