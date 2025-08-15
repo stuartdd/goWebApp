@@ -1,0 +1,47 @@
+#!/bin/bash
+
+sh buildAll.sh
+RESP=$?
+if [ $RESP -ne 0 ]; then
+  echo "Build Error"
+  exit 1
+fi
+
+
+cd $WebServerRoot
+echo "########################################################"
+echo "Running in: $WebServerRoot"
+
+if [ ! -e $WebServerRoot/goWebApp ]; then
+  echo "Exec file '$WebServerRoot/goWebApp' does not exist"
+  exit 1
+fi
+
+if [ ! -e $WebServerRoot/exec/webtools ]; then
+  echo "Exec file '$WebServerRoot/exec/webtools' does not exist"
+  exit 1
+fi
+
+echo "Config file:goWebApp.json"
+./goWebApp config=goWebApp.json -v$1
+  
+RESP=$?
+echo "########################################################"
+echo "Response: $RESP"
+if [ $RESP -eq 11 ]; then
+  echo "Server stopped"
+  exit 0
+fi
+if [ $RESP -eq 10 ]; then
+  echo "Server already running"
+  exit 0
+fi
+if [ $RESP -eq 1 ]; then
+  echo "Server erro 1r"
+  exit 1
+fi
+if [ $RESP -eq 127 ]; then
+  echo "Server error 127"
+  exit 1
+fi
+

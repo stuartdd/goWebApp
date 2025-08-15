@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "goWebApp.go",
-            "args": ["config=goWebApp.json", "-vt"]
+            "args": ["config=goWebApp.json", "-tv"]
         },
         {
             "name": "Launch WebTools",

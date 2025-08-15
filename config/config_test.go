@@ -9,14 +9,13 @@ import (
 )
 
 func TestPanicMessage(t *testing.T) {
-	pm := newPanicMessageFromString("Status:404: Running process with ID:12345 could not be found",500)
+	pm := newPanicMessageFromString("Status:404: Running process with ID:12345 could not be found", 500)
 	assertEquals(t, "String 8", pm.String(), "Running process with ID;12345 could not be found Status:404")
 	assertEquals(t, "String 8.1", pm.Logged, "")
-	
-	pm = newPanicMessageFromString("running process with ID:12345 could not be found Status:404",500)
+
+	pm = newPanicMessageFromString("running process with ID:12345 could not be found Status:404", 500)
 	assertEquals(t, "String 9", pm.String(), "running process with ID;12345 could not be found Status:404")
 	assertEquals(t, "String 9.1", pm.Logged, "")
-
 
 	pm = NewPanicMessageFromRecover("ABC log:LM Status 404", 500)
 	assertEquals(t, "Recover 2", pm.String(), "ABC Status:404")
@@ -71,36 +70,15 @@ func TestPanicMessage(t *testing.T) {
 
 }
 
-func TestTemplateStaticFiles(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
-
-}
 func TestThumbNailTrim(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail(""), "")
 	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred"), "fred")
 	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg"), "HuwSig.jpg")
 }
+
 func TestJoinPath(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 	var f string
 	pre := conf.GetServerDataRoot()
 
@@ -159,16 +137,16 @@ func TestSubstitute(t *testing.T) {
 	assertSub(t, "Z8", "-%%Z-", "-%%Z-", m1, m2)
 	assertSub(t, "Z9", "-%Z-", "-%Z-", m1, m2)
 
-	assertEquals(t, "empty", SubstituteFromMap([]byte(""), m1, m2), "")
-	assertEquals(t, "1 ch", SubstituteFromMap([]byte("%"), m1, m2), "%")
-	assertEquals(t, "2 ch", SubstituteFromMap([]byte("%{"), m1, m2), "%{")
-	assertEquals(t, "3 ch", SubstituteFromMap([]byte("%{}"), m1, m2), "%{}")
-	assertEquals(t, "4 chA", SubstituteFromMap([]byte("%{A}"), m1, m2), "X")
-	assertEquals(t, "4 chX", SubstituteFromMap([]byte("%{Z}"), m1, m2), "%{Z}")
+	assertEquals(t, "empty", string(SubstituteFromMap([]byte(""), m1, m2)), "")
+	assertEquals(t, "1 ch", string(SubstituteFromMap([]byte("%"), m1, m2)), "%")
+	assertEquals(t, "2 ch", string(SubstituteFromMap([]byte("%{"), m1, m2)), "%{")
+	assertEquals(t, "3 ch", string(SubstituteFromMap([]byte("%{}"), m1, m2)), "%{}")
+	assertEquals(t, "4 chA", string(SubstituteFromMap([]byte("%{A}"), m1, m2)), "X")
+	assertEquals(t, "4 chX", string(SubstituteFromMap([]byte("%{Z}"), m1, m2)), "%{Z}")
 }
 
 func assertSub(t *testing.T, id, sub, expected string, m1 map[string]string, m2 map[string]string) {
-	r := SubstituteFromMap([]byte(sub), m1, m2)
+	r := string(SubstituteFromMap([]byte(sub), m1, m2))
 	if r != expected {
 		t.Fatalf("Substitution: %s, \nExpected [%s]\nActual   [%s]", id, expected, r)
 	}
@@ -189,13 +167,7 @@ func assertContains(t *testing.T, message string, actual string, contains []stri
 }
 
 func TestUserExecBadExecId(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -214,13 +186,7 @@ func TestUserExecBadExecId(t *testing.T) {
 }
 
 func TestUserExec(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -236,13 +202,7 @@ func TestUserExec(t *testing.T) {
 
 }
 func TestGetUserExecInfo(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 	c1 := conf.GetExecInfo("ls")
 
 	if c1.Cmd[0] != "ls" {
@@ -258,13 +218,7 @@ func TestGetUserExecInfo(t *testing.T) {
 }
 
 func TestGetUserLocPathBadUser(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -285,13 +239,7 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 }
 
 func TestGetUserLocPathBadLoc(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -310,13 +258,7 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 }
 
 func TestGetUserLocPath(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -330,4 +272,16 @@ func TestGetUserLocPath(t *testing.T) {
 		t.Fatalf("Should return path to /testdata/stuart")
 	}
 
+}
+
+func loadConfigData(t *testing.T) *ConfigData {
+	errList := NewConfigErrorData()
+	configData := NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+	if configData == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errList.String())
+	}
+	return configData
 }

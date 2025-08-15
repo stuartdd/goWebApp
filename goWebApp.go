@@ -21,7 +21,6 @@ func main() {
 	verbose := getArgFlag("v")
 	killServer := getArgFlag("k")
 	help := getArgFlag("h")
-	dontResolveConfig := !getArgFlag("r")
 
 	if help {
 		h, err := os.ReadFile("helptext.md")
@@ -45,12 +44,12 @@ func main() {
 	}
 
 	if verbose {
-		fmt.Printf("Config arg is '%s'. debugging=%t. createLocationsFlag=%t. dontResolveConfig=%t.\n", configFileName, debugging, createLocationsFlag, dontResolveConfig)
+		fmt.Printf("Options: debugging=%t. killServer(k)=%t. createLocationsFlag(c)=%t.\n", killServer, debugging, createLocationsFlag)
 	}
-
-	cfg, errorList := config.NewConfigData(configFileName, moduleName, debugging, createLocationsFlag, dontResolveConfig, verbose)
-	if errorList.ErrorCount() > 0 {
-		os.Stdout.WriteString(errorList.String())
+	configErrors := config.NewConfigErrorData()
+	cfg := config.NewConfigData(configFileName, moduleName, debugging, createLocationsFlag, verbose, configErrors)
+	if configErrors.ErrorCount() > 0 {
+		os.Stdout.WriteString(configErrors.String())
 		osExitWithMessage(1, "Config Errors: Cannot continue")
 	}
 	if cfg == nil {
@@ -72,6 +71,12 @@ func main() {
 			}
 		}
 		os.Exit(0)
+	}
+
+	if verbose {
+		s, _ := cfg.String()
+		os.Stdout.WriteString(s)
+		os.Stdout.WriteString("\n")
 	}
 
 	/*
@@ -97,7 +102,7 @@ func main() {
 	}
 
 	logger.Log("Application Start :-----------------------------------------------------------------")
-	for _, l := range errorList.Logs() {
+	for _, l := range configErrors.Logs() {
 		logger.Log(l)
 	}
 

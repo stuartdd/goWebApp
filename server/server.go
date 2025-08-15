@@ -115,13 +115,14 @@ func (h *ServerHandler) close() {
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.config.IsTimeToReloadConfig() {
 		ts := time.Now().UnixMicro()
-		cfg, errorList := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, false, h.config.IsVerbose)
-		if errorList.ErrorCount() == 0 {
+		configErrors := config.NewConfigErrorData()
+		cfg := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, h.config.IsVerbose, configErrors)
+		if configErrors.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d micro seconds)", h.config.ConfigName, (time.Now().UnixMicro() - ts)))
 		} else {
 			h.config.ResetTimeToReloadConfig()
-			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, errorList))
+			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, configErrors))
 		}
 	}
 	logFunc := h.logger.Log
@@ -309,14 +310,14 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok, shouldLog = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		cfg, errorList := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, false, h.config.IsVerbose)
-		if errorList.ErrorCount() == 0 {
+		configErrors := config.NewConfigErrorData()
+		cfg := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, h.config.IsVerbose, configErrors)
+		if configErrors.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
 			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Config Reloaded", false), shouldLog)
-
 		} else {
-			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, errorList))
+			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, configErrors))
 			h.writeResponse(w, controllers.NewResponseData(http.StatusExpectationFailed).WithContentReasonAsJson("Config Reload Failed", true), shouldLog)
 		}
 		return

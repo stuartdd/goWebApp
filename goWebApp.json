@@ -34,8 +34,8 @@
       "Dir": "",
       "StdOutType": "json",
       "LogDir": "",
-      "LogOut": "",
-      "LogErr": "",
+      "LogOutFile": "",
+      "LogErrFile": "",
       "NzCodeReturns": 200,
       "Detached": false
     },
@@ -69,8 +69,8 @@
       "Dir": "",
       "StdOutType": "json",
       "LogDir": "",
-      "LogOut": "",
-      "LogErr": "",
+      "LogOutFile": "",
+      "LogErrFile": "",
       "NzCodeReturns": 200,
       "Detached": false
     }

@@ -32,8 +32,8 @@
                 "-lta"
             ],
             "logDir": "logs",
-            "logOut": "stdOutLs.txt",
-            "logErr": "stdErrLs.txt"
+            "logOutFile": "stdOutLs.txt",
+            "logErrFile": "stdErrLs.txt"
         },
         "c2": {
             "cmd": [
@@ -41,8 +41,8 @@
             ],
             "dir": "",
             "logDir": "logs",
-            "logOut": "stdOutC2.txt",
-            "logErr": "stdErrC2.txt"
+            "logOutFile": "stdOutC2.txt",
+            "logErrFile": "stdErrC2.txt"
         },
         "cat": {
             "cmd": [
@@ -51,8 +51,8 @@
             ],
             "dir": "",
             "logDir": "logs",
-            "logOut": "stdOutCat.txt",
-            "logErr": "stdErrCat.txt"
+            "logOutFile": "stdOutCat.txt",
+            "logErrFile": "stdErrCat.txt"
         }
     },
     "Users": {

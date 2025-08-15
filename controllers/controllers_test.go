@@ -11,13 +11,7 @@ import (
 )
 
 func TestToJson(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatalf("Config failed\n%s", errlist.String())
-	}
-	if conf == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errlist.String())
-	}
+	conf := loadConfigData(t)
 	path := conf.GetUserLocPath("stuart", "home")
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})
 
@@ -41,13 +35,7 @@ func TestToJson(t *testing.T) {
 }
 
 func TestExecFailRcNonZero(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatal(errlist.String())
-	}
-	if conf == nil {
-		t.Fatal("Config is nil. Load failed")
-	}
+	conf := loadConfigData(t)
 	os.Remove(conf.GetExecInfo("cat").GetOutLogFile())
 	os.Remove(conf.GetExecInfo("cat").GetErrLogFile())
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{ExecParam: "cat"})
@@ -89,13 +77,7 @@ func TestExecFailRcNonZero(t *testing.T) {
 }
 
 func TestExecFailCommandNotFound(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatal(errlist.String())
-	}
-	if conf == nil {
-		t.Fatal("Config is nil. Load failed")
-	}
+	conf := loadConfigData(t)
 	os.Remove(conf.GetExecInfo("c2").GetOutLogFile())
 	os.Remove(conf.GetExecInfo("c2").GetErrLogFile())
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "bob", ExecParam: "c2"})
@@ -130,13 +112,7 @@ func TestExecFailCommandNotFound(t *testing.T) {
 }
 
 func TestExecPass(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
-	if errlist.ErrorCount() != 1 {
-		t.Fatal(errlist.String())
-	}
-	if conf == nil {
-		t.Fatal("Config is nil. Load failed")
-	}
+	conf := loadConfigData(t)
 	os.Remove(conf.GetExecInfo("ls").GetOutLogFile())
 	os.Remove(conf.GetExecInfo("ls").GetErrLogFile())
 
@@ -262,4 +238,16 @@ func writeToFile(t *testing.T, name string, bytes []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func loadConfigData(t *testing.T) *config.ConfigData {
+	errList := config.NewConfigErrorData()
+	configData := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
+	if errList.ErrorCount() > 1 || configData == nil {
+		t.Fatal(errList.String())
+	}
+	if configData == nil {
+		t.Fatalf("Config is nil. Load failed\n%s", errList.String())
+	}
+	return configData
 }

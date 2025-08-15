@@ -327,15 +327,15 @@ func (p *ExecHandler) Submit() *ResponseData {
 		}
 		panic(config.NewPanicMessage("Exec Failed", code, fmt.Sprintf("Exec: %s RC:%d Error:%s", execId, code, err.Error())))
 	}
-	if p.execInfo.LogOut != "" && len(stdOut) > 0 {
-		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOut), p.parameters.config.GetUserEnv(userId))
+	if p.execInfo.LogOutFile != "" && len(stdOut) > 0 {
+		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOutFile), p.parameters.config.GetUserEnv(userId))
 		err = os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdOut, 0644)
 		if err != nil {
 			panic(config.NewPanicMessage("Failed to write stdOut to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdOut. RC:%d Error:%s", code, err.Error())))
 		}
 	}
-	if p.execInfo.LogErr != "" && len(stdErr) > 0 {
-		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogErr), p.parameters.config.GetUserEnv(userId))
+	if p.execInfo.LogErrFile != "" && len(stdErr) > 0 {
+		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogErrFile), p.parameters.config.GetUserEnv(userId))
 		err = os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdErr, 0644)
 		if err != nil {
 			panic(config.NewPanicMessage("Failed to write stdErr to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdErr. RC:%d Error:%s", code, err.Error())))

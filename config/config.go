@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const configFileExtension = ".json"
+const ConfigFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultConfigReloadTime = 3600
 const thumbnailTrimPrefix = 20
@@ -209,15 +209,15 @@ func (p *StaticData) CheckFileExists(file string) bool {
 
 }
 
-func (p *StaticData) CheckHomeExists() error {
+func (p *StaticData) CheckHomePageExists() error {
 	if p.Home == "" {
-		return fmt.Errorf("static Home is undefined in StaticData")
+		return fmt.Errorf("static data 'Home' page is undefined in 'StaticData'")
 	}
 	ok := p.CheckFileExists(p.Home)
 	if ok {
 		return nil
 	} else {
-		return fmt.Errorf("static Home file[%s] does not exist", filepath.Join(p.Path, p.Home))
+		return fmt.Errorf("static data 'Home' page html file[%s] does not exist", filepath.Join(p.Path, p.Home))
 	}
 }
 
@@ -238,8 +238,8 @@ type ExecInfo struct {
 	Dir            string
 	StdOutType     string
 	LogDir         string
-	LogOut         string
-	LogErr         string
+	LogOutFile     string
+	LogErrFile     string
 	StartErrorFile string
 	NzCodeReturns  int
 	Detached       bool
@@ -247,17 +247,24 @@ type ExecInfo struct {
 }
 
 func (p *ExecInfo) GetOutLogFile() string {
-	if p.LogDir == "" || p.LogOut == "" {
+	if p.LogDir == "" || p.LogOutFile == "" {
 		return ""
 	}
-	return filepath.Join(p.LogDir, p.LogOut)
+	return filepath.Join(p.LogDir, p.LogOutFile)
 }
 
 func (p *ExecInfo) GetErrLogFile() string {
-	if p.LogDir == "" || p.LogErr == "" {
+	if p.LogDir == "" || p.LogErrFile == "" {
 		return ""
 	}
-	return filepath.Join(p.LogDir, p.LogErr)
+	return filepath.Join(p.LogDir, p.LogErrFile)
+}
+
+func (p *ExecInfo) HasNoLogFilesDefined() bool {
+	if p.LogErrFile == "" && p.LogOutFile == "" {
+		return true
+	}
+	return false
 }
 
 func (p *ExecInfo) String() string {
@@ -328,7 +335,7 @@ type ConfigData struct {
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string, moduleName string, debugging, createDir bool, dontResolve bool, verbose bool) (*ConfigData, *ConfigErrorData) {
+func NewConfigData(configFileName string, moduleName string, debugging, createDir, verbose bool, configErrors *ConfigErrorData) *ConfigData {
 	environ := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
@@ -341,12 +348,12 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	}
 
 	wd, _ := os.Getwd()
-	if !strings.HasSuffix(configFileName, configFileExtension) {
-		configFileName = fmt.Sprintf("%s%s", configFileName, configFileExtension)
+	if !strings.HasSuffix(configFileName, ConfigFileExtension) {
+		configFileName = fmt.Sprintf("%s%s", configFileName, ConfigFileExtension)
 	}
 
 	if verbose {
-		fmt.Printf("Config file name is %s\n", configFileName)
+		fmt.Printf("Config file:'%s'\n", configFileName)
 	}
 
 	configDataExternal := &ConfigData{
@@ -365,7 +372,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		Port:                8080,
 		UserDataPath:        "",
 		Users:               make(map[string]UserData),
-		LogData:             &LogData{},
+		LogData:             NewLogData(),
 		ContentTypeCharset:  "utf-8",
 		ServerName:          moduleName,
 		FilterFiles:         []string{},
@@ -385,20 +392,22 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	*/
 	content, err := os.ReadFile(configDataExternal.ConfigName)
 	if err != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
+		configErrors.AddError(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
+		return nil
 	}
 
 	content = SubstituteFromMap(content, environ, nil)
 
 	err = json.Unmarshal(content, &configDataInternal)
 	if err != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
+		configErrors.AddError(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
+		return nil
 	}
 
 	configDataExternal.internal = configDataInternal
 
 	if len(configDataExternal.internal.ThumbnailTrim) < 2 {
-		return nil, NewConfigErrorData().AddError("Config data entry ThumbnailTrim data has less than 2 entries")
+		configErrors.AddError("Config data entry ThumbnailTrim data has less than 2 entries")
 	}
 
 	SetContentTypeCharset(configDataInternal.ContentTypeCharset)
@@ -410,9 +419,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	}
 
 	configDataExternal.NextLoadTime = configDataExternal.getNextReloadConfigMillis()
-	if dontResolve {
-		return configDataExternal, NewConfigErrorData()
-	}
+
 	for i := 0; i < len(configDataInternal.FilterFiles); i++ {
 		f := strings.ToLower(configDataInternal.FilterFiles[i])
 		if !strings.HasPrefix(f, ".") {
@@ -425,22 +432,8 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		panic(fmt.Sprintf("Config file:%s. UserDataPath: Failed to load user data: %s", configDataExternal.ConfigName, err.Error()))
 	}
 
-	ret, cfgErr := configDataExternal.resolveLocations(createDir)
+	return configDataExternal.resolveLocations(createDir, configErrors)
 
-	if verbose {
-		if ret != nil {
-			fmt.Println("Final Config Data -------")
-			s, err := ret.String()
-			if err != nil {
-				fmt.Printf("Config data String() returned this error: %s", err.Error())
-			} else {
-				fmt.Println(s)
-			}
-			fmt.Println("Final Config Data -------")
-		}
-	}
-
-	return ret, cfgErr
 }
 
 /*
@@ -505,47 +498,42 @@ func (p *ConfigData) resolvePaths(userHome string, location string) string {
 	return filepath.Join(filepath.Join(p.GetServerDataRoot(), userHome), strings.TrimPrefix(location, ".."))
 }
 
-func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigErrorData) {
+func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorData) *ConfigData {
 
 	userConfigEnv := p.GetUserEnv("")
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		pm := NewPanicMessageFromRecover(r, 500)
+	// 		configErrors.AddError(fmt.Sprintf("Config Error: %s", pm))
+	// 	}
+	// }()
 
 	f, e := p.checkRootPathExists(p.GetServerDataRoot(), userConfigEnv, true) // Will check GetServerDataRoot
 	if e != nil {
-		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find ServerDataRoot:%s. Cause:%s", f, e.Error()))
+		configErrors.AddError(fmt.Sprintf("Failed to find ServerDataRoot:%s. Cause:%s", f, e.Error()))
 	} else {
 		p.SetServerDataRoot(f)
 	}
 
 	if p.HasStaticData() {
+		// Check static data path exists
 		f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv, true) // Will check ServerStaticRoot
 		if e != nil {
-			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Path in config file:%s. Cause:%s", p.ConfigName, e.Error()))
+			configErrors.AddError(fmt.Sprintf("Failed to find StaticData.Path in config file:%s. Cause:%s", p.ConfigName, e.Error()))
 		} else {
 			p.SetServerStaticRoot(f)
 		}
 
-		if p.internal.StaticData.Home == "" {
-			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Home in config file:%s", p.ConfigName))
-		}
-
-		e = p.GetStaticData().CheckHomeExists()
+		e = p.GetStaticData().CheckHomePageExists()
 		if e != nil {
-			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to find StaticData.Home in config file:%s. Cause:%s", p.ConfigName, e.Error()))
+			configErrors.AddError(fmt.Sprintf("Failed to find StaticData.Home in config file:%s. Cause:%s", p.ConfigName, e.Error()))
 		}
 	}
-
-	errorList := NewConfigErrorData()
-	defer func() {
-		if r := recover(); r != nil {
-			pm := NewPanicMessageFromRecover(r, 500)
-			errorList.AddError(fmt.Sprintf("Config Error: %s", pm))
-		}
-	}()
 
 	if p.internal.ExecPath != "" {
 		f, e = p.checkRootPathExists(p.internal.ExecPath, userConfigEnv, true) // Will check ExecPath
 		if e != nil {
-			errorList.AddError(fmt.Sprintf("Config Error: ExecManager %s", e))
+			configErrors.AddError(fmt.Sprintf("Config Error: ExecManager %s", e))
 		} else {
 			p.internal.ExecPath = f
 		}
@@ -554,7 +542,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	if p.internal.UserDataPath != "" {
 		f, e = p.checkRootPathExists(p.internal.UserDataPath, userConfigEnv, false) // Will check UserDataPath
 		if e != nil {
-			errorList.AddError(fmt.Sprintf("Config Error: UserDataPath %s. %s", f, e))
+			configErrors.AddError(fmt.Sprintf("Config Error: UserDataPath %s. %s", f, e))
 		}
 		p.internal.UserDataPath = f
 	}
@@ -564,21 +552,21 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		templ.DataFile = p.SubstituteFromMap([]byte(templ.DataFile), userConfigEnv)
 		_, err := templ.Init()
 		if err != nil {
-			return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
+			configErrors.AddError(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
 		}
-		errorList.AddLog(fmt.Sprintf("Config template   :%s", templ))
+		configErrors.AddLog(fmt.Sprintf("Config template   :%s", templ))
 	}
 
 	f, e = p.checkPathExists("", p.GetLogDataPath(), "", userConfigEnv, false)
 	if e != nil {
-		errorList.AddError(fmt.Sprintf("Config Error: LogData.Path %s", e))
+		configErrors.AddError(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
 		p.SetLogDataPath(f)
 	}
 
 	f, e = p.checkFileExists("", "", p.GetFaviconIcoPath(), userConfigEnv)
 	if e != nil {
-		errorList.AddError(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
+		configErrors.AddError(fmt.Sprintf("Config Error: faviconIcoPath not found %s", e.Error()))
 	} else {
 		p.SetFaviconIcoPath(f)
 	}
@@ -586,30 +574,33 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 	for execName, execData := range p.internal.Exec {
 		if execData.Detached {
 			if execData.LogDir != "" {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", execName, execData.LogDir))
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", execName, execData.LogDir))
 			}
-			if execData.LogOut != "" {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogOut='%s'", execName, execData.LogOut))
+			if execData.LogOutFile != "" {
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogOut='%s'", execName, execData.LogOutFile))
 			}
-			if execData.LogErr != "" {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogErr='%s'", execName, execData.LogErr))
+			if execData.LogErrFile != "" {
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogErr='%s'", execName, execData.LogErrFile))
 			}
 			if execData.StdOutType != "" {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have StdOutType='%s'", execName, execData.StdOutType))
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have StdOutType='%s'", execName, execData.StdOutType))
 			}
 			if execData.NzCodeReturns != 0 {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have NzCodeReturns='%d'", execName, execData.NzCodeReturns))
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have NzCodeReturns='%d'", execName, execData.NzCodeReturns))
 			}
 			if execData.Dir != "" {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have Dir='%s'", execName, execData.Dir))
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have Dir='%s'", execName, execData.Dir))
 			}
 		}
 		if execData.LogDir != "" {
 			f, e := p.checkPathExists("", execData.LogDir, "", userConfigEnv, createDir)
 			if e != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] log %s", execName, e.Error()))
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] log %s", execName, e.Error()))
 			} else {
 				execData.LogDir = f
+			}
+			if execData.HasNoLogFilesDefined() {
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] has a LogDir but no LogOutFile or LogErrFile files are defined", execName))
 			}
 		}
 
@@ -621,7 +612,7 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 			}
 			f, e := p.checkPathExists("", execData.Dir, "", userConfigEnv, createDir)
 			if e != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] directory %s", execName, e.Error()))
+				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] directory %s", execName, e.Error()))
 			} else {
 				execData.Dir = f
 			}
@@ -630,10 +621,10 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 		for i, v := range execData.Cmd {
 			execData.Cmd[i] = p.SubstituteFromMap([]byte(v), userConfigEnv)
 		}
-		execData.LogOut = p.SubstituteFromMap([]byte(execData.LogOut), userConfigEnv)
-		execData.LogErr = p.SubstituteFromMap([]byte(execData.LogErr), userConfigEnv)
+		execData.LogOutFile = p.SubstituteFromMap([]byte(execData.LogOutFile), userConfigEnv)
+		execData.LogErrFile = p.SubstituteFromMap([]byte(execData.LogErrFile), userConfigEnv)
 		if execData.StdOutType != "" && !HasContentType(execData.StdOutType) {
-			errorList.AddError(fmt.Sprintf("Config Error: Exec [%s] StdOutType [%s] not recognised", execName, execData.StdOutType))
+			configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] StdOutType [%s] not recognised", execName, execData.StdOutType))
 		}
 	}
 
@@ -650,27 +641,33 @@ func (p *ConfigData) resolveLocations(createDir bool) (*ConfigData, *ConfigError
 			location := p.GetUserLocPath(userId, locName)
 			f, e := p.checkPathExists(userData.Home, location, userId, userConfigEnv, createDir)
 			if e != nil {
-				errorList.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] %s", userId, locName, e.Error()))
+				configErrors.AddError(fmt.Sprintf("Config Error: User [%s] Location [%s] %s", userId, locName, e.Error()))
 			}
 			userData.Locations[locName] = f
 		}
 	}
 
-	return p, errorList
+	return p
 }
 
 func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]string, mustBeDir bool) (string, error) {
 	if rootPath == "" {
 		return "", fmt.Errorf("path is empty")
 	}
-	p.Verbose(fmt.Sprintf("checkRootPathExists: %s", rootPath))
+	if p.IsVerbose {
+		fmt.Printf("checkRootPathExists: %s\n", rootPath)
+	}
 	absPathSub := p.SubstituteFromMap([]byte(rootPath), userEnv)
-	p.Verbose(fmt.Sprintf("checkRootPathExists:SubstituteFromMap: %s", absPathSub))
+	if p.IsVerbose {
+		fmt.Printf("checkRootPathExists:SubstituteFromMap: %s\n", absPathSub)
+	}
 	absPathPath, err := filepath.Abs(absPathSub)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] is invalid", absPathPath)
 	}
-	p.Verbose(fmt.Sprintf("checkRootPathExists:Abs: %s", absPathPath))
+	if p.IsVerbose {
+		fmt.Printf("checkRootPathExists:Abs: %s\n", absPathPath)
+	}
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
@@ -706,7 +703,9 @@ func (p *ConfigData) checkPathExists(userPath string, relPath string, userId str
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
 		if createDir {
-			p.Verbose(fmt.Sprintf("createFullDirectory:%s", absPathPath))
+			if p.IsVerbose {
+				fmt.Printf("createFullDirectory:%s\n", absPathPath)
+			}
 			err = p.createFullDirectory(absPathPath, userId)
 			if err != nil {
 				return absPathPath, err
@@ -754,12 +753,6 @@ func (p *ConfigData) SaveMe() error {
 		return err
 	}
 	return nil
-}
-
-func (l *ConfigData) Verbose(s string) {
-	if l.IsVerbose {
-		fmt.Println(s)
-	}
 }
 
 func (p *ConfigData) HasStaticData() bool {
