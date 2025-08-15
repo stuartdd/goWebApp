@@ -18,32 +18,32 @@ fi
 echo "*******************"
 
 homeDir=$(pwd)
-dpDir=$WebServerRoot
+deployDir=$WebServerRoot
 
-echo "Deploy to $WebServerRoot"
-if [ -e $WebServerRoot/exec ]; then
+echo "Deploy to $deployDir"
+if [ -e $deployDir/exec ]; then
   echo Clean
-  rm -rf $WebServerRoot
+  rm -rf $deployDir
 fi
 
-mkdir $WebServerRoot
-cd $WebServerRoot
+mkdir $deployDir
+cd $deployDir
 
-echo "COPY exec to $WebServerRoot"
+echo "COPY exec to $deployDir"
 cp -r ../testdata/exec .
 if [ $? -eq 1 ]; then
   echo "Copy exec directory Failed"
   exit 1
 fi
 
-echo "COPY goWebApp.json to $WebServerRoot"
+echo "COPY goWebApp.json to $deployDir"
 cp ../goWebApp.json .
 if [ $? -eq 1 ]; then
   echo "Copy goWebApp.json Failed"
   exit 1
 fi
 
-echo "COPY helptext.md to $WebServerRoot"
+echo "COPY helptext.md to $deployDir"
 cp ../helptext.md .
 if [ $? -eq 1 ]; then
   echo "Copy helptext.md Failed"
@@ -52,23 +52,23 @@ fi
 
 cd $homeDir
 if [ "$arch" == "ARM" ]; then 
-  echo "Build ARM goWebApp to $WebServerRoot/goWebApp"
-  env GOOS=linux GOARCH=arm go build  -o $WebServerRoot/goWebApp goWebApp.go
+  echo "Build ARM goWebApp to $deployDir/goWebApp"
+  env GOOS=linux GOARCH=arm go build  -o $deployDir/goWebApp goWebApp.go
   if [ $? -eq 1 ]; then
     echo "Build Failed: goWebApp ARM build failed"
     exit 1
   fi
 else
-  echo "Build INTEL goWebApp to $WebServerRoot/goWebApp"
-  go build  -o $WebServerRoot/goWebApp goWebApp.go
+  echo "Build INTEL goWebApp to $deployDir/goWebApp"
+  go build  -o $deployDir/goWebApp goWebApp.go
   if [ $? -eq 1 ]; then
     echo "Build Failed: goWebApp INTEL build failed"
     exit 1
   fi
 fi
 
-echo "Enable exec *.sh in $WebServerRoot/exec"
-cd $WebServerRoot/exec
+echo "Enable exec *.sh in $deployDir/exec"
+cd $deployDir/exec
 chmod +x *.sh
 if [ $? -eq 1 ]; then
   echo "Enable exec Failed"
@@ -78,15 +78,15 @@ fi
 cd $homeDir/external
 
 if [ "$arch" == "ARM" ]; then 
-  echo "Build ARM webtools to $WebServerRoot/exec/webtools"
-  env GOOS=linux GOARCH=arm go build -o $WebServerRoot/exec/webtools 
+  echo "Build ARM webtools to $deployDir/exec/webtools"
+  env GOOS=linux GOARCH=arm go build -o $deployDir/exec/webtools 
   if [ $? -eq 1 ]; then
     echo "Build Failed: webtools ARM build failed"
     exit 1
   fi
 else
-  echo "Build INTEL webtools to $WebServerRoot/exec/webtools"
-  go build -o $WebServerRoot/exec/webtools 
+  echo "Build INTEL webtools to $deployDir/exec/webtools"
+  go build -o $deployDir/exec/webtools 
   if [ $? -eq 1 ]; then
     echo "Build Failed: webtools INTEL build failed"
     exit 1
@@ -96,24 +96,24 @@ fi
 cd $homeDir
 if [ -e ../goThumbnailTool ]; then
     cd ../goThumbnailTool
-    echo "Build Thumbnail tools '../goThumbnailTool'. Deploy to $arch $WebServerRoot/exec"
-    sh ./build.sh $arch $WebServerRoot/exec/goThumbnailTool
+    echo "Build Thumbnail tools '../goThumbnailTool'. Deploy to $arch $deployDir/exec"
+    sh ./build.sh $arch $deployDir/exec/goThumbnailTool
     if [ $? -eq 1 ]; then
       echo "Build Failed: ../goThumbnailTool/build.sh returned an error"
       exit 1
     fi
-    cp configThumbnail.json $WebServerRoot/exec
+    cp configThumbnail.json $deployDir/exec
     if [ $? -eq 1 ]; then
-      echo "Build Failed: Failed to copy configThumbnail.json to $WebServerRoot/exec"
+      echo "Build Failed: Failed to copy configThumbnail.json to $deployDir/exec"
       exit 1
     fi
     cd $homeDir
-    cp $WebServerRoot/exec/goThumbnailTool testdata/exec
+    cp $deployDir/exec/goThumbnailTool testdata/exec
     if [ $? -eq 1 ]; then
       echo "Build Failed: Failed to copy configThumbnail to ../testdata/exec"
       exit 1
     fi
-    cp $WebServerRoot/exec/configThumbnail.json testdata/exec
+    cp $deployDir/exec/configThumbnail.json testdata/exec
     if [ $? -eq 1 ]; then
       echo "Build Failed: Failed to copy configThumbnail.json to ../testdata/exec"
       exit 1

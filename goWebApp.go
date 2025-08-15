@@ -60,6 +60,7 @@ func main() {
 	if killServer {
 		server.SendToHost(cfg.GetPortString(), "server/exit")
 		time.Sleep(999 * time.Millisecond)
+		osExitWithMessage(0, "Server exit requested")
 	}
 
 	if createLocationsFlag {
@@ -99,6 +100,7 @@ func main() {
 	for _, l := range errorList.Logs() {
 		logger.Log(l)
 	}
+
 	go func() {
 		for {
 			a := <-actionQueue
@@ -116,7 +118,7 @@ func main() {
 	}()
 
 	if doNotRun {
-		fmt.Print("Do Not Run Server")
+		fmt.Print("Option -t (test) used. Server aborted")
 		os.Exit(0)
 	}
 

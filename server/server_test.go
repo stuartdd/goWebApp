@@ -47,7 +47,6 @@ var logger = &TLog{}
 
 const postDataFile1 = "{\"Data\":\"This is the data for 1\"}"
 const postDataFile2 = "{\"Data\":\"This is the data for 2\"}"
-const testdatapath = "../testdata/testfolder"
 const testdatafile = "testdata.json"
 
 func TestUrlRequestParamsMap(t *testing.T) {
@@ -68,7 +67,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
 }
 func TestServerPostLog(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -110,7 +109,7 @@ func TestServerPostLog(t *testing.T) {
 
 }
 func TestServerStatus(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -131,7 +130,7 @@ func TestServerStatus(t *testing.T) {
 
 }
 func TestServer(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -183,7 +182,7 @@ func TestServer(t *testing.T) {
 
 }
 func TestStatic(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -218,7 +217,7 @@ func TestStatic(t *testing.T) {
 
 }
 func TestFilePath(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -240,7 +239,7 @@ func TestFilePath(t *testing.T) {
 }
 
 func TestTree(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -270,7 +269,7 @@ func TestTree(t *testing.T) {
 
 }
 func TestGetFavicon(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -289,7 +288,7 @@ func TestGetFavicon(t *testing.T) {
 }
 
 func TestPostFileAndDelete(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -320,7 +319,7 @@ func TestPostFileAndDelete(t *testing.T) {
 		t.Fatalf("File was not created")
 	}
 	// TODO
-	RunClientDelete(t,configData,url, 202, "\"reason\":\"File deleted OK\"")
+	RunClientDelete(t, configData, url, 202, "\"reason\":\"File deleted OK\"")
 	_, err = os.Stat(file)
 	if err == nil {
 		t.Fatalf("File was not deleted")
@@ -328,7 +327,7 @@ func TestPostFileAndDelete(t *testing.T) {
 }
 func TestReadDir(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -338,12 +337,7 @@ func TestReadDir(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1, 0)
-	//
-	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\":[
-	//	{\"size\": 0,\"name\":{\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"}},
-	//  {\"size\": 0,\"name\":{\"name\":\"t1.JSON\", \"encName\":\"X0XdDEuSlNPTg==\"}},
-	//  {\"size\": 0,\"name\":{\"name\":\"t2.Data\", \"encName\":\"X0XdDIuRGF0YQ==\"}}]}"
-	//
+
 	AssertContains(t, resBody, []string{
 		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,\"files\"",
 		"{\"name\":\"t2.Data\", \"encName\":\"X0XdDIuRGF0YQ==\"}",
@@ -352,9 +346,7 @@ func TestReadDir(t *testing.T) {
 	})
 
 	_, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1, 0)
-	//
-	//"{\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\":[{\"size\": 0,\"name\":{\"name\":\"t5.json\", \"encName\":\"X0XdDUuanNvbg==\"}},{\"size\": 0,\"name\":{\"name\":\"testdata.json\", \"encName\":\"X0XdGVzdGRhdGEuanNvbg==\"}}]}"
-	//
+
 	AssertContains(t, resBody, []string{
 		"\"error\":false,\"user\":\"stuart\",\"loc\":\"picsPlus\",\"path\":null,\"files\"",
 		"{\"name\":\"t5.json\", \"encName\":\"X0XdDUuanNvbg==\"}",
@@ -368,7 +360,7 @@ func TestReadDir(t *testing.T) {
 
 func TestReadDirNotFound(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -389,7 +381,7 @@ func TestReadDirNotFound(t *testing.T) {
 
 func TestReadFile(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -410,7 +402,7 @@ func TestReadFile(t *testing.T) {
 
 func TestReadFileNotUser(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -427,7 +419,7 @@ func TestReadFileNotUser(t *testing.T) {
 
 func TestReadFileNotLoc(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -444,7 +436,7 @@ func TestReadFileNotLoc(t *testing.T) {
 
 func TestReadFileNotName(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -461,7 +453,7 @@ func TestReadFileNotName(t *testing.T) {
 
 func TestReadFileIsDir(t *testing.T) {
 
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -477,7 +469,7 @@ func TestReadFileIsDir(t *testing.T) {
 }
 
 func TestServerTime(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -499,7 +491,7 @@ func TestServerTime(t *testing.T) {
 }
 
 func TestServerIsUp(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -521,7 +513,7 @@ func TestServerIsUp(t *testing.T) {
 }
 
 func TestQuietGetFile(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -544,7 +536,7 @@ func TestQuietGetFile(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	configData, errList := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	configData, errList := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -597,7 +589,7 @@ func RunClientDelete(t *testing.T, config *config.ConfigData, path string, expec
 		t.Fatalf("client: could not read response body: %s\n", err)
 	}
 	if !strings.Contains(string(resBody), data) {
-		t.Fatalf("\nResponse:      %s\ndoesNotContain:%s\n",resBody, data)
+		t.Fatalf("\nResponse:      %s\ndoesNotContain:%s\n", resBody, data)
 	}
 	return res, string(resBody)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func TestToJson(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -41,7 +41,7 @@ func TestToJson(t *testing.T) {
 }
 
 func TestExecFailRcNonZero(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatal(errlist.String())
 	}
@@ -89,7 +89,7 @@ func TestExecFailRcNonZero(t *testing.T) {
 }
 
 func TestExecFailCommandNotFound(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatal(errlist.String())
 	}
@@ -130,7 +130,7 @@ func TestExecFailCommandNotFound(t *testing.T) {
 }
 
 func TestExecPass(t *testing.T) {
-	conf, errlist := config.NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatal(errlist.String())
 	}

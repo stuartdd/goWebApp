@@ -29,7 +29,7 @@
       "original": "***%{WebServerPictures}/originals/%{id}",
       "pics": "s-pics",
       "testtree": "***%{WebServerPictures}",
-      "thumbs": "thumbnails",
+      "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
       "usr": "s-testfolder"
     },
     "imageRoot": "%{WebServerPictures}/originals",
