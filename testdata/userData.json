@@ -1,45 +1,45 @@
 {
-    "bob": {
-      "Hidden": null,
-      "Name": "Bob",
-      "Home": "",
-      "Locations": {
-        "data": "stateData",
-        "home": "",
-        "original": "***%{WebServerPictures}/originals/%{id}",
-        "pics": "b-pics",
-        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
-        "usr": "b-testfolder"
-      },
-      "imageRoot": "%{WebServerPictures}/originals",
-      "imagePaths": [
-        "Bobs_Phone",
-        "WhatsApp"
-      ]
+  "bob": {
+    "Hidden": null,
+    "Name": "Bob",
+    "Home": "",
+    "Locations": {
+      "data": "stateData",
+      "home": "",
+      "original": "***%{WebServerPictures}/originals/%{id}",
+      "pics": "b-pics",
+      "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
+      "usr": "b-testfolder"
     },
-    "stuart": {
-      "Hidden": null,
-      "Name": "Stuart",
-      "Home": "",
-      "Locations": {
-        "cache": "cache",
-        "data": "stateData",
-        "home": "",
-        "logs": "logs",
-        "original": "***%{WebServerPictures}/originals/%{id}",
-        "pics": "s-pics",
-        "testtree": "***%{WebServerPictures}",
-        "thumbs": "***%{WebServerPictures}/thumbnails/%{id}",
-        "usr": "s-testfolder"
-      },
-      "imageRoot": "%{WebServerPictures}/originals",
-      "imagePaths": [
-         "01_Original_Slides",
-         "2002-08-30_Majorca",
-         "Dad-funeral",
-         "Owain",
-         "Stuart_Phone"
-      ],
-      "Env": null
-    }
+    "imageRoot": "%{WebServerPictures}/originals",
+    "imagePaths": [
+      "Bobs_Phone",
+      "WhatsApp"
+    ]
+  },
+  "stuart": {
+    "Hidden": null,
+    "Name": "Stuart",
+    "Home": "",
+    "Locations": {
+      "cache": "cache",
+      "data": "stateData",
+      "home": "",
+      "logs": "logs",
+      "original": "***%{WebServerPictures}/originals/%{id}",
+      "pics": "s-pics",
+      "testtree": "***%{WebServerPictures}",
+      "thumbs": "thumbnails",
+      "usr": "s-testfolder"
+    },
+    "imageRoot": "%{WebServerPictures}/originals",
+    "imagePaths": [
+      "01_Original_Slides",
+      "2002-08-30_Majorca",
+      "Dad-funeral",
+      "Owain",
+      "Stuart_Phone"
+    ],
+    "Env": null
   }
+}

@@ -72,7 +72,7 @@ func TestPanicMessage(t *testing.T) {
 }
 
 func TestTemplateStaticFiles(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -82,7 +82,7 @@ func TestTemplateStaticFiles(t *testing.T) {
 
 }
 func TestThumbNailTrim(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -94,7 +94,7 @@ func TestThumbNailTrim(t *testing.T) {
 	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg"), "HuwSig.jpg")
 }
 func TestJoinPath(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -189,7 +189,7 @@ func assertContains(t *testing.T, message string, actual string, contains []stri
 }
 
 func TestUserExecBadExecId(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -214,7 +214,7 @@ func TestUserExecBadExecId(t *testing.T) {
 }
 
 func TestUserExec(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -236,7 +236,7 @@ func TestUserExec(t *testing.T) {
 
 }
 func TestGetUserExecInfo(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -258,7 +258,7 @@ func TestGetUserExecInfo(t *testing.T) {
 }
 
 func TestGetUserLocPathBadUser(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -285,7 +285,7 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 }
 
 func TestGetUserLocPathBadLoc(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}
@@ -310,7 +310,7 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 }
 
 func TestGetUserLocPath(t *testing.T) {
-	conf, errlist := NewConfigData("../goWebAppTest.json", false, false, false)
+	conf, errlist := NewConfigData("../goWebAppTest.json","goWebApp",false, false, false, false)
 	if errlist.ErrorCount() != 1 {
 		t.Fatalf("Config failed\n%s", errlist.String())
 	}

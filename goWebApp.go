@@ -13,31 +13,17 @@ import (
 	"github.com/stuartdd/goWebApp/server"
 )
 
-func main() {
-	doNotRun := false
-	verbose := false
-	killServer := false
-	vbr, _ := getArg("-vr")
-	if vbr != "" {
-		verbose = true
-	}
-	ksr, _ := getArg("-kr")
-	if ksr != "" {
-		killServer = true
-	}
-	vb, _ := getArg("-v")
-	if vb != "" {
-		verbose = true
-		doNotRun = true
-	}
-	ksx, _ := getArg("-k")
-	if ksx != "" {
-		killServer = true
-		doNotRun = true
-	}
+const fallbackModuleName = "goWebApp"
 
-	help, _ := getArg("help")
-	if help != "" {
+func main() {
+	createLocationsFlag := getArgFlag("c")
+	doNotRun := getArgFlag("t")
+	verbose := getArgFlag("v")
+	killServer := getArgFlag("k")
+	help := getArgFlag("h")
+	dontResolveConfig := !getArgFlag("r")
+
+	if help {
 		h, err := os.ReadFile("helptext.md")
 		if err != nil {
 			osExitWithMessage(1, "Help file 'helptext.md' not found")
@@ -45,25 +31,10 @@ func main() {
 		osExitWithMessage(0, string(h))
 	}
 
-	dontResolveConfig := false
-	configFileName, _ := getArg("config=")
-	s, _ := getArg("create")
-	createLocationsFlag := s != ""
-	s, addPos := getArg("add")
-	addUserFlag := s != ""
-
-	if addUserFlag && addPos == 0 {
-		// add was the last parameter!
-		osExitWithMessage(1, "Add user. Name not found")
-	}
-
-	var addUserName string
-	if addUserFlag {
-		if createLocationsFlag {
-			osExitWithMessage(1, "Cannot use Add and Create at the same time")
-		}
-		dontResolveConfig = true
-		addUserName = os.Args[addPos]
+	moduleName, debugging := getApplicationModuleName(fallbackModuleName)
+	configFileName, ok := getArgValue("config=")
+	if !ok {
+		configFileName = moduleName
 	}
 
 	if createLocationsFlag {
@@ -74,10 +45,10 @@ func main() {
 	}
 
 	if verbose {
-		fmt.Printf("Config arg is '%s'. createLocationsFlag=%t dontResolveConfig=%t\n", configFileName, createLocationsFlag, dontResolveConfig)
+		fmt.Printf("Config arg is '%s'. debugging=%t. createLocationsFlag=%t. dontResolveConfig=%t.\n", configFileName, debugging, createLocationsFlag, dontResolveConfig)
 	}
 
-	cfg, errorList := config.NewConfigData(configFileName, createLocationsFlag, dontResolveConfig, verbose)
+	cfg, errorList := config.NewConfigData(configFileName, moduleName, debugging, createLocationsFlag, dontResolveConfig, verbose)
 	if errorList.ErrorCount() > 0 {
 		os.Stdout.WriteString(errorList.String())
 		osExitWithMessage(1, "Config Errors: Cannot continue")
@@ -93,7 +64,7 @@ func main() {
 
 	if createLocationsFlag {
 		if len(cfg.LocationsCreated) == 0 {
-			osExitWithMessage(0, "No user Locations could be created:"+s)
+			osExitWithMessage(0, "No user Locations could be created:")
 		} else {
 			for _, s := range cfg.LocationsCreated {
 				osExitWithMessage(-1, s)
@@ -102,23 +73,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	if addUserFlag {
-		c := osReader(fmt.Sprintf("Add User with userid: '%s' to %s", addUserName, cfg.ConfigName), "y/n")
-		if c == "y" {
-			err := cfg.AddUser(addUserName)
-			if err != nil {
-				osExitWithMessage(1, fmt.Sprintf("Add User: '%s'.", err.Error()))
-			}
-			err = cfg.SaveMe()
-			if err != nil {
-				osExitWithMessage(1, fmt.Sprintf("Add User: '%s'.", err.Error()))
-			}
-			osExitWithMessage(0, fmt.Sprintf("Add User: '%s' Added and saved", addUserName))
-		} else {
-			osExitWithMessage(1, fmt.Sprintf("Add User: '%s' ABORTED", addUserName))
-		}
-		os.Exit(0)
-	}
 	/*
 		Starting the server...
 	*/
@@ -176,27 +130,28 @@ func main() {
 	os.Exit(webAppServer.Start())
 }
 
-func getArg(name string) (string, int) {
-	nl := strings.ToLower(name)
+func getArgFlag(name string) bool {
 	for i := 1; i < len(os.Args); i++ {
 		a := os.Args[i]
-		al := strings.ToLower(a)
-		if al == nl {
-			if i < (len(os.Args) - 1) {
-				return nl, i + 1
-			}
-			return al, 0
-		}
-		if strings.HasSuffix(nl, "=") {
-			if strings.HasPrefix(al, nl) {
-				if i < (len(os.Args) - 1) {
-					return a[len(name):], i + 1
-				}
-				return a[len(name):], 0
+		if strings.HasPrefix(a, "-") {
+			if strings.Contains(a, name) {
+				return true
 			}
 		}
 	}
-	return "", 0
+	return false
+}
+
+func getArgValue(name string) (string, bool) {
+	nl := strings.ToLower(name) + "="
+	for i := 1; i < len(os.Args); i++ {
+		a := os.Args[i]
+		al := strings.ToLower(a)
+		if strings.HasPrefix(al, nl) {
+			return a[len(nl):], true
+		}
+	}
+	return "", false
 }
 
 func osExitWithMessage(rc int, message string) {
@@ -228,4 +183,28 @@ func osReader(message string, chars string) string {
 		return s
 	}
 	return ""
+}
+
+/*
+GetApplicationModuleName returns the name of the application. Testing and debugging changes this name so the code
+removes debug, test and .exe from the executable name.
+*/
+func getApplicationModuleName(fallbackModuleName string) (string, bool) {
+	exec, err := os.Executable()
+	if err != nil {
+		return fallbackModuleName, false
+	}
+
+	parts := strings.Split(exec, string(os.PathSeparator))
+	exec = parts[len(parts)-1]
+	if strings.HasPrefix(exec, "__debug_") {
+		return fallbackModuleName, true
+	}
+	if strings.HasSuffix(strings.ToLower(exec), ".exe") {
+		return exec[0 : len(exec)-4], false
+	}
+	if strings.HasSuffix(strings.ToLower(exec), ".test") {
+		return exec[0 : len(exec)-5], false
+	}
+	return exec, false
 }

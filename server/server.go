@@ -46,9 +46,6 @@ var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET", shouldLog)
 var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldNotLog)
 var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET", shouldNotLog)
 
-// var getScriptMatch = NewUrlRequestMatcher("/script/*", "GET", shouldLog)
-var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLog)
-
 var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLog)
 var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldLog)
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldNotLog)
@@ -57,21 +54,26 @@ var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shoul
 var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLog)
 var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldNotLog)
 
+// Get File asAdmin user. Location defined in admin user.
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLog)
+
+// Exec a script via an ID in config:"Exec" section.
+// Script must be in  config:"ExecPath":
+// User will be "admin"
+var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLog)
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLog)
 var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLog)
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLog)
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLog)
 var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLog)
-var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLog)
-
 var getTestUserLocNameMatch = NewUrlRequestMatcher("/test/user/*/loc/*/name/*", "GET", shouldNotLog)
+var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLog)
+
+var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLog)
 var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLog)
 var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLog)
 var postFileUserLocNameLogMatch = NewUrlRequestMatcher("/log/user/*/name/*/action/*", "POST", shouldNotLog)
-
-var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLog)
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -113,7 +115,7 @@ func (h *ServerHandler) close() {
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.config.IsTimeToReloadConfig() {
 		ts := time.Now().UnixMicro()
-		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.IsVerbose)
+		cfg, errorList := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, false, h.config.IsVerbose)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d micro seconds)", h.config.ConfigName, (time.Now().UnixMicro() - ts)))
@@ -208,6 +210,11 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p).AsAdmin(), h.config, verboseFunc).Submit(), shouldLog)
 			return
 		}
+		p, ok, shouldLog = getExecMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
+		if ok {
+			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
+			return
+		}
 		p, ok, shouldLog = postFileUserLocNameLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p).WithParam("loc", "logs"), h.config, r, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
@@ -221,11 +228,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p, ok, shouldLog = postFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 		if ok {
 			h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
-			return
-		}
-		p, ok, shouldLog = getExecMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
-		if ok {
-			h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, h.config.IsVerbose, verboseFunc).Submit(), shouldLog)
 			return
 		}
 	}
@@ -307,7 +309,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, ok, shouldLog = getReloadConfigMatch.Match(requestUrlparts, isAbsolutePath, r.Method, logFunc)
 	if ok {
-		cfg, errorList := config.NewConfigData(h.config.ConfigName, false, false, h.config.IsVerbose)
+		cfg, errorList := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, false, h.config.IsVerbose)
 		if errorList.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))

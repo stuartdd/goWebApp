@@ -73,7 +73,7 @@ fi
 while true
 do
   echo "Config file:goWebApp.json"
-  ./goWebApp config=goWebApp.json -r
+  ./goWebApp config=goWebApp.json -vr
   
   RESP=$?
   echo "########################################################"

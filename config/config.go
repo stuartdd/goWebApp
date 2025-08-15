@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-const fallbackModuleName = "goWebApp"
 const configFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultConfigReloadTime = 3600
@@ -269,11 +268,11 @@ func (p *ExecInfo) String() string {
 Users Data. Derived from JSON!
 */
 type UserData struct {
-	Hidden    *bool
-	Name      string ""
-	Home      string ""
-	Locations map[string]string
-	Env       map[string]string
+	Hidden    *bool             // If true the user will not appear in the users list "http://server:port/server/users"
+	Name      string            // The name of the user. If the user ID is bob. The name could be Bob.
+	Home      string            // All locations are prefixed with this path when resolved
+	Locations map[string]string // Name,Value list for locations. The names are public the values are resolved relative to Home
+	Env       map[string]string // Name,Value list combined with OS environment for substitutions in resolved locations
 }
 
 func (p *UserData) IsHidden() bool {
@@ -329,7 +328,7 @@ type ConfigData struct {
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string, createDir bool, dontResolve bool, verbose bool) (*ConfigData, *ConfigErrorData) {
+func NewConfigData(configFileName string, moduleName string, debugging, createDir bool, dontResolve bool, verbose bool) (*ConfigData, *ConfigErrorData) {
 	environ := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
@@ -341,27 +340,20 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		}
 	}
 
-	moduleName, debugging := getApplicationModuleName()
-	if configFileName == "" {
-		configFileName = moduleName
-	} else {
-		if strings.HasSuffix(strings.ToLower(configFileName), configFileExtension) {
-			configFileName = configFileName[0 : len(configFileName)-5]
-		}
+	wd, _ := os.Getwd()
+	if !strings.HasSuffix(configFileName, configFileExtension) {
+		configFileName = fmt.Sprintf("%s%s", configFileName, configFileExtension)
 	}
 
-	wd, _ := os.Getwd()
-	fn, _ := filepath.Abs(configFileName + configFileExtension)
-
 	if verbose {
-		fmt.Printf("Config file name is %s\n", fn)
+		fmt.Printf("Config file name is %s\n", configFileName)
 	}
 
 	configDataExternal := &ConfigData{
 		Debugging:        debugging,
 		CurrentPath:      wd,
 		ModuleName:       moduleName,
-		ConfigName:       fn,
+		ConfigName:       configFileName,
 		Environment:      environ,
 		NextLoadTime:     0,
 		LocationsCreated: []string{},
@@ -396,6 +388,8 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to read config data file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
 	}
 
+	content = SubstituteFromMap(content, environ, nil)
+
 	err = json.Unmarshal(content, &configDataInternal)
 	if err != nil {
 		return nil, NewConfigErrorData().AddError(fmt.Sprintf("Failed to understand the config data in the file:%s. Error:%s", configDataExternal.ConfigName, err.Error()))
@@ -425,6 +419,12 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 			configDataInternal.FilterFiles[i] = fmt.Sprintf(".%s", f)
 		}
 	}
+
+	err = configDataExternal.loadUserData()
+	if err != nil {
+		panic(fmt.Sprintf("Config file:%s. UserDataPath: Failed to load user data: %s", configDataExternal.ConfigName, err.Error()))
+	}
+
 	ret, cfgErr := configDataExternal.resolveLocations(createDir)
 
 	if verbose {
@@ -438,11 +438,6 @@ func NewConfigData(configFileName string, createDir bool, dontResolve bool, verb
 			}
 			fmt.Println("Final Config Data -------")
 		}
-	}
-
-	err = configDataExternal.loadUserData()
-	if err != nil {
-		cfgErr.AddError(fmt.Sprintf("Config file:%s. UserDataPath: Failed to load user data: %s", configDataExternal.ConfigName, err.Error()))
 	}
 
 	return ret, cfgErr
@@ -483,17 +478,7 @@ func (p *ConfigData) loadUserData() error {
 		}
 		p.internal.Users[n] = v
 	}
-	for userId, userData := range p.internal.Users {
-		userConfigEnv := p.GetUserEnv(userId)
-		for locName := range userData.Locations {
-			location := p.GetUserLocPath(userId, locName)
-			f, e := p.checkPathExists(userData.Home, location, userId, userConfigEnv, false)
-			if e != nil {
-				return fmt.Errorf("config Error: User [%s] Location [%s]. Config file: %s, Error: %s", userId, locName, p.internal.UserDataPath, e.Error())
-			}
-			userData.Locations[locName] = f
-		}
-	}
+
 	return nil
 }
 
@@ -1026,12 +1011,12 @@ func appendStrF(path []string, p string) []string {
 }
 
 func (p *ConfigData) SubstituteFromMap(cmd []byte, userEnv map[string]string) string {
-	return SubstituteFromMap(cmd, p.Environment, userEnv)
+	return string(SubstituteFromMap(cmd, p.Environment, userEnv))
 }
 
-func SubstituteFromMap(cmd []byte, env1 map[string]string, env2 map[string]string) string {
+func SubstituteFromMap(cmd []byte, env1 map[string]string, env2 map[string]string) []byte {
 	if len(cmd) < 4 {
-		return string(cmd)
+		return cmd
 	}
 	var buff bytes.Buffer
 	var name bytes.Buffer
@@ -1096,7 +1081,7 @@ func SubstituteFromMap(cmd []byte, env1 map[string]string, env2 map[string]strin
 			buff.WriteByte(cmd[i])
 		}
 	}
-	return buff.String()
+	return buff.Bytes()
 }
 
 /*
@@ -1156,27 +1141,4 @@ Use this in error messages to indicate a path is not found for the OS
 */
 func GetOS() string {
 	return runtime.GOOS
-}
-
-/*
-GetApplicationModuleName returns the name of the application. Testing and debugging changes this name so the code
-removes debug, test and .exe from the executable name.
-*/
-func getApplicationModuleName() (string, bool) {
-	exec, err := os.Executable()
-	if err != nil {
-		return fallbackModuleName, false
-	}
-	parts := strings.Split(exec, string(os.PathSeparator))
-	exec = parts[len(parts)-1]
-	if strings.HasPrefix(exec, "__debug_") {
-		return fallbackModuleName, true
-	}
-	if strings.HasSuffix(strings.ToLower(exec), ".exe") {
-		return exec[0 : len(exec)-4], false
-	}
-	if strings.HasSuffix(strings.ToLower(exec), ".test") {
-		return exec[0 : len(exec)-5], false
-	}
-	return exec, false
 }
