@@ -1,0 +1,64 @@
+#!/bin/bash
+DEPLOY=.deploy
+CONTROL_DIR=$(realpath $(dirname "$0"))
+if [ ! -e $CONTROL_DIR/$DEPLOY ]; then
+  echo "Deploy dir '$CONTROL_DIR/$DEPLOY' has not been created"
+  exit 1
+fi
+
+cd $CONTROL_DIR/$DEPLOY
+echo "########################################################"
+echo "Running in: $CONTROL_DIR/$DEPLOY"
+
+if [ x"${WebServerData}" == "x" ]; then 
+  echo "Value 'WebServerData' is not assigned to a variable"
+	exit 1
+fi
+echo "WebServerData: $WebServerData"
+
+if [ x"${WebServerHome}" == "x" ]; then 
+  echo "Value 'WebServerHome' is not assigned to a variable"
+	exit 1
+fi
+echo "WebServerHome: $WebServerHome"
+
+if [ x"${WebServerPictures}" == "x" ]; then 
+  echo "Value 'WebServerPictures' is not assigned to a variable"
+  exit 1
+fi
+echo "WebServerPictures: $WebServerPictures"
+
+if [ x"${WebServerWebtools}" == "x" ]; then 
+  echo "Value 'WebServerWebtools' is not assigned to a variable"
+  exit 1
+fi
+echo "WebServerWebtools: $WebServerWebtools"
+echo "########################################################"
+while true
+do
+  if [ $USER == stuart ]; then
+    echo "Config file:goWebApp.json"
+  ./goWebApp config=goWebApp.json -vr
+  else
+    echo "Config file:goWebAppPi.json"
+  ./goWebApp config=goWebAppPi.json -vr
+  fi
+  
+  RESP=$?
+  echo "########################################################"
+  echo "Response: $RESP"
+  if [ $RESP -eq 11 ]; then
+    echo "Server stopped"
+    exit 1
+  fi
+  if [ $RESP -eq 10 ]; then
+    echo "Server already running"
+    exit 1
+  fi
+  if [ $RESP -eq 1 ]; then
+    echo "Server error"
+    exit 1
+  fi
+  echo "Server restarted"
+done
+

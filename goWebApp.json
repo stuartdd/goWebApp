@@ -1,0 +1,115 @@
+{
+  "ReloadConfigSeconds": 3600,
+  "Port": 8082,
+  "ThumbnailTrim": [
+    22,
+    4
+  ],
+  "Exec": {
+    "dmesg": {
+      "StdOutType": "json",
+      "Cmd": [
+        "execDmesg.sh",
+        "%{find}"
+      ]
+    },
+    "free": {
+      "StdOutType": "json",
+      "Cmd": [
+        "free.sh"
+      ]
+    },
+    "echo": {
+      "StdOutType": "txt",
+      "Cmd": [
+        "echo",
+        "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
+      ]
+    },
+    "lr1": {
+      "Cmd": [
+        "longRunTest1.sh"
+      ],
+      "Description":"Test long running process",
+      "StartLTSFile": "LongRunTest1Error.txt",
+      "Detached": true,
+      "CanStop": true
+    },
+    "Thumbnails": {
+      "Cmd": [
+        "thumbnails.sh"
+      ],
+      "Description":"Update Thumbnails",
+      "StartLTSFile": "thumbnailsError.txt",
+      "Detached": true,
+      "CanStop": true
+    },
+    "lr2": {
+      "Cmd": [
+        "longRunTest2.sh",
+        "PASS"
+      ],
+      "Detached": true
+    },
+    "ufs": {
+      "Cmd": [
+        "webtools",
+        "ufsConfig.json"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "LogDir": "",
+      "LogOutFile": "",
+      "LogErrFile": "",
+      "NzCodeReturns": 200,
+      "Detached": false
+    }
+  },
+  "UserDataPath": "%{WebServerData}/userData.json",
+  "Users": {
+    "admin": {
+      "Hidden": true,
+      "Name": "Admin",
+      "Home": "",
+      "Locations": {},
+      "Env": {
+        "lsargs": "-l"
+      }
+    }
+  },
+  "ContentTypeCharset": "utf-8",
+  "LogData": {
+    "FileNameMask": "goWebServer-%y-%m-%d.log",
+    "Path": "***%{WebServerParent}/logs",
+    "MonitorSeconds": 30,
+    "ShowPathInStatus": 2,
+    "ConsoleOut": true
+  },
+  "ServerName": "MyServer",
+  "PanicResponseCode": 500,
+  "FilterFiles": [
+    ".json",
+    ".data",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".info",
+    ".log"
+  ],
+  "ServerDataRoot": "%{WebServerData}",
+  "StaticData": {
+    "Path": "%{WebServerHome}/static",
+    "HomePage": "tgo.html"
+  },
+  "TemplateStaticFiles": {
+    "Files": [
+      "tgo.html",
+      "tgoimage.html",
+      "tgo.css"
+    ],
+    "DataFile": "templateData.json"
+  },
+  "FaviconIcoPath": "favicon1.ico",
+  "Env": {},
+  "ExecPath": "%{WebServerRoot}/exec"
+}

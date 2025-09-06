@@ -1,0 +1,22 @@
+{
+    "FilePrefix": "[",
+    "FilePostFix": "]",
+    "LinePrefix": "{",
+    "LinePostFix": "}",
+    "LineInfix": ",",
+    "SkipLines": 0,
+    "InputFile": "execDmesg.raw",   "MaxLines": 5,
+    "Lines": [
+        {
+            "Split": "[]",
+            "Skip": "\"",
+            "Tokens": [
+                {
+                    "pos": 1,
+                    "name": "line",
+                    "quoted": true
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,66 @@
+{
+    "FilePrefix": "{",
+    "FilePostFix": "}",
+    "SkipLines": 1,
+    "MaxLines": 2,
+    "InputFile": "freeOut.raw",   
+    "Lines": [
+        {
+            "Split": " ",
+            "Skip": " ",
+            "Tokens": [
+                {
+                    "pos": 1,
+                    "name": "MemTotal",
+                    "quoted": false
+                },
+                {
+                    "pos": 2,
+                    "name": "MemUsed",
+                    "quoted": false
+                },
+                {
+                    "pos": 3,
+                    "name": "MemFree",
+                    "quoted": false
+                },
+                {
+                    "pos": 4,
+                    "name": "MemShared",
+                    "quoted": false
+                },
+                {
+                    "pos": 5,
+                    "name": "Buff/Cache",
+                    "quoted": false
+                },
+                {
+                    "pos": 6,
+                    "name": "Available",
+                    "quoted": false
+                }
+            ]
+        },
+        {
+            "Split": " ",
+            "Skip": " ",
+            "Tokens": [
+                {
+                    "pos": 1,
+                    "name": "SwapTotal",
+                    "quoted": false
+                },
+                {
+                    "pos": 2,
+                    "name": "SwapUsed",
+                    "quoted": false
+                },
+                {
+                    "pos": 3,
+                    "name": "SwapFree",
+                    "quoted": false
+                }
+            ]
+        }
+    ]
+}

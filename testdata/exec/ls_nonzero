@@ -1,0 +1,5 @@
+#!/bin/bash
+#
+# Required for test in controllers_test.go --> TestExecFailRcNonZero
+#
+ls fred

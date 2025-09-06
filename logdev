@@ -1,0 +1,9 @@
+#!/bin/bash
+CURRENT_DIR=$(realpath $(dirname "$0"))
+
+path=$CURRENT_DIR/testdata/admin/logs
+
+file=$(ls $path -tp | grep -v /$ | head -1)
+
+echo "tail $path/$file"
+tail -f -n 100 $path/$file

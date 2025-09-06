@@ -1,0 +1,15 @@
+.idea
+__*
+*.log
+*.jpg
+*.txt
+textToJson
+webtools
+.deploy
+RunningProcs.json
+nohup.out
+
+goWebApp
+logs
+goThumbnailTool
+configThumbnail.json
