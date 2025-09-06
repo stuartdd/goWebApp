@@ -1,0 +1,143 @@
+{
+  "ReloadConfigSeconds": 3600,
+  "Port": 8082,
+  "ThumbnailTrim": [
+    20,
+    4
+  ],
+  "Exec": {
+    "dmesg": {
+      "StdOutType": "json",
+      "Cmd": [
+        "./execDmesg.sh",
+        "%{find}"
+      ]
+    },
+    "free": {
+      "StdOutType": "json",
+      "Cmd": [
+        "./free.sh"
+      ]
+    },
+    "echo": {
+      "StdOutType": "txt",
+      "Cmd": [
+        "echo",
+        "User:%{user} Find:%{find} PIUser:%{USER} PWD:%{PWD} %{year} %{month} %{dom}"
+      ]
+    },
+    "ufs": {
+      "Cmd": [
+        "./webtools",
+        "ufsConfig.json"
+      ],
+      "Dir": "",
+      "StdOutType": "json",
+      "logDir": "logs",
+      "logOut": "stdOutUfs.log",
+      "logErr": "stdErrUfs.log",
+      "NzCodeReturns": 200,
+      "Detached": false
+    }
+  },
+  "Users": {
+    "admin": {
+      "Hidden": true,
+      "Name": "Admin",
+      "Home": "",
+      "Locations": {},
+      "Env": {
+        "lsargs": "-l"
+      }
+    },
+    "julie": {
+      "Hidden": null,
+      "Name": "Julie",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+      }
+    },
+    "owain": {
+      "Hidden": null,
+      "Name": "Owain",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+      }
+    },
+    "huw": {
+      "Hidden": null,
+      "Name": "Huw",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+      }
+    },
+    "stuart": {
+      "Hidden": null,
+      "Name": "Stuart",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "dev": "Repository",
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "mydb": "mydb",
+        "base": ""
+      }
+    },
+    "shared": {
+      "Hidden": null,
+      "Name": "Shared",
+      "Home": "***/media/stuart/DATA/shares/%{id}",
+      "Locations": {
+        "thumbs": "***/home/stuart/git/thumbnails/%{id}",
+        "original": "***/media/stuart/DATA/shares/%{id}",
+        "base": ""
+      }
+    }
+  },
+  "ContentTypeCharset": "utf-8",
+  "LogData": {
+    "FileNameMask": "goWebServer-%y-%m-%d.log",
+    "Path": "admin/logs",
+    "MonitorSeconds": 30,
+    "ConsoleOut": true
+  },
+  "ServerName": "MyServer",
+  "PanicResponseCode": 500,
+  "FilterFiles": [
+    ".json",
+    ".data",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".info",
+    ".log"
+  ],
+  "ServerDataRoot": "./testdata",
+  "StaticData": {
+    "Path": "%{WebServerHome}/static",
+    "Home": "tgo.html"
+  },
+  "TemplateStaticFiles": {
+    "Files": [
+      "tgo.html",
+      "tgoimage.html",
+      "tgo.css"
+    ],
+    "DataFile": "%{WebServerHome}/static/templateData.json"
+  },
+  "FaviconIcoPath": "tgo.ico",
+  "ExecManager": {
+    "Path": "./testdata/exec",
+    "File": "RunningProcs.json",
+    "TestCommand": "./longRunCheck.sh"
+  }
+}
