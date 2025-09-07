@@ -203,7 +203,7 @@ func (p *UrlRequestParts) GetQueryAsInt(key string, fallback int) int {
 	v := p.GetOptionalQuery(key, strconv.Itoa(fallback))
 	i, err := strconv.Atoi(v)
 	if err != nil {
-		return fallback
+		panic(NewControllerError(fmt.Sprintf("Query value '%s' is not an int", key), http.StatusNotAcceptable, ""))
 	}
 	return i
 }

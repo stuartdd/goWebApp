@@ -100,7 +100,7 @@ func (p *LongRunningManager) IsEnabled() bool {
 
 func (p *LongRunningManager) Update() {
 	for _, v := range p.longRunningProcess {
-		v.PID = FindProcessIdWithName(v.ID)
+		v.PID = FindProcessIdWithName(v.Exec)
 	}
 }
 

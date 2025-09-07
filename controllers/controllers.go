@@ -300,8 +300,11 @@ func (p *ExecHandler) Submit() *ResponseData {
 	action := p.parameters.GetOptionalQuery("action", "start")
 	if action == "stop" {
 		pid := runCommand.FindProcessIdWithName(p.execInfo.Cmd[0])
+		if pid < 100 {
+			panic(NewControllerError("Process not found", http.StatusExpectationFailed, fmt.Sprintf("Command:%s", p.execInfo.Cmd[0])))
+		}
 		runCommand.KillrocessWithPid(pid)
-		dataMap := map[string]interface{}{"error": false, "exitCode": 0, "stdOut": "Stop process complete", "stdErr": ""}
+		dataMap := map[string]interface{}{"error": false, "id": execId, "status": http.StatusOK, "msg": http.StatusText(http.StatusOK), "rc": 0, "stdOut": "Stop process complete", "stdErr": ""}
 		return NewResponseData(http.StatusOK).WithContentMapAsJson(dataMap).SetHasErrors(false)
 	}
 
@@ -382,7 +385,7 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	return m1
 }
 
-func GetLog(configData *config.ConfigData, offset int) *ResponseData {
+func GetLog(configData *config.ConfigData, offsetString string) *ResponseData {
 	ld := configData.GetLogData()
 	list := []*FileInfo{}
 	filepath.Walk(ld.Path, func(path string, info fs.FileInfo, err error) error {
@@ -400,6 +403,16 @@ func GetLog(configData *config.ConfigData, offset int) *ResponseData {
 	})
 
 	var b bytes.Buffer
+
+	offset, err := strconv.Atoi(offsetString)
+	if err != nil {
+		offset = 0
+		b.WriteString("##! Offset '")
+		b.WriteString(offsetString)
+		b.WriteString("' is not an integer. Offset set to 0")
+		b.WriteString("\n")
+	}
+
 	for i, v := range list {
 		b.WriteString("##! Offset[")
 		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))

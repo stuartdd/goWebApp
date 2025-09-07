@@ -98,6 +98,7 @@ func TestServerGetTime(t *testing.T) {
 		"\"millis\":",
 		"\"timestamp\":",
 	})
+	AssertLogNotContains(t, logger, []string{"GET:/server/time"})
 }
 func TestServerStatus(t *testing.T) {
 	configData := loadConfigData(t)
@@ -259,7 +260,6 @@ func TestGetFavicon(t *testing.T) {
 	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
-
 }
 
 func TestPostFileAndDelete(t *testing.T) {
@@ -555,9 +555,11 @@ func TestServerLog(t *testing.T) {
 	if resBody != resBody0 {
 		t.Fatalf("Respons body default offset !=  Respons body offset=0")
 	}
-	resp, _ = RunClientGet(t, configData, "server/log?offset=A", 406, "{\"cause\":\"Optional query 'offset' is not an int\",\"error\":true,\"msg\":\"Not Acceptable\",\"status\":406}", -1, 0)
-	AssertHeaderEquals(t, resp, "Content-Type", "application/json; charset=utf-8")
+	resp, s := RunClientGet(t, configData, "server/log?offset=A", 200, "?", -1, 0)
+	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
+	AssertContains(t, s, []string{"##! Offset 'A' is not an integer"})
 }
+
 func TestServerIsUp(t *testing.T) {
 	configData := loadConfigData(t)
 
@@ -570,26 +572,6 @@ func TestServerIsUp(t *testing.T) {
 	if strings.Contains(logger.Get(), "/isup") {
 		os.Stderr.WriteString(logger.Get())
 		t.Fatal("Log must NOT contain the isup request response")
-	}
-}
-
-func TestQuietGetFile(t *testing.T) {
-	configData := loadConfigData(t)
-
-	if serverState != "Running" {
-		go RunServer(configData, logger)
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	_, resBody := RunClientGet(t, configData, "test/user/stuart/loc/pics/name/t1.JSON", 200, "?", 251, 0)
-	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
-		t.Fatalf("Respons body does not start with...")
-	}
-
-	AssertContains(t, string(resBody), []string{"TestServer"})
-	if strings.Contains(logger.Get(), "test/user") {
-		os.Stderr.WriteString(logger.Get())
-		t.Fatal("Log must NOT contain the 'test/user' request response")
 	}
 }
 
@@ -743,6 +725,15 @@ func AssertLogContains(t *testing.T, log *TLog, list []string) {
 	for _, x := range list {
 		if !strings.Contains(l, x) {
 			t.Fatalf("Log does NOT contain '%s'.\n%s", x, log.Get())
+		}
+	}
+}
+
+func AssertLogNotContains(t *testing.T, log *TLog, list []string) {
+	l := log.Get()
+	for _, x := range list {
+		if strings.Contains(l, x) {
+			t.Fatalf("Log MUST NOT contain '%s'.\n%s", x, log.Get())
 		}
 	}
 }

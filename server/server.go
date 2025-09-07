@@ -73,7 +73,6 @@ var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLogTrue)
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLogTrue)
 var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLogTrue)
-var getTestUserLocNameMatch = NewUrlRequestMatcher("/test/user/*/loc/*/name/*", "GET", shouldNotLogFalse)
 var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogTrue)
 
 var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLogTrue)
@@ -240,12 +239,6 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 		return
 	}
-	p, ok, shouldLog = getTestUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
-	if ok {
-		// Panic Check Done
-		h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
-		return
-	}
 	p, ok, shouldLog = getFileLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
@@ -313,7 +306,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
-		ofs := requestData.AsAdmin().GetOptionalQueryAsInt("offset", 0)
+		ofs := requestData.AsAdmin().GetOptionalQuery("offset", "0")
 		h.writeResponse(w, controllers.GetLog(h.config, ofs), shouldLog)
 		return
 	}
