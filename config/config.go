@@ -36,7 +36,8 @@ func (ee *ConfigError) Map() map[string]interface{} {
 	m := make(map[string]interface{})
 	m["error"] = true
 	m["status"] = ee.Status()
-	m["msg"] = ee.String()
+	m["msg"] = http.StatusText(ee.status)
+	m["cause"] = ee.String()
 	return m
 }
 
@@ -49,11 +50,14 @@ func (ee *ConfigError) String() string {
 }
 
 func (pm *ConfigError) LogError() string {
-	return fmt.Sprintf("%s. %s", pm.Error(), pm.log)
+	if pm.log == "" {
+		return pm.Error()
+	}
+	return fmt.Sprintf("%s Log:%s", pm.Error(), pm.log)
 }
 
 func NewConfigError(message string, status int, logged string) *ConfigError {
-	return &ConfigError{message: message, status: status, log: logged}
+	return &ConfigError{message: strings.TrimSpace(message), status: status, log: strings.TrimSpace(logged)}
 }
 
 func NewConfigErrorFromString(message string, fallback int) *ConfigError {

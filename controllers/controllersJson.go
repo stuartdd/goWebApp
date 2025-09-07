@@ -72,7 +72,7 @@ func statusAsJson(status int, reason string, error bool) []byte {
 	b.WriteString(strconv.Itoa(status))
 	b.WriteString(", \"msg\":\"")
 	b.WriteString(http.StatusText(status))
-	b.WriteString("\", \"reason\":\"")
+	b.WriteString("\", \"cause\":\"")
 	b.WriteString(cleanStringForJson(reason))
 	b.WriteString("\"}")
 	return b.Bytes()
@@ -83,7 +83,7 @@ func StatusAsMap(status int, reason string, error bool) *map[string]interface{} 
 	m["error"] = error
 	m["status"] = status
 	m["msg"] = http.StatusText(status)
-	m["reason"] = reason
+	m["cause"] = reason
 	return &m
 }
 

@@ -37,7 +37,8 @@ func (ee *ControllerError) Map() map[string]interface{} {
 	m := make(map[string]interface{})
 	m["error"] = true
 	m["status"] = ee.Status()
-	m["msg"] = ee.String()
+	m["msg"] = http.StatusText(ee.status)
+	m["cause"] = ee.String()
 	return m
 }
 

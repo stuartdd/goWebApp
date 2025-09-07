@@ -52,7 +52,8 @@ func (ee *ExecError) Map() map[string]interface{} {
 	m["error"] = true
 	m["status"] = ee.Status()
 	m["id"] = ee.id
-	m["msg"] = ee.String()
+	m["msg"] = http.StatusText(ee.status)
+	m["cause"] = ee.String()
 	return m
 }
 

@@ -10,63 +10,64 @@ import (
 
 func TestPanicMessage(t *testing.T) {
 	pm := NewConfigErrorFromString("Status:404: Running process with ID:12345 could not be found", 500)
-	assertEquals(t, "String 8", pm.String(), "Running process with ID;12345 could not be found Status:404")
+	assertEquals(t, "String 8", pm.LogError(), "Config Error: Status:404. Running process with ID:12345 could not be found")
 	assertEquals(t, "String 8.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("running process with ID:12345 could not be found Status:404", 500)
-	assertEquals(t, "String 9", pm.String(), "running process with ID;12345 could not be found Status:404")
+	assertEquals(t, "String 9", pm.LogError(), "Config Error: Status:404. running process with ID:12345 could not be found")
 	assertEquals(t, "String 9.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC log:LM Status:404", 500)
-	assertEquals(t, "Recover 2", pm.String(), "ABC Status:404")
+	assertEquals(t, "Recover 2", pm.Error(), "Config Error: Status:404. ABC")
 	assertEquals(t, "Recover 2.1", pm.log, "LM Status:404")
 
 	pm = NewConfigErrorFromString("ABC log:LM", 500)
-	assertEquals(t, "Recover 3", pm.String(), "ABC Status:500 Log:LM")
+	assertEquals(t, "Recover 3", pm.Error(), "Config Error: Status:500. ABC")
 	assertEquals(t, "Recover 3.1", pm.log, "LM")
 
 	pm = NewConfigErrorFromString("ABC: log:LM Status:404", 500)
-	assertEquals(t, "Recover 4", pm.String(), "ABC; Status:404")
+	assertEquals(t, "Recover 4", pm.Error(), "Config Error: Status:404. ABC:")
 	assertEquals(t, "Recover 4.1", pm.log, "LM Status:404")
 
 	pm = NewConfigErrorFromString("ABC: Status:32768", 500)
-	assertEquals(t, "Recover 5", pm.String(), fmt.Sprintf("ABC; Status:%d", math.MaxInt16))
+	assertEquals(t, "Recover 5", pm.LogError(), fmt.Sprintf("Config Error: Status:%d. ABC:", math.MaxInt16))
 	assertEquals(t, "Recover 5.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC: Status:4.9 4", 500)
-	assertEquals(t, "Recover 6", pm.String(), "ABC; 4 Status:49")
+	assertEquals(t, "Recover 6", pm.LogError(), "Config Error: Status:49. ABC: 4")
 	assertEquals(t, "Recover 6.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC: Status:4.0.4", 500)
-	assertEquals(t, "Recover 7", pm.String(), "ABC; Status:404")
+	assertEquals(t, "Recover 7", pm.LogError(), "Config Error: Status:404. ABC:")
 	assertEquals(t, "Recover 7.1", pm.log, "")
 
-	pm = NewConfigErrorFromString("ABC: Status:404. log:LM", 500)
-	assertEquals(t, "Recover 8", pm.String(), "ABC; Status:404 Log:LM")
+	pm = NewConfigErrorFromString("ABC: Status:404 log:LM", 500)
+	assertEquals(t, "Recover 8", pm.LogError(), "Config Error: Status:404. ABC: Log:LM")
 	assertEquals(t, "Recover 8.1", pm.log, "LM")
 
 	pm = NewConfigErrorFromString("ABC", 500)
-	assertEquals(t, "Recover 9", pm.String(), "ABC Status:500")
+	assertEquals(t, "Recover 9", pm.Error(), "Config Error: Status:500. ABC")
 	assertEquals(t, "Recover 9.1", pm.log, "")
 
 	pm = NewConfigError("R:X", 400, "LM")
-	assertEquals(t, "Simple 1", pm.String(), "R:X Status:400 Log:LM")
+	assertEquals(t, "Simple 1", pm.Error(), "Config Error: Status:400. R:X")
+	assertEquals(t, "Simple 1.1", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
 
 	pm = NewConfigError("R:X Status", 400, "LM")
-	assertEquals(t, "Simple 2", pm.String(), "R:X Status Status:400 Log:LM")
+	assertEquals(t, "Simple 2", pm.Error(), "Config Error: Status:400. R:X Status")
 
 	pm = NewConfigError("R:X Status", 400, "L Status:500")
-	assertEquals(t, "Simple 3", pm.String(), "R:X Status Status:400")
+	assertEquals(t, "Simple 3", pm.Error(), "Config Error: Status:400. R:X Status")
 
 	pm = NewConfigError("R:X", 400, "LM")
-	assertEquals(t, "Simple 4", pm.String(), "R;X Status:400 Log:LM")
+	assertEquals(t, "Simple 4", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
 	assertEquals(t, "Simple 4.1", pm.log, "LM")
 
 	pm = NewConfigError("R:X Status", 400, "LM")
-	assertEquals(t, "Simple 5", pm.String(), "R;X Status Status:400 Log:LM")
+	assertEquals(t, "Simple 5", pm.Error(), "Config Error: Status:400. R:X Status")
 
 	pm = NewConfigError("R:X Status", 400, "L Status:500")
-	assertEquals(t, "Simple 6", pm.String(), "R;X Status Status:400")
+	assertEquals(t, "Simple 6", pm.Error(), "Config Error: Status:400. R:X Status")
 
 }
 
@@ -173,11 +174,10 @@ func TestUserExecBadExecId(t *testing.T) {
 		if r := recover(); r != nil {
 			pm, ok := r.(*ConfigError)
 			if !ok || pm == nil {
-				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage")
+				t.Fatalf("TestUserExecBadExecId: Should have returned a ConfigError")
 			}
-			if pm.String() != "exec ID not found" {
-				t.Fatalf("TestUserExecBadExecId: Should have returned a PanicMessage == exec ID not found | actual = %s", pm.String())
-			}
+			assertEquals(t, "TestUserExecBadExecId", pm.LogError(), "Config Error: Status:404. Exec ID not found Log:exec-id=notid")
+			assertEquals(t, "TestUserExecBadExecId", pm.String(), "Exec ID not found")
 		}
 	}()
 
@@ -224,13 +224,10 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 		if r := recover(); r != nil {
 			pm, ok := r.(*ConfigError)
 			if !ok || pm == nil {
-				t.Fatalf("Should have returned a PanicMessage")
+				t.Fatalf("Should have returned a ConfigError")
 			}
-			// {Status: 404, Reason: "user not found", Logged: "User=fred"}
-			if pm.String() != "user not found Status:404 Log:User=fred" {
-				t.Fatalf("Should have returned a PanicMessage == user not found:404:User=fred | actual = %s", pm.String())
-
-			}
+			assertEquals(t, "TestGetUserLocPathBadUser", pm.Error(), "Config Error: Status:404. User not found")
+			assertEquals(t, "TestGetUserLocPathBadUser", pm.LogError(), "Config Error: Status:404. User not found Log:User=fred")
 		}
 	}()
 
@@ -247,9 +244,8 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a PanicMessage")
 			}
-			if pm.String() != "location not found Status:404 Log:User=stuart Location=nothome" {
-				t.Fatalf("Should have returned a PanicMessage == location not found Status:404 Log:User=stuart Location=nothome | actual = %s", pm.String())
-			}
+			assertEquals(t, "TestGetUserLocPathBadLoc", pm.Error(), "Config Error: Status:404. Location not found")
+			assertEquals(t, "TestGetUserLocPathBadLoc", pm.LogError(), "Config Error: Status:404. Location not found Log:User=stuart Location=nothome")
 		}
 	}()
 

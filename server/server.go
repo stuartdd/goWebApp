@@ -137,7 +137,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		var le LoggableError
-		if rec := recover(); r != nil {
+		if rec := recover(); rec != nil {
 			switch x := rec.(type) {
 			case LoggableError:
 				le = x
@@ -149,6 +149,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				// Fallback err (per specs, error strings should be lowercase w/o punctuation
 				le = config.NewConfigErrorFromString(fmt.Sprintf("%v", rec), 404)
 			}
+			logFunc(le.LogError())
 			h.writeResponse(w, controllers.NewResponseData(le.Status()).SetHasErrors(true).WithContentMapAsJson(le.Map()), true)
 		}
 	}()

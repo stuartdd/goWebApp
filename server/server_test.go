@@ -26,6 +26,8 @@ func (l *TLog) Close() {}
 func (l *TLog) Log(s string) {
 	l.B.WriteString(s)
 	l.B.WriteString("\n")
+	os.Stdout.WriteString(s)
+	os.Stdout.WriteString("\n")
 }
 
 func (l *TLog) VerboseFunction() func(string) {
@@ -292,7 +294,7 @@ func TestPostFileAndDelete(t *testing.T) {
 		t.Fatalf("File was not created")
 	}
 	// TODO
-	RunClientDelete(t, configData, url, 202, "\"reason\":\"File deleted OK\"")
+	RunClientDelete(t, configData, url, 202, "\"cause\":\"File deleted OK\"")
 	_, err = os.Stat(file)
 	if err == nil {
 		t.Fatalf("File was not deleted")
@@ -303,6 +305,7 @@ func TestPostFileAndDelete(t *testing.T) {
 		fmt.Sprintf("Req:  GET:/%s", url),
 		"Error: Status:412",
 		"\"msg\":\"Precondition Failed\"",
+		"testdata.json already exists",
 	})
 
 }
@@ -340,7 +343,7 @@ func TestPostFileOverwriteAndDelete(t *testing.T) {
 		t.Fatalf("File was not created")
 	}
 	// TODO
-	RunClientDelete(t, configData, urlB, 202, "\"reason\":\"File deleted OK\"")
+	RunClientDelete(t, configData, urlB, 202, "\"cause\":\"File deleted OK\"")
 	_, err = os.Stat(file)
 	if err == nil {
 		t.Fatalf("File was not deleted")
@@ -384,7 +387,7 @@ func TestPostFileAppendAndDelete(t *testing.T) {
 		t.Fatalf("File was not created")
 	}
 	// TODO
-	RunClientDelete(t, configData, urlB, 202, "\"reason\":\"File deleted OK\"")
+	RunClientDelete(t, configData, urlB, 202, "\"cause\":\"File deleted OK\"")
 	_, err = os.Stat(file)
 	if err == nil {
 		t.Fatalf("File was not deleted")
@@ -436,7 +439,7 @@ func TestReadDirNotFound(t *testing.T) {
 	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", http.StatusNotFound, "?", -1, 0)
 	AssertContains(t, resBody, []string{
 		"\"error\":true",
-		"\"reason\":\"Dir not found\"",
+		"\"cause\":\"Dir not found\"",
 	})
 	AssertLogContains(t, logger, []string{"Dir not found", "\"status\":404"})
 }
@@ -468,9 +471,9 @@ func TestReadFileNotUser(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 74, 0)
-	AssertContains(t, string(resBody), []string{"\"error\":true", "\"reason\":\"user not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"reason\":\"user not found\""})
+	_, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"User not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"cause\":\"User not found\""})
 }
 
 func TestReadFileNotLoc(t *testing.T) {
@@ -482,9 +485,9 @@ func TestReadFileNotLoc(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 78, 0)
-	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"location not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"reason\":\"location not found\""})
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 74, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Location not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"cause\":\"Location not found\""})
 }
 
 func TestReadFileNotName(t *testing.T) {
@@ -496,9 +499,9 @@ func TestReadFileNotName(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 74, 0)
-	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"File not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"reason\":\"File not found\""})
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 70, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"File not found\""})
+	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"cause\":\"File not found\""})
 }
 
 func TestReadFileIsDir(t *testing.T) {
@@ -510,13 +513,13 @@ func TestReadFileIsDir(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusForbidden, "?", 74, 0)
-	AssertContains(t, string(resBody), []string{"\"error\":true", " \"reason\":\"Is a directory\""})
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusForbidden, "?", 70, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Is a directory\""})
 	AssertLogContains(t, logger, []string{
 		"/stuart/s-pics/s-testfolder is a Directory",
 		"Resp: Error: Status:403",
 		"\"error\":true", "\"status\":403",
-		"\"reason\":\"Is a directory\""})
+		"\"cause\":\"Is a directory\""})
 }
 
 func TestServerTime(t *testing.T) {
@@ -546,7 +549,7 @@ func TestServerIsUp(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "isup", 200, "?", 64, 0)
+	_, resBody := RunClientGet(t, configData, "isup", 200, "?", 63, 2)
 	if !strings.HasPrefix(trimString(resBody), "{\"error\":false, ") {
 		t.Fatalf("Respons body does not start with...")
 	}
@@ -585,11 +588,11 @@ func TestClient(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"reason\":\"Resource not found\"}", 78, 0)
+	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"Resource not found\"}", 74, 0)
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
-	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"reason\":\"Ping\"}", 58, 0)
-	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"reason\":\"[11] Exit Requested\"}", 79, 0)
+	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 57, 2)
+	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 78, 2)
 	AssertLogContains(t, logger, []string{"Req:  GET:/ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
@@ -662,9 +665,7 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 		}
 	} else {
 		if expectedBody != "?" {
-			if trimString(string(resBody)) != trimString(expectedBody) {
-				t.Fatalf("Status for path http://localhost%s/%s.\nExpected '%s' \nActual   '%s'", config.GetPortString(), path, expectedBody, string(resBody))
-			}
+			AssertEquivilent(t, string(resBody), expectedBody)
 		}
 	}
 
@@ -738,6 +739,26 @@ func AssertContains(t *testing.T, actual string, expectedList []string) {
 		expected := expectedList[i]
 		if !strings.Contains(actual, expected) {
 			t.Fatalf("Value \n%s\nDoes NOT contain '%s'", actual, expected)
+		}
+	}
+}
+
+func AssertEquivilent(t *testing.T, actualJson string, expectedJson string) {
+	act := make(map[string]interface{}, 0)
+	err := json.Unmarshal([]byte(actualJson), &act)
+	if err != nil {
+		t.Fatalf("Actual Is not valid JSON\n%s\nError:'%s'", actualJson, err.Error())
+	}
+	exp := make(map[string]interface{}, 0)
+	err = json.Unmarshal([]byte(expectedJson), &exp)
+	if err != nil {
+		t.Fatalf("Expected Is not valid JSON\n%s\nError:'%s'", expectedJson, err.Error())
+	}
+
+	for n, v1 := range exp {
+		v2 := act[n]
+		if fmt.Sprintf("%v", v1) != fmt.Sprintf("%v", v2) {
+			t.Fatalf("Value \n%s\nIs not a subset of\n%s", actualJson, expectedJson)
 		}
 	}
 }

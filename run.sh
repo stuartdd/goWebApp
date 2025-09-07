@@ -48,6 +48,15 @@ if [ ! -d $WebServerParent ]; then
   exit 1
 fi
 
+if [ ! -d $WebServerParent/logs ]; then
+  mkdir -p $WebServerParent/logs
+  if [ $? -gt 0 ]; then
+    echo "Check Path: Could not create $WebServerParent/logs"
+    exit 1
+  fi
+  echo "Check Path: Created $WebServerParent/logs"
+fi
+
 if [ ! -d $WebServerRoot ]; then
   mkdir -p $WebServerRoot
     if [ $? -gt 0 ]; then

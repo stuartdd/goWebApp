@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/runCommand"
 )
 
 func TestToJson(t *testing.T) {
@@ -87,9 +88,9 @@ func TestExecFailCommandNotFound(t *testing.T) {
 	})
 	defer func() {
 		if r := recover(); r != nil {
-			pm, ok := r.(*config.ConfigError)
+			pm, ok := r.(*runCommand.ExecError)
 			if !ok || pm == nil {
-				t.Fatalf("TestExecFailCommandNotFound: Should have returned a PanicMessage")
+				t.Fatalf("TestExecFailCommandNotFound: Should have returned a runCommand.ExecError")
 			}
 			if !strings.Contains(pm.LogError(), "exec/cmd2: no such file or directory") {
 				t.Fatalf("TestExecFailCommandNotFound: Should contain: 'exec/cmd2: no such file or directory'")
