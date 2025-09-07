@@ -540,7 +540,24 @@ func TestServerTime(t *testing.T) {
 		t.Fatal("Log must NOT contain the time request response")
 	}
 }
+func TestServerLog(t *testing.T) {
+	configData := loadConfigData(t)
 
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	resp, resBody := RunClientGet(t, configData, "server/log", 200, "?", -1, 0)
+	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
+	resp, resBody0 := RunClientGet(t, configData, "server/log?offset=0", 200, "?", -1, 0)
+	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
+	if resBody != resBody0 {
+		t.Fatalf("Respons body default offset !=  Respons body offset=0")
+	}
+	resp, _ = RunClientGet(t, configData, "server/log?offset=A", 406, "{\"cause\":\"Optional query 'offset' is not an int\",\"error\":true,\"msg\":\"Not Acceptable\",\"status\":406}", -1, 0)
+	AssertHeaderEquals(t, resp, "Content-Type", "application/json; charset=utf-8")
+}
 func TestServerIsUp(t *testing.T) {
 	configData := loadConfigData(t)
 
@@ -549,11 +566,7 @@ func TestServerIsUp(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "isup", 200, "?", 63, 2)
-	if !strings.HasPrefix(trimString(resBody), "{\"error\":false, ") {
-		t.Fatalf("Respons body does not start with...")
-	}
-	AssertContains(t, string(resBody), []string{"ServerIsUp"})
+	RunClientGet(t, configData, "isup", 200, "{\"error\":false,\"msg\":\"OK\",\"cause\":\"ServerIsUp\",\"status\":200}", 60, 2)
 	if strings.Contains(logger.Get(), "/isup") {
 		os.Stderr.WriteString(logger.Get())
 		t.Fatal("Log must NOT contain the isup request response")
@@ -591,8 +604,8 @@ func TestClient(t *testing.T) {
 	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"Resource not found\"}", 74, 0)
 	AssertHeaderEquals(t, res, "Content-Type", fmt.Sprintf("%s; charset=%s", config.DefaultContentType, configData.GetContentTypeCharset()))
 	AssertHeaderEquals(t, res, "Server", configData.GetServerName())
-	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 57, 2)
-	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 78, 2)
+	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 54, 2)
+	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 75, 2)
 	AssertLogContains(t, logger, []string{"Req:  GET:/ABC", "Error: Status:404"})
 	os.Stderr.WriteString(logger.Get())
 }
@@ -678,7 +691,7 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 
 		}
 		if len < minLen || len > maxLen {
-			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' \nActual   '%d'", config.GetPortString(), path, minLen, maxLen, len)
+			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' \nActual   '%d'\n%s", config.GetPortString(), path, minLen, maxLen, len, resBody)
 		}
 	}
 	return res, string(resBody)

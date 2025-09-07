@@ -113,7 +113,7 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 		if err == nil {
 			panic(NewControllerError("File was not be deleted", http.StatusUnprocessableEntity, fmt.Sprintf("File %s was not deleted", file)))
 		}
-		return NewResponseData(http.StatusAccepted).WithContentReasonAsJson("File deleted OK")
+		return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson("File deleted OK")
 	} else {
 		fileContent, err := os.ReadFile(file)
 		if err != nil {
@@ -257,7 +257,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if p.verbose != nil { // Only do this if abs necessary as Sprintf does not need to be done
 		p.verbose(fmt.Sprintf("File action[%s]:%s [%d] bytes", action, file, len(body)))
 	}
-	return NewResponseData(http.StatusAccepted).WithContentReasonAsJson(fmt.Sprintf("File:Action:%s %s", action, file))
+	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("File:Action:%s %s", action, file))
 }
 
 func AppendFile(filename string, data []byte, perm os.FileMode) error {
@@ -382,7 +382,7 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	return m1
 }
 
-func GetLog(configData *config.ConfigData, previous int) *ResponseData {
+func GetLog(configData *config.ConfigData, offset int) *ResponseData {
 	ld := configData.GetLogData()
 	list := []*FileInfo{}
 	filepath.Walk(ld.Path, func(path string, info fs.FileInfo, err error) error {
@@ -410,15 +410,15 @@ func GetLog(configData *config.ConfigData, previous int) *ResponseData {
 		b.WriteRune(')')
 		b.WriteString("\n")
 	}
-	if previous < 0 {
-		previous = 0
+	if offset < 0 {
+		offset = 0
 	}
-	if previous >= (len(list)) {
-		previous = len(list) - 1
+	if offset >= (len(list)) {
+		offset = len(list) - 1
 	}
-	fileName := list[len(list)-(previous+1)].path
+	fileName := list[len(list)-(offset+1)].path
 	b.WriteString("##! Displaying log File at Offset[")
-	b.WriteString(fmt.Sprintf("%2d", previous))
+	b.WriteString(fmt.Sprintf("%2d", offset))
 	b.WriteString("] ")
 	b.WriteString(fileName[len(ld.Path):])
 	b.WriteString("\n##! -- --\n\n")

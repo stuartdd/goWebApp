@@ -187,16 +187,16 @@ func (p *UrlRequestParts) GetQueryAsBool(key string, fallback bool) bool {
 	return fallback
 }
 
-func (p *UrlRequestParts) GetOptionalQueryAsInt(key string, fallback int) (int, error) {
+func (p *UrlRequestParts) GetOptionalQueryAsInt(key string, fallback int) int {
 	v := p.GetOptionalQuery(key, "")
 	if v == "" {
-		return fallback, nil
+		return fallback
 	}
 	i, err := strconv.Atoi(v)
 	if err != nil {
-		return fallback, fmt.Errorf("value '%s' is not an int", key)
+		panic(NewControllerError(fmt.Sprintf("Optional query '%s' is not an int", key), http.StatusNotAcceptable, ""))
 	}
-	return i, nil
+	return i
 }
 
 func (p *UrlRequestParts) GetQueryAsInt(key string, fallback int) int {
@@ -223,7 +223,7 @@ func (p *UrlRequestParts) GetParam(key string) string {
 	if ok {
 		return decodeValue(v)
 	}
-	panic(fmt.Errorf("status:404 url parameter not found: Name: '%s'", key))
+	panic(NewControllerError(fmt.Sprintf("URL parameter '%s' not found", key), http.StatusNotAcceptable, ""))
 }
 
 func (p *UrlRequestParts) GetOptionalParam(key string, fallback string) string {
@@ -399,8 +399,8 @@ func (p *ResponseData) GetHasErrors() bool {
 	return p.hasErrors
 }
 
-func (p *ResponseData) WithContentReasonAsJson(reason string) *ResponseData {
-	p.content = statusAsJson(p.Status, reason, p.hasErrors)
+func (p *ResponseData) WithContentWithCauseAsJson(cause string) *ResponseData {
+	p.content = statusAsJson(p.Status, cause, p.hasErrors)
 	return p
 }
 
@@ -529,9 +529,9 @@ func findInSubs(subs []*TreeDirNode, name string) *TreeDirNode {
 	if subs == nil {
 		return nil
 	}
-	for i := 0; i < len(subs); i++ {
-		if subs[i].Name == name {
-			return subs[i]
+	for _,node := range subs {
+		if node.Name == name {
+			return node
 		}
 	}
 	return nil
@@ -558,7 +558,6 @@ func (p *TreeDirNode) addPath(names []string) {
 			}
 		}
 	}
-	return
 }
 
 func decodeValue(encodedValue string) string {

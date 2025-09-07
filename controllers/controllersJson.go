@@ -64,45 +64,17 @@ func execDataAsJson(execId string, rc int, stdOut []byte, stdErr []byte) []byte 
 	return v
 }
 
-func statusAsJson(status int, reason string, error bool) []byte {
-	var b bytes.Buffer
-	b.WriteString("{\"error\":")
-	b.WriteString(fmt.Sprintf("%t", error))
-	b.WriteString(", \"status\":")
-	b.WriteString(strconv.Itoa(status))
-	b.WriteString(", \"msg\":\"")
-	b.WriteString(http.StatusText(status))
-	b.WriteString("\", \"cause\":\"")
-	b.WriteString(cleanStringForJson(reason))
-	b.WriteString("\"}")
-	return b.Bytes()
-}
-
-func StatusAsMap(status int, reason string, error bool) *map[string]interface{} {
+func statusAsJson(status int, cause string, error bool) []byte {
 	m := make(map[string]interface{})
 	m["error"] = error
 	m["status"] = status
 	m["msg"] = http.StatusText(status)
-	m["cause"] = reason
-	return &m
-}
-
-func cleanStringForJson(s string) string {
-	return cleanBytesForJson([]byte(s))
-}
-
-func cleanBytesForJson(s []byte) string {
-	var buffer bytes.Buffer
-	for _, c := range s {
-		if c == '"' {
-			buffer.WriteRune('\'')
-		} else {
-			if c >= ' ' && c <= 127 && c != '$' {
-				buffer.WriteRune(rune(c))
-			}
-		}
+	m["cause"] = cause
+	v, err := json.Marshal(m)
+	if err != nil {
+		panic(NewControllerError("controllers:statusAsJson:Marshal", http.StatusInternalServerError, fmt.Sprintf("JSON Marshal:Error:%s", err.Error())))
 	}
-	return buffer.String()
+	return v
 }
 
 func treeAsJson(root *TreeDirNode, params *UrlRequestParts) []byte {

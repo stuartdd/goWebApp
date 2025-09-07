@@ -183,13 +183,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog := getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Ping"), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Ping"), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getIsUpMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("ServerIsUp"), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("ServerIsUp"), shouldLog)
 		return
 	}
 	p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
@@ -283,10 +283,10 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Panic Check Done
 		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentReasonAsJson(a.String()), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(a.String()), shouldLog)
 		return
 	}
-	// Panic Check ????
+	// Panic Check Done
 	_, ok, shouldLog = getServerStatusMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		if h.longRunning.IsEnabled() {
@@ -313,10 +313,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
-		ofs, err := requestData.AsAdmin().GetOptionalQueryAsInt("offset", 0)
-		if err != nil {
-			panic(config.NewConfigError("Server Log:Invalid offset", http.StatusBadRequest, fmt.Sprintf("Get Sserver log 'offset' error:%s", err.Error())))
-		}
+		ofs := requestData.AsAdmin().GetOptionalQueryAsInt("offset", 0)
 		h.writeResponse(w, controllers.GetLog(h.config, ofs), shouldLog)
 		return
 	}
@@ -334,7 +331,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if configErrors.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
-			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentReasonAsJson("Config Reloaded"), shouldLog)
+			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Config Reloaded"), shouldLog)
 		} else {
 			panic(config.NewConfigError("Config: Failed to re-load", http.StatusInternalServerError, fmt.Sprintf("Config Reload Failed with %d errors", configErrors.ErrorCount())))
 		}
