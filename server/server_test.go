@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,6 +29,10 @@ func (l *TLog) Log(s string) {
 	l.B.WriteString("\n")
 	os.Stdout.WriteString(s)
 	os.Stdout.WriteString("\n")
+}
+
+func (l *TLog) Write(path string) {
+	os.WriteFile(filepath.Join(path, "TLog.log"), l.B.Bytes(), 0644)
 }
 
 func (l *TLog) VerboseFunction() func(string) {
@@ -547,7 +552,7 @@ func TestServerLog(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-
+	logging.Logger.Write(configData.GetLogDataPath())
 	resp, resBody := RunClientGet(t, configData, "server/log", 200, "?", -1, 0)
 	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
 	resp, resBody0 := RunClientGet(t, configData, "server/log?offset=0", 200, "?", -1, 0)

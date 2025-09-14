@@ -1,4 +1,12 @@
 #!/bin/bash
+if [ ! -d testdata/logs ]; then
+  mkdir -p testdata/logs
+  if [ $? -gt 0 ]; then
+    echo "Check Path: Could not create testdata/logs"
+    exit 1
+  fi
+  echo "Check Path: Created testdata/logs"
+fi
 
 cd external
 echo "--------------------------------------- $PWD"
@@ -7,7 +15,7 @@ if [ $? -eq 1 ]; then
   exit 1
 fi
 
-cd config
+cd ../config
 echo "--------------------------------------- $PWD"
 go test
 if [ $? -eq 1 ]; then

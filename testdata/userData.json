@@ -25,7 +25,6 @@
       "cache": "cache",
       "data": "stateData",
       "home": "",
-      "logs": "logs",
       "original": "***%{WebServerPictures}/originals/%{id}",
       "pics": "s-pics",
       "testtree": "***%{WebServerPictures}",
