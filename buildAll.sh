@@ -7,16 +7,17 @@ fi
 
 echo "*******************"
 if [ "$1" == "ARM" ]; then 
-  echo "* Build WebApp $1"
+  echo "* Build WebApp For ARM (RaspberryPi)"
   arch=ARM
 else
-  echo "* Build WebApp INTEL (Default)"
+  echo "* Build WebApp For INTEL (Default)"
   arch=INTEL
 fi
 
 if [ x"${WebServerRoot}" == "x" ]; then 
   echo "Value 'WebServerRoot' is not assigned to a variable"
-	exit 1
+  echo "This is where the files will be packaged for remote or local deployment"
+  exit 1
 fi
 
 echo "*******************"
@@ -25,12 +26,17 @@ homeDir=$(pwd)
 deployDir=$WebServerRoot
 
 echo "Deploy to $deployDir"
-if [ -e $deployDir/exec ]; then
-  echo Clean
+if [ -e $deployDir ]; then
+  echo "Clean Deployment root: $deployDir"
   rm -rf $deployDir
 fi
 
 mkdir $deployDir
+if [ $? -eq 1 ]; then
+  echo "Failed to create Deployment root: $deployDir"
+  exit 1
+fi
+
 cd $deployDir
 
 echo "COPY exec to $deployDir"
@@ -102,6 +108,7 @@ else
     echo "Build Failed: webtools INTEL build failed"
     exit 1
   fi
+  
   cp $deployDir/exec/webtools $homeDir/testdata/exec/webtools
   if [ $? -eq 1 ]; then
     echo "Build Failed: could not copy webtools to $homeDir/testdata/exec/webtools"
