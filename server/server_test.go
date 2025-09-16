@@ -552,6 +552,8 @@ func TestServerLog(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
+
+	// Make sure there is a log file to get!
 	RunClientGet(t, configData, "server/status", 200, "?", -1, 0)
 	WriteLogToFile(configData.GetLogDataPath())
 
