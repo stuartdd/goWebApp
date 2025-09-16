@@ -306,8 +306,9 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
+		
 		ofs := requestData.AsAdmin().GetOptionalQuery("offset", "0")
-		h.writeResponse(w, controllers.GetLog(h.config, ofs), shouldLog)
+		h.writeResponse(w, controllers.GetLog(h.config, h.logger.LogFileName(), ofs), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getFaviconMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)

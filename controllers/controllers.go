@@ -385,7 +385,7 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	return m1
 }
 
-func GetLog(configData *config.ConfigData, offsetString string) *ResponseData {
+func GetLog(configData *config.ConfigData, current string, offsetString string) *ResponseData {
 	ld := configData.GetLogData()
 	list := []*FileInfo{}
 	filepath.Walk(ld.Path, func(path string, info fs.FileInfo, err error) error {
@@ -414,10 +414,16 @@ func GetLog(configData *config.ConfigData, offsetString string) *ResponseData {
 	}
 
 	for i, v := range list {
-		b.WriteString("##! Offset[")
+		n := v.path[len(ld.Path):]
+		n = strings.TrimPrefix(n, "/")
+		if n == current {
+			b.WriteString("### Offset[")
+		} else {
+			b.WriteString("##! Offset[")
+		}
 		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))
 		b.WriteString("] ")
-		b.WriteString(v.path[len(ld.Path):])
+		b.WriteString(n)
 		b.WriteString(" (")
 		b.WriteString(strconv.Itoa(int(v.size)))
 		b.WriteRune(')')
