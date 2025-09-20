@@ -385,7 +385,11 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	return m1
 }
 
-func DelLog(configData *config.ConfigData, logName string) *ResponseData {
+func DelLog(configData *config.ConfigData, logName string, current string) *ResponseData {
+	if logName == current {
+		panic(NewControllerError("Cannot remove current log", http.StatusForbidden, fmt.Sprintf("Cannot remove current log: %s", current)))
+	}
+
 	ld := filepath.Join(configData.GetLogData().Path, logName)
 	stats, err := os.Stat(ld)
 	if err != nil {
@@ -394,12 +398,11 @@ func DelLog(configData *config.ConfigData, logName string) *ResponseData {
 	if stats.IsDir() {
 		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", ld)))
 	}
-	if logName == configData.logg
 	err = os.Remove(ld)
 	if err != nil {
 		panic(NewControllerError("Could not be deleted", http.StatusForbidden, fmt.Sprintf("%s Could not be deleted. Error: %s", ld, err.Error())))
 	}
- 	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("Log file '%s' deleted OK", logName))
+	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("Log file '%s' deleted OK", logName))
 }
 
 func GetLog(configData *config.ConfigData, current string, offsetString string) *ResponseData {

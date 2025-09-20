@@ -570,6 +570,7 @@ func TestServerLog(t *testing.T) {
 
 	RunClientDelete(t,configData,"server/log/fred", http.StatusNotFound, "File not found")
 	RunClientDelete(t,configData,"server/log/..", http.StatusForbidden, "Is a directory")
+	RunClientDelete(t,configData,"server/log/DummyLogger.log", http.StatusForbidden, "Cannot remove current log")
 	RunClientDelete(t,configData,"server/log/TLog.log", http.StatusAccepted, "Log file 'TLog.log' deleted OK")
 	RunClientDelete(t,configData,"server/log/TLog.log", http.StatusNotFound, "File not found")
 

@@ -306,7 +306,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	p, ok, shouldLog = delServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
-		h.writeResponse(w, controllers.DelLog(h.config, p["log"]), shouldLog)
+		h.writeResponse(w, controllers.DelLog(h.config, p["log"], h.logger.LogFileName()), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
