@@ -59,6 +59,7 @@ var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLog
 var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLogTrue)
 var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLogTrue)
 var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldNotLogFalse)
+var delServerLogMatch = NewUrlRequestMatcher("/server/log/*", "DELETE", shouldLogTrue)
 
 // Get File asAdmin user. Location defined in admin user.
 var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLogTrue)
@@ -303,10 +304,14 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	p, ok, shouldLog = delServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
+	if ok {
+		h.writeResponse(w, controllers.DelLog(h.config, p["log"]), shouldLog)
+		return
+	}
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
-		
 		ofs := requestData.AsAdmin().GetOptionalQuery("offset", "0")
 		h.writeResponse(w, controllers.GetLog(h.config, h.logger.LogFileName(), ofs), shouldLog)
 		return
