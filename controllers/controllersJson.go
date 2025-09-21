@@ -41,7 +41,8 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 	return b.Bytes()
 }
 
-func execDataAsJson(execId string, rc int, stdOut []byte, stdErr []byte) []byte {
+func execDataAsJson(execId string, rc int, stdOut []byte, stdErr []byte, queries map[string][]string) []byte {
+
 	status := http.StatusOK
 	m := make(map[string]interface{})
 	if rc != 0 {
@@ -56,6 +57,7 @@ func execDataAsJson(execId string, rc int, stdOut []byte, stdErr []byte) []byte 
 	m["id"] = execId
 	m["stdOut"] = string(stdOut)
 	m["stdErr"] = string(stdErr)
+	updateMapWithQueries(m, queries)
 
 	v, err := json.Marshal(m)
 	if err != nil {
@@ -64,12 +66,13 @@ func execDataAsJson(execId string, rc int, stdOut []byte, stdErr []byte) []byte 
 	return v
 }
 
-func statusAsJson(status int, cause string, error bool) []byte {
+func statusAsJson(status int, cause string, error bool, queries map[string][]string) []byte {
 	m := make(map[string]interface{})
 	m["error"] = error
 	m["status"] = status
 	m["msg"] = http.StatusText(status)
 	m["cause"] = cause
+	updateMapWithQueries(m, queries)
 	v, err := json.Marshal(m)
 	if err != nil {
 		panic(NewControllerError("controllers:statusAsJson:Marshal", http.StatusInternalServerError, fmt.Sprintf("JSON Marshal:Error:%s", err.Error())))

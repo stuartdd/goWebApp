@@ -113,7 +113,7 @@ func (p *ReadFileHandler) Submit() *ResponseData {
 		if err == nil {
 			panic(NewControllerError("File was not be deleted", http.StatusUnprocessableEntity, fmt.Sprintf("File %s was not deleted", file)))
 		}
-		return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson("File deleted OK")
+		return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson("File deleted OK", p.parameters.Query)
 	} else {
 		fileContent, err := os.ReadFile(file)
 		if err != nil {
@@ -257,7 +257,7 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	if p.verbose != nil { // Only do this if abs necessary as Sprintf does not need to be done
 		p.verbose(fmt.Sprintf("File action[%s]:%s [%d] bytes", action, file, len(body)))
 	}
-	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("File:Action:%s %s", action, file))
+	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("File:Action:%s %s", action, file), p.parameters.Query)
 }
 
 func AppendFile(filename string, data []byte, perm os.FileMode) error {
@@ -277,14 +277,14 @@ func AppendFile(filename string, data []byte, perm os.FileMode) error {
 
 type ExecHandler struct {
 	parameters       *UrlRequestParts
-	makeExecResponse func(string, string, []byte, []byte, int) []byte
+	makeExecResponse func(string, string, []byte, []byte, int, map[string][]string) []byte
 	verbose          func(string)
 	isVerbose        bool
 	log              func(string)
 	execInfo         *config.ExecInfo
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, makeExecResponse func(string, string, []byte, []byte, int) []byte, logFunc func(string), verboseFunc func(string)) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, makeExecResponse func(string, string, []byte, []byte, int, map[string][]string) []byte, logFunc func(string), verboseFunc func(string)) Handler {
 	return &ExecHandler{
 		parameters:       urlParts,
 		makeExecResponse: makeExecResponse,
@@ -305,7 +305,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		}
 		runCommand.KillrocessWithPid(pid)
 		dataMap := map[string]interface{}{"error": false, "id": execId, "status": http.StatusOK, "msg": http.StatusText(http.StatusOK), "rc": 0, "stdOut": "Stop process complete", "stdErr": ""}
-		return NewResponseData(http.StatusOK).WithContentMapAsJson(dataMap).SetHasErrors(false)
+		return NewResponseData(http.StatusOK).WithContentMapAsJson(dataMap, p.parameters.Query).SetHasErrors(false)
 	}
 
 	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), execId, p.execInfo.StartLTSFile, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
@@ -335,9 +335,9 @@ func (p *ExecHandler) Submit() *ResponseData {
 	}
 
 	if p.makeExecResponse == nil {
-		return NewResponseData(p.execInfo.NzCodeReturns).WithContentFromExecAsJson(execId, code, p.execInfo.NzCodeReturns, stdOut, stdErr)
+		return NewResponseData(p.execInfo.NzCodeReturns).WithContentFromExecAsJson(execId, code, p.execInfo.NzCodeReturns, stdOut, stdErr, p.parameters.Query)
 	}
-	return NewResponseData(p.execInfo.NzCodeReturns).WithContentBytes(p.makeExecResponse(execId, p.execInfo.StdOutType, stdOut, stdErr, code))
+	return NewResponseData(p.execInfo.NzCodeReturns).WithContentBytes(p.makeExecResponse(execId, p.execInfo.StdOutType, stdOut, stdErr, code, p.parameters.Query))
 
 }
 
@@ -385,7 +385,7 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 	return m1
 }
 
-func DelLog(configData *config.ConfigData, logName string, current string) *ResponseData {
+func DelLog(configData *config.ConfigData, logName string, current string, queries map[string][]string) *ResponseData {
 	if logName == current {
 		panic(NewControllerError("Cannot remove current log", http.StatusForbidden, fmt.Sprintf("Cannot remove current log: %s", current)))
 	}
@@ -402,7 +402,7 @@ func DelLog(configData *config.ConfigData, logName string, current string) *Resp
 	if err != nil {
 		panic(NewControllerError("Could not be deleted", http.StatusForbidden, fmt.Sprintf("%s Could not be deleted. Error: %s", ld, err.Error())))
 	}
-	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("Log file '%s' deleted OK", logName))
+	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("Log file '%s' deleted OK", logName), queries)
 }
 
 func GetLog(configData *config.ConfigData, current string, offsetString string) *ResponseData {

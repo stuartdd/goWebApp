@@ -134,6 +134,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logFunc := h.logger.Log
 	verboseFunc := h.logger.VerboseFunction()
 	requestInfo := NewRequestInfo(r.Method, urlPath, r.URL.RawQuery, logFunc, verboseFunc)
+	staticFileData := h.config.GetStaticData()
+	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
 
 	defer func() {
 		var le LoggableError
@@ -150,12 +152,9 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				le = config.NewConfigErrorFromString(fmt.Sprintf("%v", rec), 404)
 			}
 			logFunc(le.LogError())
-			h.writeResponse(w, controllers.NewResponseData(le.Status()).SetHasErrors(true).WithContentMapAsJson(le.Map()), true)
+			h.writeResponse(w, controllers.NewResponseData(le.Status()).SetHasErrors(true).WithContentMapAsJson(le.Map(), requestData.Query), true)
 		}
 	}()
-
-	staticFileData := h.config.GetStaticData()
-	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
 
 	var isAbsolutePath bool
 	var requestUrlparts []string
@@ -183,13 +182,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog := getPingMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Ping"), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Ping", nil), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getIsUpMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("ServerIsUp"), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("ServerIsUp", nil), shouldLog)
 		return
 	}
 	p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
@@ -269,7 +268,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Panic Check Done
 		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "23"), 23, "Restart Requested")
 		h.actionQueue <- a
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapAsJson(map[string]interface{}{"Status": "RESTARTED"}), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapAsJson(map[string]interface{}{"Status": "RESTARTED"}, nil), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getServerExitMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
@@ -277,7 +276,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Panic Check Done
 		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a
-		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(a.String()), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(a.String(), nil), shouldLog)
 		return
 	}
 	// Panic Check Done
@@ -293,20 +292,20 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getServerTimeMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapAsJson(controllers.GetTimeAsMap()), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapAsJson(controllers.GetTimeAsMap(), nil), shouldLog)
 		return
 	}
 
 	_, ok, shouldLog = getServerUsersMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapAsJson(controllers.GetUsersAsMap(h.config.GetUsers())), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentMapAsJson(controllers.GetUsersAsMap(h.config.GetUsers()), nil), shouldLog)
 		return
 	}
 
 	p, ok, shouldLog = delServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
-		h.writeResponse(w, controllers.DelLog(h.config, p["log"], h.logger.LogFileName()), shouldLog)
+		h.writeResponse(w, controllers.DelLog(h.config, p["log"], h.logger.LogFileName(), requestData.Query), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
@@ -330,7 +329,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if configErrors.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
-			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Config Reloaded"), shouldLog)
+			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Config Reloaded", nil), shouldLog)
 		} else {
 			panic(config.NewConfigError("Config: Failed to re-load", http.StatusInternalServerError, fmt.Sprintf("Config Reload Failed with %d errors", configErrors.ErrorCount())))
 		}

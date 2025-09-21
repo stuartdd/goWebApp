@@ -399,12 +399,12 @@ func (p *ResponseData) GetHasErrors() bool {
 	return p.hasErrors
 }
 
-func (p *ResponseData) WithContentWithCauseAsJson(cause string) *ResponseData {
-	p.content = statusAsJson(p.Status, cause, p.hasErrors)
+func (p *ResponseData) WithContentWithCauseAsJson(cause string, queries map[string][]string) *ResponseData {
+	p.content = statusAsJson(p.Status, cause, p.hasErrors, queries)
 	return p
 }
 
-func (p *ResponseData) WithContentFromExecAsJson(execId string, rc int, nzRcStatus int, stdOut []byte, stdErr []byte) *ResponseData {
+func (p *ResponseData) WithContentFromExecAsJson(execId string, rc int, nzRcStatus int, stdOut []byte, stdErr []byte, queries map[string][]string) *ResponseData {
 	if rc != 0 {
 		p.SetHasErrors(true)
 		p.Status = nzRcStatus
@@ -413,11 +413,12 @@ func (p *ResponseData) WithContentFromExecAsJson(execId string, rc int, nzRcStat
 		p.Status = 200
 
 	}
-	p.content = execDataAsJson(execId, rc, stdOut, stdErr)
+	p.content = execDataAsJson(execId, rc, stdOut, stdErr, queries)
 	return p
 }
 
-func (p *ResponseData) WithContentMapAsJson(data map[string]interface{}) *ResponseData {
+func (p *ResponseData) WithContentMapAsJson(data map[string]interface{}, queries map[string][]string) *ResponseData {
+	updateMapWithQueries(data, queries)
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		panic(NewControllerError("Data Map to Json failed", http.StatusInternalServerError, fmt.Sprintf("WithContentMapAsJson:Marshal failed with Error:%s", err.Error())))
@@ -425,6 +426,30 @@ func (p *ResponseData) WithContentMapAsJson(data map[string]interface{}) *Respon
 		p.content = jsonData
 	}
 	return p
+}
+
+func updateMapWithQueries(m map[string]interface{}, q map[string][]string) {
+	if q == nil || m == nil {
+		return
+	}
+	for n, v := range q {
+		_, ok := m[n]
+		if !ok {
+			m[n] = arrayToString(v, ',')
+		}
+	}
+}
+
+func arrayToString(a []string, sep rune) string {
+	var buff bytes.Buffer
+	l := 0
+	for _, v := range a {
+		buff.WriteString(v)
+		l = buff.Len()
+		buff.WriteRune(sep)
+	}
+	buff.Truncate(l)
+	return buff.String()
 }
 
 /*
@@ -529,7 +554,7 @@ func findInSubs(subs []*TreeDirNode, name string) *TreeDirNode {
 	if subs == nil {
 		return nil
 	}
-	for _,node := range subs {
+	for _, node := range subs {
 		if node.Name == name {
 			return node
 		}

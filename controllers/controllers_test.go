@@ -42,7 +42,7 @@ func TestExecFailRcNonZero(t *testing.T) {
 	os.Remove(conf.GetExecInfo("cat").GetErrLogFile())
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{ExecParam: "cat"})
 
-	ex := NewExecHandler(params.AsAdmin(), conf, func(id string, respType string, out, err []byte, ec int) []byte {
+	ex := NewExecHandler(params.AsAdmin(), conf, func(id string, respType string, out, err []byte, ec int, q map[string][]string) []byte {
 		return []byte(fmt.Sprintf("{\"error\": %t, \"code\": %d, \"out\": \"%s\", \"err\": \"%s\"}", ec != 0, ec, out, err))
 	}, func(s string) {
 		// Log function
@@ -79,7 +79,7 @@ func TestExecFailCommandNotFound(t *testing.T) {
 	os.Remove(conf.GetExecInfo("c2").GetErrLogFile())
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{UserParam: "bob", ExecParam: "c2"})
 
-	ex := NewExecHandler(params, conf, func(id string, respType string, out, err []byte, ec int) []byte {
+	ex := NewExecHandler(params, conf, func(id string, respType string, out, err []byte, ec int, q map[string][]string) []byte {
 		return []byte(fmt.Sprintf("\"error\": %t, \"code\": %d, \"out\": \"%s\", \"err\": \"%s\"", ec != 0, ec, out, err))
 	}, func(s string) {
 		// Log function
@@ -110,7 +110,7 @@ func TestExecPass(t *testing.T) {
 
 	params := NewUrlRequestParts(conf).WithParameters(map[string]string{ExecParam: "ls"})
 
-	ex := NewExecHandler(params, conf, func(id string, respType string, out, err []byte, ec int) []byte {
+	ex := NewExecHandler(params, conf, func(id string, respType string, out, err []byte, ec int, q map[string][]string) []byte {
 		return []byte(fmt.Sprintf("\"error\": %t, \"code\": %d, \"out\": \"%s\", \"err\": \"%s\"", ec != 0, ec, out, err))
 	}, func(s string) {
 		// Log function
