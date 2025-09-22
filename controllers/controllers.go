@@ -386,6 +386,7 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 }
 
 func DelLog(configData *config.ConfigData, logName string, current string, queries map[string][]string) *ResponseData {
+	logName = decodeValue(logName)
 	if logName == current {
 		panic(NewControllerError("Cannot remove current log", http.StatusForbidden, fmt.Sprintf("Cannot remove current log: %s", current)))
 	}
