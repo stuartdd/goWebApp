@@ -427,26 +427,28 @@ func GetLog(configData *config.ConfigData, current string, offsetString string) 
 	offset, err := strconv.Atoi(offsetString)
 	if err != nil {
 		offset = 0
-		b.WriteString("##! Offset '")
+		b.WriteString("##I Index:")
 		b.WriteString(offsetString)
-		b.WriteString("' is not an integer. Offset set to 0")
+		b.WriteString(" is not an integer. Index set to 0")
 		b.WriteString("\n")
 	}
 
 	for i, v := range list {
-		n := v.path[len(ld.Path):]
-		n = strings.TrimPrefix(n, "/")
-		if n == current {
-			b.WriteString("### Offset[")
+		logName := v.path[len(ld.Path):]
+		logName = strings.TrimPrefix(logName, "/")
+		if logName == current {
+			b.WriteString("### ID:")
 		} else {
-			b.WriteString("##! Offset[")
+			b.WriteString("##! ID:")
 		}
 		b.WriteString(fmt.Sprintf("%2d", len(list)-(i+1)))
-		b.WriteString("] ")
-		b.WriteString(n)
-		b.WriteString(" (")
+		b.WriteString(" FN:")
+		b.WriteString(logName)
+		b.WriteString(" SI:")
 		b.WriteString(strconv.Itoa(int(v.size)))
-		b.WriteRune(')')
+		b.WriteRune(' ')
+		b.WriteString(" EN:")
+		b.WriteString(encodeValue(logName))
 		b.WriteString("\n")
 	}
 	if offset < 0 {
@@ -456,11 +458,11 @@ func GetLog(configData *config.ConfigData, current string, offsetString string) 
 		offset = len(list) - 1
 	}
 	fileName := list[len(list)-(offset+1)].path
-	b.WriteString("##! Displaying log File at Offset[")
+	b.WriteString("##I Displaying log File at Index:")
 	b.WriteString(fmt.Sprintf("%2d", offset))
-	b.WriteString("] ")
+	b.WriteString(" ")
 	b.WriteString(fileName[len(ld.Path):])
-	b.WriteString("\n##! -- --\n\n")
+	b.WriteString("\n##X -- --\n\n")
 
 	fileContent, err := os.ReadFile(fileName)
 	if err != nil {
