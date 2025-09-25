@@ -566,7 +566,7 @@ func TestServerLog(t *testing.T) {
 	}
 	resp, s := RunClientGet(t, configData, "server/log?offset=A", 200, "?", -1, 0)
 	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
-	AssertContains(t, s, []string{"##! Offset 'A' is not an integer"})
+	AssertContains(t, s, []string{"##I Index:A is not an integer. Index set to 0"})
 
 	RunClientDelete(t,configData,"server/log/fred", http.StatusNotFound, "File not found")
 	RunClientDelete(t,configData,"server/log/..", http.StatusForbidden, "Is a directory")
