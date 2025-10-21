@@ -27,10 +27,6 @@ func BenchmarkServer(b *testing.B) {
 	logger.Log(fmt.Sprintf("Run:%d", b.N))
 }
 
-func TestLoad(t *testing.T) {
-	logger.Log("------------->" + configDataBench.ConfigName)
-}
-
 // ------------------------------------------------------------------------------------------------------------
 
 func LoadConfigDataBenchmark() *config.ConfigData {

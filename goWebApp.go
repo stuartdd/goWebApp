@@ -113,22 +113,6 @@ func main() {
 		logger.Log(l)
 	}
 
-	go func() {
-		for {
-			a := <-actionQueue
-			switch a.Id {
-			case server.Exit:
-				logger.Log(fmt.Sprintf("Server Terminated : %s", a.String()))
-				time.Sleep(200 * time.Millisecond)
-				logger.Close()
-				time.Sleep(200 * time.Millisecond)
-				os.Exit(a.Rc)
-			case server.Ignore:
-				logger.Log("Server: Action Ignore")
-			}
-		}
-	}()
-
 	if doNotRun {
 		fmt.Print("Option -t (test) used. Server aborted")
 		os.Exit(0)
@@ -142,6 +126,25 @@ func main() {
 		os.Stderr.WriteString(s)
 		os.Exit(1)
 	}
+
+	go func() {
+		for {
+			a := <-actionQueue
+			if a != nil {
+				switch a.Id {
+				case server.Exit:
+					logger.Log(fmt.Sprintf("Server Terminated : %s", a.String()))
+					time.Sleep(200 * time.Millisecond)
+					logger.Close()
+					time.Sleep(200 * time.Millisecond)
+					webAppServer.Close(a.Rc)
+				case server.Ignore:
+					logger.Log("Server: Action Ignore")
+				}
+			}
+		}
+	}()
+
 	os.Exit(webAppServer.Start())
 }
 

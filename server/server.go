@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -402,9 +403,9 @@ func timeAsString() string {
 }
 
 type WebAppServer struct {
-	Handler     *ServerHandler
-	Server      *http.Server
-	LongRunning int
+	Handler  *ServerHandler
+	Server   *http.Server
+	ExitCode int
 }
 
 func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *runCommand.LongRunningManager, logger logging.Logger) (*WebAppServer, error) {
@@ -415,6 +416,7 @@ func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEven
 			Addr:    configData.GetPortString(),
 			Handler: handler,
 		},
+		ExitCode: 0,
 	}, nil
 }
 
@@ -425,6 +427,7 @@ func (p *WebAppServer) Log(s string) {
 func (p *WebAppServer) Close(rc int) int {
 	p.Server.Shutdown(context.TODO())
 	p.Handler.close()
+	p.ExitCode = rc
 	return rc
 }
 
@@ -460,14 +463,16 @@ func (p *WebAppServer) Start() int {
 
 	err := p.Server.ListenAndServe()
 	if err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			p.Log("Server Shutdown Clean")
+			return p.Close(p.ExitCode)
+		}
 		p.Log(fmt.Sprintf("Server Error      :%s.", err.Error()))
 		if strings.Contains(err.Error(), "address already in use") {
 			return p.Close(10)
 		}
-		return p.Close(1)
 	}
-	p.Log("Server Shutdown Clean")
-	return p.Close(0)
+	return p.Close(1)
 }
 
 func (p *WebAppServer) String() string {

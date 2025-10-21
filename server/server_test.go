@@ -865,7 +865,7 @@ func StopServer(t *testing.T, config *config.ConfigData) {
 			t.Fatalf("StopServer: client: could not read response body: %s\n", err)
 		}
 		AssertContains(t, string(s), []string{"Exit Requested", "error\":false", "msg\":\"Accepted", "status\":20"})
-		time.Sleep(10000 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	if serverState == "Running" {
 		t.Fatal("StopServer: Server was not stopped")
@@ -874,6 +874,8 @@ func StopServer(t *testing.T, config *config.ConfigData) {
 
 func RunServer(config *config.ConfigData, logger logging.Logger) {
 	actionQueue := make(chan *ActionEvent, 10)
+	defer close(actionQueue)
+
 	var lrm *runCommand.LongRunningManager
 	var err error
 	if config.GetExecPath() != "" {
@@ -882,28 +884,28 @@ func RunServer(config *config.ConfigData, logger logging.Logger) {
 			panic(fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))
 		}
 	}
-	server, err := NewWebAppServer(config, actionQueue, lrm, logger)
+	webAppServer, err := NewWebAppServer(config, actionQueue, lrm, logger)
 	if err != nil {
 		panic(fmt.Sprintf("NewWebAppServer: failed to initialise. '%s'. ABORTED", err.Error()))
 	}
-	defer close(actionQueue)
 	go func() {
 		for {
 			ae := <-actionQueue
-			switch ae.Id {
-			case Exit:
-				serverState = "Stopped"
-				server.Close(1)
-				fmt.Printf("Server: Stopped\n")
-			case Ignore:
-				fmt.Printf("Server: Ignore\n")
+			if ae != nil {
+				switch ae.Id {
+				case Exit:
+					serverState = "Stopped"
+					webAppServer.Close(ae.Rc)
+				case Ignore:
+					fmt.Printf("Server: Ignore\n")
+				}
 			}
 		}
 	}()
 
 	serverState = "Running"
-	server.Start()
-	fmt.Printf("Returned from server Start\n")
+	rc := webAppServer.Start()
+	fmt.Printf("Returned from Server. RC:%d. State:%s\n", rc, serverState)
 
 }
 
