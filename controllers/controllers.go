@@ -69,6 +69,14 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])
 }
 
+func GetSetProperty(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
+	return NewResponseData(200).WithContentBytes([]byte(configData.GetSetUserProp(urlParts.parameters))).WithMimeType("txt")
+}
+
+func GetPropertiesForUser(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
+	return NewResponseData(200).WithContentMapAsJson(configData.GetPropertiesMapForUser(urlParts.parameters), urlParts.Query).WithMimeType("json")
+}
+
 type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData

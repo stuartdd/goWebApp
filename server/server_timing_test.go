@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,7 +12,7 @@ import (
 	"github.com/stuartdd/goWebApp/runCommand"
 )
 
-var configData = LoadConfigDataBenchmark()
+var configDataBench = LoadConfigDataBenchmark()
 var requestURL = ""
 
 // GOMAXPROCS=1 go test -bench=BenchmarkServer -benchmem -benchtime=10s
@@ -22,16 +24,27 @@ func BenchmarkServer(b *testing.B) {
 	if res.StatusCode != 200 {
 		b.Fatalf("Status Expected 200 Actual %d", res.StatusCode)
 	}
-	logger.Log(fmt.Sprintf("Run:%d",b.N))
+	logger.Log(fmt.Sprintf("Run:%d", b.N))
 }
 
 func TestLoad(t *testing.T) {
-	logger.Log("------------->" + configData.ConfigName)
+	logger.Log("------------->" + configDataBench.ConfigName)
 }
 
 // ------------------------------------------------------------------------------------------------------------
 
 func LoadConfigDataBenchmark() *config.ConfigData {
+	notRunBench := true
+	for i, v := range os.Args {
+		if strings.Contains(v, "bench") {
+			logger.Log(fmt.Sprintf("LoadConfigDataBenchmark: BENCH arg found: Arg[%d]=%s", i, v))
+			notRunBench = false
+		}
+	}
+	if notRunBench {
+		logger.Log("LoadConfigDataBenchmark: BENCH arg not found:")
+		return nil
+	}
 	errList := config.NewConfigErrorData()
 	cd := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
 	if errList.ErrorCount() > 1 || cd == nil {

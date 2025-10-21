@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -68,6 +69,9 @@ var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", sho
 // Script must be in  config:"ExecPath":
 // User will be "admin"
 var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLogTrue)
+var getPropUserNameValueMatch = NewUrlRequestMatcher("/prop/user/*/name/*/value/*", "GET", shouldLogTrue)
+var getPropUserNameMatch = NewUrlRequestMatcher("/prop/user/*/name/*", "GET", shouldLogTrue)
+var getPropUserMatch = NewUrlRequestMatcher("/prop/user/*", "GET", shouldLogTrue)
 
 var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLogTrue)
 var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLogTrue)
@@ -233,6 +237,25 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 		return
 	}
+	p, ok, shouldLog = getPropUserNameValueMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
+	if ok {
+		// Panic Check Done
+		h.writeResponse(w, controllers.GetSetProperty(requestData.WithParameters(p), h.config), shouldLog)
+		return
+	}
+	p, ok, shouldLog = getPropUserNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
+	if ok {
+		// Panic Check Done
+		h.writeResponse(w, controllers.GetSetProperty(requestData.WithParameters(p), h.config), shouldLog)
+		return
+	}
+	p, ok, shouldLog = getPropUserMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
+	if ok {
+		// Panic Check Done
+		h.writeResponse(w, controllers.GetPropertiesForUser(requestData.WithParameters(p), h.config), shouldLog)
+		return
+	}
+
 	p, ok, shouldLog = getFileUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
@@ -380,12 +403,18 @@ func timeAsString() string {
 
 type WebAppServer struct {
 	Handler     *ServerHandler
+	Server      *http.Server
 	LongRunning int
 }
 
 func NewWebAppServer(configData *config.ConfigData, actionQueue chan *ActionEvent, lrm *runCommand.LongRunningManager, logger logging.Logger) (*WebAppServer, error) {
+	handler := NewServerHandler(configData, actionQueue, lrm, logger, time.Now())
 	return &WebAppServer{
-		Handler: NewServerHandler(configData, actionQueue, lrm, logger, time.Now()),
+		Handler: handler,
+		Server: &http.Server{
+			Addr:    configData.GetPortString(),
+			Handler: handler,
+		},
 	}, nil
 }
 
@@ -394,6 +423,7 @@ func (p *WebAppServer) Log(s string) {
 }
 
 func (p *WebAppServer) Close(rc int) int {
+	p.Server.Shutdown(context.TODO())
 	p.Handler.close()
 	return rc
 }
@@ -428,7 +458,7 @@ func (p *WebAppServer) Start() int {
 		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}
 
-	err := http.ListenAndServe(p.Handler.config.GetPortString(), p.Handler)
+	err := p.Server.ListenAndServe()
 	if err != nil {
 		p.Log(fmt.Sprintf("Server Error      :%s.", err.Error()))
 		if strings.Contains(err.Error(), "address already in use") {
@@ -436,6 +466,7 @@ func (p *WebAppServer) Start() int {
 		}
 		return p.Close(1)
 	}
+	p.Log("Server Shutdown Clean")
 	return p.Close(0)
 }
 

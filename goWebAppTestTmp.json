@@ -7,7 +7,7 @@
         "jpeg",
         "log"
     ],
-    "UserPropertiesFile":"",
+"UserPropertiesFile": "../userProperties.json",
     "ContentTypeCharset": "utf-8",
     "FaviconIcoPath": "favicon1.ico",
     "LogData": {

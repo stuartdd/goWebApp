@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -54,6 +56,9 @@ var logger = &TLog{}
 const postDataFile1 = "{\"Data\":\"This is data ONE for file 1\"}"
 const postDataFile2 = "{\"Data\":\"This is data TWO for file 2\"}"
 const testdatafile = "testdata.json"
+const testConfigFile = "../goWebAppTest.json"
+const testConfigFileTmp = "../goWebAppTestTmp.json"
+const testPropertyFile = "../userProperties.json"
 
 func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "0", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/x/b/1/c/4", "GET", false, "")
@@ -72,8 +77,160 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "11", NewUrlRequestMatcher("", "get", true), "", "GET", false, "")
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
 }
+func TestGetSetPropNewFile(t *testing.T) {
+	os.Remove(testConfigFileTmp)
+	os.Remove(testPropertyFile)
+	updateConfigData(t, testConfigFileTmp, "\"UserPropertiesFile\":", fmt.Sprintf("\"UserPropertiesFile\": \"%s\",", testPropertyFile))
+	configData := loadConfigData(t, testConfigFileTmp)
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	defer func() {
+		StopServer(t, configData)
+		os.Remove(testConfigFileTmp)
+		os.Remove(testPropertyFile)
+	}()
+
+	if configData.FileData.UserPropertiesFile != testPropertyFile {
+		t.Fatalf("UserPropertiesFile is not %s", testPropertyFile)
+	}
+	url := "prop/user/bob/name/xx123/value/xxABC"
+	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "text/plain; charset=utf-8" {
+		t.Fatal("Content-Type should be text/plain; charset=utf-8")
+	}
+	if respBody != "xxABC" {
+		t.Fatalf("Result initial set should be xxABC. It is '%s'", respBody)
+	}
+
+	url = "prop/user/bob/name/AB/value/CD"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "text/plain; charset=utf-8" {
+		t.Fatal("Content-Type should be text/plain; charset=utf-8")
+	}
+	if respBody != "CD" {
+		t.Fatalf("Result first read should be CD. It is '%s'", respBody)
+	}
+
+	url = "prop/user/bob/name/xx123"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "text/plain; charset=utf-8" {
+		t.Fatal("Content-Type should be text/plain; charset=utf-8")
+	}
+	if respBody != "xxABC" {
+		t.Fatalf("Result first read should be xxABC. It is '%s'", respBody)
+	}
+
+	url = "prop/user/bob/name/AB"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "text/plain; charset=utf-8" {
+		t.Fatal("Content-Type should be text/plain; charset=utf-8")
+	}
+	if respBody != "CD" {
+		t.Fatalf("Result first read should be CD. It is '%s'", respBody)
+	}
+
+	url = "prop/user/bob/name/xx123/value/yyABC"
+	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if respBody != "yyABC" {
+		t.Fatalf("Result of change value should be yyABC. It is '%s'", respBody)
+	}
+	time.Sleep(300 * time.Millisecond) // Delay as write to propertiers file is async
+
+	url = "prop/user/bob/name/xx123"
+	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if respBody != "yyABC" {
+		t.Fatalf("Result second read should be yyABC. It is '%s'", respBody)
+	}
+
+	url = "prop/user/bob/name/AB"
+	_, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if respBody != "CD" {
+		t.Fatalf("Result was changed by update. Should be CD. '%s'", respBody)
+	}
+
+	url = "prop/user/bob"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
+		t.Fatal("Content-Type should be application/json; charset=utf-8")
+	}
+	AssertContains(t, respBody, []string{"\"AB\":\"CD\"", "\"xx123\":\"yyABC\""})
+	url = "prop/user/stuart"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
+		t.Fatal("Content-Type should be application/json; charset=utf-8")
+	}
+	if respBody != "{}" {
+		t.Fatalf("Result Should be empty json. It was '%s'", respBody)
+	}
+
+	url = "prop/user/frrrred/name/AB/value/XX"
+	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
+		t.Fatal("Content-Type should be application/json; charset=utf-8")
+	}
+	AssertContains(t, respBody, []string{"User not found", "\"error\":true"})
+	url = "prop/user/frrrred/name/AB"
+	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
+		t.Fatal("Content-Type should be application/json; charset=utf-8")
+	}
+	AssertContains(t, respBody, []string{"User not found", "\"error\":true"})
+
+	url = "prop/user/frrrred"
+	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
+		t.Fatal("Content-Type should be application/json; charset=utf-8")
+	}
+	AssertContains(t, respBody, []string{"User not found", "\"error\":true"})
+}
+
+func TestGetSetPropNoFileDef(t *testing.T) {
+	os.Remove(testConfigFileTmp)
+	updateConfigData(t, testConfigFileTmp, "\"UserPropertiesFile\":", "")
+	configData := loadConfigData(t, testConfigFileTmp)
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	defer func() {
+		StopServer(t, configData)
+		os.Remove(testConfigFileTmp)
+	}()
+
+	if configData.FileData.UserPropertiesFile != "" {
+		t.Fatal("UserPropertiesFile is not empty")
+	}
+	url := "prop/user/bob/name/xx123/value/xxABC"
+	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "text/plain; charset=utf-8" {
+		t.Fatal("Content-Type should be text/plain; charset=utf-8")
+	}
+	if respBody != "xxABC" {
+		t.Fatalf("Result should be xxABC. It is '%s'", respBody)
+	}
+
+	url = "prop/user/bob/name/xx123"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "text/plain; charset=utf-8" {
+		t.Fatal("Content-Type should be text/plain; charset=utf-8")
+	}
+	if respBody != "" {
+		t.Fatalf("Result should be empty. It is '%s'", respBody)
+	}
+	url = "prop/user/bob"
+	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
+		t.Fatal("Content-Type should be application/json; charset=utf-8")
+	}
+	if respBody != "{}" {
+		t.Fatalf("Result Should be empty json. It was '%s'", respBody)
+	}
+}
+
 func TestServerGetUsers(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -89,7 +246,7 @@ func TestServerGetUsers(t *testing.T) {
 }
 
 func TestServerGetTime(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -105,8 +262,9 @@ func TestServerGetTime(t *testing.T) {
 	})
 	AssertLogNotContains(t, logger, []string{"GET:/server/time"})
 }
+
 func TestServerStatus(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -124,7 +282,7 @@ func TestServerStatus(t *testing.T) {
 
 }
 func TestServer(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -148,11 +306,10 @@ func TestServer(t *testing.T) {
 	})
 
 	url = "files/user/stuart/loc/data/name/state.json"
-	_, respBody = RunClientGet(t, configData, url, 200, "?", 112, 10)
+	_, respBody = RunClientGet(t, configData, url, 200, "?", 71, 10)
 	AssertContains(t, respBody, []string{
-		"\"displayOptions\"",
-		"\"optionShowResponse\"",
-		"\"optionSuppressTime\"",
+		"\"id\":\"stuart\"",
+		"\"info\":true",
 	})
 
 	url = "server/users"
@@ -173,7 +330,7 @@ func TestServer(t *testing.T) {
 
 }
 func TestStatic(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -205,7 +362,7 @@ func TestStatic(t *testing.T) {
 
 }
 func TestFilePath(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -224,7 +381,7 @@ func TestFilePath(t *testing.T) {
 }
 
 func TestTree(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -251,7 +408,7 @@ func TestTree(t *testing.T) {
 
 }
 func TestGetFavicon(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -268,7 +425,7 @@ func TestGetFavicon(t *testing.T) {
 }
 
 func TestPostFileAndDelete(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -316,7 +473,7 @@ func TestPostFileAndDelete(t *testing.T) {
 }
 
 func TestPostFileOverwriteAndDelete(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -360,7 +517,7 @@ func TestPostFileOverwriteAndDelete(t *testing.T) {
 }
 
 func TestPostFileAppendAndDelete(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -405,7 +562,7 @@ func TestPostFileAppendAndDelete(t *testing.T) {
 
 func TestReadDir(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -434,7 +591,7 @@ func TestReadDir(t *testing.T) {
 
 func TestReadDirNotFound(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -451,7 +608,7 @@ func TestReadDirNotFound(t *testing.T) {
 
 func TestReadFile(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -464,12 +621,11 @@ func TestReadFile(t *testing.T) {
 	}
 
 	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
-	os.Stderr.WriteString(logger.Get())
 }
 
 func TestReadFileNotUser(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -483,7 +639,7 @@ func TestReadFileNotUser(t *testing.T) {
 
 func TestReadFileNotLoc(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -497,7 +653,7 @@ func TestReadFileNotLoc(t *testing.T) {
 
 func TestReadFileNotName(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -511,7 +667,7 @@ func TestReadFileNotName(t *testing.T) {
 
 func TestReadFileIsDir(t *testing.T) {
 
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -528,7 +684,7 @@ func TestReadFileIsDir(t *testing.T) {
 }
 
 func TestServerTime(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -546,7 +702,7 @@ func TestServerTime(t *testing.T) {
 	}
 }
 func TestServerLog(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -568,16 +724,16 @@ func TestServerLog(t *testing.T) {
 	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
 	AssertContains(t, s, []string{"##I Index:A is not an integer. Index set to 0"})
 
-	RunClientDelete(t,configData,"server/log/fred", http.StatusNotFound, "File not found")
-	RunClientDelete(t,configData,"server/log/..", http.StatusForbidden, "Is a directory")
-	RunClientDelete(t,configData,"server/log/DummyLogger.log", http.StatusForbidden, "Cannot remove current log")
-	RunClientDelete(t,configData,"server/log/TLog.log", http.StatusAccepted, "Log file 'TLog.log' deleted OK")
-	RunClientDelete(t,configData,"server/log/TLog.log", http.StatusNotFound, "File not found")
+	RunClientDelete(t, configData, "server/log/fred", http.StatusNotFound, "File not found")
+	RunClientDelete(t, configData, "server/log/..", http.StatusForbidden, "Is a directory")
+	RunClientDelete(t, configData, "server/log/DummyLogger.log", http.StatusForbidden, "Cannot remove current log")
+	RunClientDelete(t, configData, "server/log/TLog.log", http.StatusAccepted, "Log file 'TLog.log' deleted OK")
+	RunClientDelete(t, configData, "server/log/TLog.log", http.StatusNotFound, "File not found")
 
 }
 
 func TestServerIsUp(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -592,7 +748,7 @@ func TestServerIsUp(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	configData := loadConfigData(t)
+	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -605,7 +761,6 @@ func TestClient(t *testing.T) {
 	RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 54, 2)
 	RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 75, 2)
 	AssertLogContains(t, logger, []string{"Req:  GET:/ABC", "Error: Status:404"})
-	os.Stderr.WriteString(logger.Get())
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -686,7 +841,6 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 		len, err := strconv.Atoi(res.Header["Content-Length"][0])
 		if err != nil {
 			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' Content-Length conversion error:'%s'", config.GetPortString(), path, minLen, maxLen, err)
-
 		}
 		if len < minLen || len > maxLen {
 			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' \nActual   '%d'\n%s", config.GetPortString(), path, minLen, maxLen, len, resBody)
@@ -695,20 +849,31 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 	return res, string(resBody)
 }
 
+func StopServer(t *testing.T, config *config.ConfigData) {
+	if serverState == "Running" {
+		path := "server/exit"
+		requestURL := fmt.Sprintf("http://localhost%s/%s", config.GetPortString(), path)
+		res, err := http.Get(requestURL)
+		if err != nil {
+			t.Fatalf("StopServer: Client error: %s", err.Error())
+		}
+		if res.StatusCode != 202 {
+			t.Fatalf("StopServer: Status for path http://localhost%s/%s. Expected %d Actual %d", config.GetPortString(), path, 202, res.StatusCode)
+		}
+		s, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatalf("StopServer: client: could not read response body: %s\n", err)
+		}
+		AssertContains(t, string(s), []string{"Exit Requested", "error\":false", "msg\":\"Accepted", "status\":20"})
+		time.Sleep(10000 * time.Millisecond)
+	}
+	if serverState == "Running" {
+		t.Fatal("StopServer: Server was not stopped")
+	}
+}
+
 func RunServer(config *config.ConfigData, logger logging.Logger) {
 	actionQueue := make(chan *ActionEvent, 10)
-	defer close(actionQueue)
-	go func() {
-		for {
-			ae := <-actionQueue
-			switch ae.Id {
-			case Exit:
-				fmt.Printf("Server: Stopped\n")
-			case Ignore:
-				fmt.Printf("Server: Ignore\n")
-			}
-		}
-	}()
 	var lrm *runCommand.LongRunningManager
 	var err error
 	if config.GetExecPath() != "" {
@@ -717,13 +882,29 @@ func RunServer(config *config.ConfigData, logger logging.Logger) {
 			panic(fmt.Sprintf("LongRunningManager: failed to initialise. '%s'. ABORTED", err.Error()))
 		}
 	}
-
 	server, err := NewWebAppServer(config, actionQueue, lrm, logger)
 	if err != nil {
 		panic(fmt.Sprintf("NewWebAppServer: failed to initialise. '%s'. ABORTED", err.Error()))
 	}
+	defer close(actionQueue)
+	go func() {
+		for {
+			ae := <-actionQueue
+			switch ae.Id {
+			case Exit:
+				serverState = "Stopped"
+				server.Close(1)
+				fmt.Printf("Server: Stopped\n")
+			case Ignore:
+				fmt.Printf("Server: Ignore\n")
+			}
+		}
+	}()
+
 	serverState = "Running"
 	server.Start()
+	fmt.Printf("Returned from server Start\n")
+
 }
 
 func AssertHeaderEquals(t *testing.T, res *http.Response, headerName, expected0 string) {
@@ -839,9 +1020,9 @@ func AssertMatch(t *testing.T, message string, matcher *UrlRequestMatcher, url s
 	}
 }
 
-func loadConfigData(t *testing.T) *config.ConfigData {
+func loadConfigData(t *testing.T, file string) *config.ConfigData {
 	errList := config.NewConfigErrorData()
-	configData := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
+	configData := config.NewConfigData(file, "goWebApp", false, false, false, errList)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
 	}
@@ -849,4 +1030,53 @@ func loadConfigData(t *testing.T) *config.ConfigData {
 		t.Fatalf("Config is nil. Load failed\n%s", errList.String())
 	}
 	return configData
+}
+
+var udCfgLock sync.Mutex
+
+func updateConfigData(t *testing.T, Oufile string, li, rp string) {
+	udCfgLock.Lock()
+	defer udCfgLock.Unlock()
+
+	fi, err := os.OpenFile(testConfigFile, os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		t.Fatalf("open read file error: %v", err)
+	}
+	defer fi.Close()
+	fo, err := os.Create(Oufile)
+	if err != nil {
+		t.Fatalf("open create file error: %v", err)
+	}
+	defer fo.Close()
+
+	inLine := ""
+
+	sc := bufio.NewScanner(fi)
+	for sc.Scan() {
+		inLine = sc.Text()
+		if strings.Contains(inLine, li) {
+			if rp != "" {
+				_, err = fo.WriteString(rp)
+				if err != nil {
+					t.Fatalf("open write li error: %v", err)
+				}
+				_, err = fo.WriteString("\n")
+				if err != nil {
+					t.Fatalf("open write li EOL file error: %v", err)
+				}
+			}
+		} else {
+			_, err = fo.WriteString(inLine)
+			if err != nil {
+				t.Fatalf("open write file error: %v", err)
+			}
+			_, err = fo.WriteString("\n")
+			if err != nil {
+				t.Fatalf("open write EOL file error: %v", err)
+			}
+		}
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatalf("scan file error: %v", err)
+	}
 }
