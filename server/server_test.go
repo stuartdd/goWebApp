@@ -92,7 +92,7 @@ func TestGetSetPropNewFile(t *testing.T) {
 		os.Remove(testPropertyFile)
 	}()
 
-	if configData.FileData.UserPropertiesFile != testPropertyFile {
+	if configData.ConfigFileData.UserPropertiesFile != testPropertyFile {
 		t.Fatalf("UserPropertiesFile is not %s", testPropertyFile)
 	}
 	url := "prop/user/bob/name/xx123/value/xxABC"
@@ -199,7 +199,7 @@ func TestGetSetPropNoFileDef(t *testing.T) {
 		os.Remove(testConfigFileTmp)
 	}()
 
-	if configData.FileData.UserPropertiesFile != "" {
+	if configData.ConfigFileData.UserPropertiesFile != "" {
 		t.Fatal("UserPropertiesFile is not empty")
 	}
 	url := "prop/user/bob/name/xx123/value/xxABC"

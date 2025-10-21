@@ -418,7 +418,7 @@ func (p *ConfigDataFromFile) String() (string, error) {
 }
 
 type ConfigData struct {
-	FileData         *ConfigDataFromFile
+	ConfigFileData   *ConfigDataFromFile
 	CurrentPath      string
 	ModuleName       string
 	ConfigName       string
@@ -458,7 +458,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	}
 
 	configDataExternal := &ConfigData{
-		FileData:         nil,
+		ConfigFileData:   nil,
 		UserProps:        nil,
 		Templating:       false,
 		Debugging:        debugging,
@@ -509,14 +509,14 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		return nil
 	}
 
-	configDataExternal.FileData = configDataFromFile
+	configDataExternal.ConfigFileData = configDataFromFile
 
-	if len(configDataExternal.FileData.ThumbnailTrim) < 2 {
+	if len(configDataExternal.ConfigFileData.ThumbnailTrim) < 2 {
 		configErrors.AddError("Config data entry ThumbnailTrim data has less than 2 entries")
 	}
 
-	if configDataExternal.FileData.LogData != nil {
-		n := configDataExternal.FileData.LogData.ShowPathInStatus
+	if configDataExternal.ConfigFileData.LogData != nil {
+		n := configDataExternal.ConfigFileData.LogData.ShowPathInStatus
 		if n < 0 || n > 10 {
 			configErrors.AddError(fmt.Sprintf("Config data entry LogData.ShowPathInStatus=%d must be from 0 to 10", n))
 		}
@@ -582,7 +582,7 @@ func (p *ConfigData) GetSetUserProp(data map[string]string) string {
 	if !ok {
 		value = ""
 	}
-	if p.FileData.UserPropertiesFile == "" {
+	if p.ConfigFileData.UserPropertiesFile == "" {
 		return value
 	}
 	key := fmt.Sprintf("%s.%s", user, name)
@@ -597,21 +597,21 @@ Update default values (Home & Hidden)
 For each user.location substitute the environment var and check the resolved location exists.
 */
 func (p *ConfigData) loadUserData() error {
-	if p.FileData.UserDataPath == "" {
+	if p.ConfigFileData.UserDataPath == "" {
 		return nil
 	}
-	content, err := os.ReadFile(p.FileData.UserDataPath)
+	content, err := os.ReadFile(p.ConfigFileData.UserDataPath)
 	if err != nil {
-		return fmt.Errorf("failed to read user data file:%s. Error:%s", p.FileData.UserDataPath, err.Error())
+		return fmt.Errorf("failed to read user data file:%s. Error:%s", p.ConfigFileData.UserDataPath, err.Error())
 	}
 	userData := make(map[string]UserData)
 	err = json.Unmarshal(content, &userData)
 	if err != nil {
-		return fmt.Errorf("failed to understand user data file:%s. Error:%s", p.FileData.UserDataPath, err.Error())
+		return fmt.Errorf("failed to understand user data file:%s. Error:%s", p.ConfigFileData.UserDataPath, err.Error())
 	}
 
 	for n, v := range userData {
-		_, ok := p.FileData.Users[n]
+		_, ok := p.ConfigFileData.Users[n]
 		if ok {
 			return fmt.Errorf("duplicate User '%s' defined in Users and UserDataPath. Config file:%s", n, p.ConfigName)
 		}
@@ -622,7 +622,7 @@ func (p *ConfigData) loadUserData() error {
 			b := false
 			v.Hidden = &b
 		}
-		p.FileData.Users[n] = v
+		p.ConfigFileData.Users[n] = v
 	}
 
 	return nil
@@ -697,21 +697,21 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		}
 	}
 
-	if p.FileData.ExecPath != "" {
-		f, e = p.checkRootPathExists(p.FileData.ExecPath, userConfigEnv, true) // Will check ExecPath
+	if p.ConfigFileData.ExecPath != "" {
+		f, e = p.checkRootPathExists(p.ConfigFileData.ExecPath, userConfigEnv, true) // Will check ExecPath
 		if e != nil {
 			configErrors.AddError(fmt.Sprintf("Config Error: ExecManager %s", e))
 		} else {
-			p.FileData.ExecPath = f
+			p.ConfigFileData.ExecPath = f
 		}
 	}
 
-	if p.FileData.UserDataPath != "" {
-		f, e = p.checkRootPathExists(p.FileData.UserDataPath, userConfigEnv, false) // Will check UserDataPath
+	if p.ConfigFileData.UserDataPath != "" {
+		f, e = p.checkRootPathExists(p.ConfigFileData.UserDataPath, userConfigEnv, false) // Will check UserDataPath
 		if e != nil {
 			configErrors.AddError(fmt.Sprintf("Config Error: UserDataPath %s. %s", f, e))
 		}
-		p.FileData.UserDataPath = f
+		p.ConfigFileData.UserDataPath = f
 	}
 
 	if p.IsTemplating() {
@@ -741,7 +741,7 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 	}
 	p.SetFaviconIcoPath(icon)
 
-	for execName, execData := range p.FileData.Exec {
+	for execName, execData := range p.ConfigFileData.Exec {
 		if execData.Detached {
 			if execData.LogDir != "" {
 				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", execName, execData.LogDir))
@@ -799,7 +799,7 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		execData.id = execName
 	}
 
-	for userId, userData := range p.FileData.Users {
+	for userId, userData := range p.ConfigFileData.Users {
 		if userData.Home == "" {
 			userData.Home = userId
 		}
@@ -905,11 +905,11 @@ func (p *ConfigData) SaveMe() error {
 }
 
 func (p *ConfigData) HasStaticData() bool {
-	return p.FileData.StaticData.HasStaticData()
+	return p.ConfigFileData.StaticData.HasStaticData()
 }
 
 func (p *ConfigData) getNextReloadConfigMillis() int64 {
-	return time.Now().UnixMilli() + (p.FileData.ReloadConfigSeconds * 1000)
+	return time.Now().UnixMilli() + (p.ConfigFileData.ReloadConfigSeconds * 1000)
 }
 
 func (p *ConfigData) IsTimeToReloadConfig() bool {
@@ -926,15 +926,15 @@ func (p *ConfigData) GetTimeToReloadConfig() float64 {
 }
 
 func (p *ConfigData) GetServerName() string {
-	return p.FileData.ServerName
+	return p.ConfigFileData.ServerName
 }
 
 func (p *ConfigData) GetExecPath() string {
-	return p.FileData.ExecPath
+	return p.ConfigFileData.ExecPath
 }
 
 func (p *ConfigData) GetUserData(user string) *UserData {
-	ud, ok := p.FileData.Users[user]
+	ud, ok := p.ConfigFileData.Users[user]
 	if ok {
 		return &ud
 	}
@@ -942,7 +942,7 @@ func (p *ConfigData) GetUserData(user string) *UserData {
 }
 
 func (p *ConfigData) GetUsers() *map[string]UserData {
-	return &p.FileData.Users
+	return &p.ConfigFileData.Users
 }
 
 func (p *ConfigData) AddUser(user string) error {
@@ -956,13 +956,13 @@ func (p *ConfigData) AddUser(user string) error {
 		Locations: map[string]string{"data": "stateData"},
 		Env:       map[string]string{},
 	}
-	p.FileData.Users[user] = ud
+	p.ConfigFileData.Users[user] = ud
 	return nil
 }
 
 func (p *ConfigData) HasUser(user string) bool {
 	ulc := strings.ToLower(user)
-	for na := range p.FileData.Users {
+	for na := range p.ConfigFileData.Users {
 		if strings.ToLower(na) == ulc {
 			return true
 		}
@@ -976,7 +976,7 @@ func (p *ConfigData) GetUserRoot(user string) string {
 
 func (p *ConfigData) GetUserNamesList() []string {
 	unl := []string{}
-	for na, u := range p.FileData.Users {
+	for na, u := range p.ConfigFileData.Users {
 		if !u.IsHidden() {
 			unl = append(unl, na)
 		}
@@ -985,7 +985,7 @@ func (p *ConfigData) GetUserNamesList() []string {
 }
 
 func (p *ConfigData) GetFilesFilter() []string {
-	return p.FileData.FilterFiles
+	return p.ConfigFileData.FilterFiles
 }
 
 func (p *ConfigData) ConvertToThumbnail(name string) (resp string) {
@@ -994,58 +994,58 @@ func (p *ConfigData) ConvertToThumbnail(name string) (resp string) {
 			resp = name
 		}
 	}()
-	return name[p.FileData.ThumbnailTrim[0] : len(name)-p.FileData.ThumbnailTrim[1]]
+	return name[p.ConfigFileData.ThumbnailTrim[0] : len(name)-p.ConfigFileData.ThumbnailTrim[1]]
 }
 
 func (p *ConfigData) GetServerDataRoot() string {
-	return p.FileData.ServerDataRoot
+	return p.ConfigFileData.ServerDataRoot
 }
 
 func (p *ConfigData) SetServerDataRoot(f string) {
-	p.FileData.ServerDataRoot = f
+	p.ConfigFileData.ServerDataRoot = f
 }
 
 func (p *ConfigData) GetServerStaticRoot() string {
-	return p.FileData.StaticData.Path
+	return p.ConfigFileData.StaticData.Path
 }
 
 func (p *ConfigData) GetStaticData() *StaticData {
-	return p.FileData.StaticData
+	return p.ConfigFileData.StaticData
 }
 
 func (p *ConfigData) GetTemplateData() *TemplateStaticFiles {
-	return p.FileData.TemplateStaticFiles
+	return p.ConfigFileData.TemplateStaticFiles
 }
 
 func (p *ConfigData) IsTemplating() bool {
-	return p.FileData.TemplateStaticFiles != nil
+	return p.ConfigFileData.TemplateStaticFiles != nil
 }
 
 func (p *ConfigData) SetServerStaticRoot(path string) {
-	p.FileData.StaticData.Path = path
+	p.ConfigFileData.StaticData.Path = path
 }
 
 func (p *ConfigData) GetContentTypeCharset() string {
-	return p.FileData.ContentTypeCharset
+	return p.ConfigFileData.ContentTypeCharset
 }
 
 func (p *ConfigData) GetFaviconIcoPath() string {
-	return p.FileData.FaviconIcoPath
+	return p.ConfigFileData.FaviconIcoPath
 }
 
 func (p *ConfigData) SetFaviconIcoPath(f string) {
-	p.FileData.FaviconIcoPath = f
+	p.ConfigFileData.FaviconIcoPath = f
 }
 
 func (p *ConfigData) GetLogDataPath() string {
-	return p.FileData.LogData.Path
+	return p.ConfigFileData.LogData.Path
 }
 
 func (p *ConfigData) GetLogDataPathForStatus() string {
-	sl := strings.Split(p.FileData.LogData.Path, string(filepath.Separator))
-	ln := len(sl) - p.FileData.LogData.ShowPathInStatus
+	sl := strings.Split(p.ConfigFileData.LogData.Path, string(filepath.Separator))
+	ln := len(sl) - p.ConfigFileData.LogData.ShowPathInStatus
 	if ln < 1 {
-		return p.FileData.LogData.Path
+		return p.ConfigFileData.LogData.Path
 	}
 	var buff bytes.Buffer
 	for i := ln; i < len(sl); i++ {
@@ -1056,17 +1056,17 @@ func (p *ConfigData) GetLogDataPathForStatus() string {
 }
 
 func (p *ConfigData) SetLogDataPath(f string) {
-	p.FileData.LogData.Path = f
+	p.ConfigFileData.LogData.Path = f
 }
 
 func (p *ConfigData) GetLogData() *LogData {
-	return p.FileData.LogData
+	return p.ConfigFileData.LogData
 }
 
 func (p *ConfigData) GetUserEnv(user string) map[string]string {
 	m := make(map[string]string)
 	if user != "" {
-		userData, ok := p.FileData.Users[user]
+		userData, ok := p.ConfigFileData.Users[user]
 		if ok {
 			m["id"] = user
 			m["name"] = userData.Name
@@ -1097,12 +1097,12 @@ func padTimeDate(v int) string {
 }
 
 func (p *ConfigData) GetPortString() string {
-	return fmt.Sprintf(":%d", p.FileData.Port)
+	return fmt.Sprintf(":%d", p.ConfigFileData.Port)
 }
 
 // PANIC
 func (p *ConfigData) GetUserLocPath(user string, loc string) string {
-	userData, ok := p.FileData.Users[user]
+	userData, ok := p.ConfigFileData.Users[user]
 	if !ok {
 		panic(NewConfigError("User not found", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
 	}
@@ -1115,7 +1115,7 @@ func (p *ConfigData) GetUserLocPath(user string, loc string) string {
 
 // PANIC
 func (p *ConfigData) GetExecInfo(execid string) *ExecInfo {
-	exec, ok := p.FileData.Exec[execid]
+	exec, ok := p.ConfigFileData.Exec[execid]
 	if !ok {
 		panic(NewConfigError("Exec ID not found", http.StatusNotFound, fmt.Sprintf("exec-id=%s", execid)))
 	}
@@ -1123,11 +1123,11 @@ func (p *ConfigData) GetExecInfo(execid string) *ExecInfo {
 }
 
 func (p *ConfigData) GetExecData() map[string]*ExecInfo {
-	return p.FileData.Exec
+	return p.ConfigFileData.Exec
 }
 
 func (p *ConfigData) String() (string, error) {
-	data, err := p.FileData.String()
+	data, err := p.ConfigFileData.String()
 	if err != nil {
 		return "", fmt.Errorf("failed to present data as Json:%s. Error:%s", p.ConfigName, err.Error())
 	}
