@@ -7,6 +7,14 @@ if [ ! -d testdata/logs ]; then
   fi
   echo "Check Path: Created testdata/logs"
 fi
+if [ ! -d testdata/stuart/logs ]; then
+  mkdir -p testdata/stuart/logs
+  if [ $? -gt 0 ]; then
+    echo "Check Path: Could not create testdata/stuart/logs"
+    exit 1
+  fi
+  echo "Check Path: Created testdata/logs"
+fi
 
 cd external
 echo "--------------------------------------- $PWD"
@@ -17,6 +25,7 @@ fi
 
 cd ../config
 echo "--------------------------------------- $PWD"
+
 go test
 if [ $? -eq 1 ]; then
   exit 1

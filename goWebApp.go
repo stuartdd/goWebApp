@@ -144,8 +144,8 @@ func main() {
 			}
 		}
 	}()
-
-	os.Exit(webAppServer.Start())
+	rc := webAppServer.Start()
+	os.Exit(rc)
 }
 
 func getArgFlag(name string) bool {

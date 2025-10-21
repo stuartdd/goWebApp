@@ -425,9 +425,9 @@ func (p *WebAppServer) Log(s string) {
 }
 
 func (p *WebAppServer) Close(rc int) int {
-	p.Server.Shutdown(context.TODO())
-	p.Handler.close()
 	p.ExitCode = rc
+	p.Handler.close()
+	p.Server.Shutdown(context.TODO())
 	return rc
 }
 
