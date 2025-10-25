@@ -65,6 +65,7 @@
       "Detached": false
     }
   },
+  "UserPropertiesFile":"userProps.json",
   "UserDataPath": "%{WebServerData}/userData.json",
   "Users": {
     "admin": {

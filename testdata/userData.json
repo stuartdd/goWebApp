@@ -19,6 +19,7 @@
   },
   "stuart": {
     "Hidden": null,
+    "Info" : true,
     "Name": "Stuart",
     "Home": "",
     "Locations": {

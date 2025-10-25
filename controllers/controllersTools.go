@@ -318,12 +318,13 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 }
 
 type ResponseData struct {
-	Status    int
-	content   []byte
-	logged    string
-	Header    map[string][]string
-	MimeType  string
-	hasErrors bool
+	Status     int
+	content    []byte
+	logged     string
+	Header     map[string][]string
+	MimeType   string
+	hasErrors  bool
+	logContent bool
 }
 
 func (p *ResponseData) String() string {
@@ -339,12 +340,13 @@ func (p *ResponseData) String() string {
 
 func NewResponseData(status int) *ResponseData {
 	rd := &ResponseData{
-		Status:    status,
-		Header:    make(map[string][]string),
-		content:   make([]byte, 0),
-		logged:    "",
-		hasErrors: false,
-		MimeType:  "json",
+		Status:     status,
+		Header:     make(map[string][]string),
+		content:    make([]byte, 0),
+		logged:     "",
+		hasErrors:  false,
+		MimeType:   "json",
+		logContent: false,
 	}
 	if rd.IsError() {
 		rd.SetHasErrors(true)
@@ -383,6 +385,15 @@ func (p *ResponseData) IsError() bool {
 func (p *ResponseData) WithLoggedString(logged string) *ResponseData {
 	p.logged = logged
 	return p
+}
+
+func (p *ResponseData) AndLogContent(shouldLog bool) *ResponseData {
+	p.logContent = shouldLog
+	return p
+}
+
+func (p *ResponseData) LogContent() bool {
+	return p.logContent
 }
 
 func (p *ResponseData) WithContentBytes(content []byte) *ResponseData {

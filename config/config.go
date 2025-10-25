@@ -53,7 +53,7 @@ func NewUserProperties(root, path string) (*UserProperties, error) {
 	return &UserProperties{values: userProps, path: fPath}, nil
 }
 
-func (up *UserProperties) writeToFile(user, key, value string) {
+func (up *UserProperties) writeToFile() {
 	body, err := json.Marshal(up.values)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to serialise user properties: %s", err.Error()))
@@ -64,16 +64,20 @@ func (up *UserProperties) writeToFile(user, key, value string) {
 	}
 }
 
-func (up *UserProperties) MapDataForUser(user string) map[string]interface{} {
+func (up *UserProperties) MapDataForUser(user string, userData *UserData) map[string]interface{} {
 	out := make(map[string]interface{})
 	for n, v := range up.values {
 		if strings.HasPrefix(n, user+".") {
 			out[n[len(user)+1:]] = v
 		}
 	}
+	out["id"] = user
+	out["info"] = userData.CanSeeInfo()
+	out["name"] = userData.Name
 	return out
 }
 
+// Cannot run concurrently so use mutex lock
 func (up *UserProperties) Update(user, key, value string) string {
 	if up.path == "" {
 		return value
@@ -92,7 +96,7 @@ func (up *UserProperties) Update(user, key, value string) string {
 		}
 	}
 	up.values[key] = value
-	up.writeToFile(user, key, value)
+	up.writeToFile()
 	return value
 }
 
@@ -379,6 +383,14 @@ type UserData struct {
 	Home      string            // All locations are prefixed with this path when resolved
 	Locations map[string]string // Name,Value list for locations. The names are public the values are resolved relative to Home
 	Env       map[string]string // Name,Value list combined with OS environment for substitutions in resolved locations
+	Info      *bool
+}
+
+func (p *UserData) CanSeeInfo() bool {
+	if p.Info == nil {
+		return false
+	}
+	return *p.Info
 }
 
 func (p *UserData) IsHidden() bool {
@@ -558,10 +570,11 @@ func (p *ConfigData) GetPropertiesMapForUser(data map[string]string) map[string]
 	if !ok {
 		panic(NewConfigError("User not defined", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
 	}
-	if p.GetUserData(user) == nil {
+	userData := p.GetUserData(user)
+	if userData == nil {
 		panic(NewConfigError("User not found", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
 	}
-	return p.UserProps.MapDataForUser(user)
+	return p.UserProps.MapDataForUser(user, userData)
 }
 
 // run concurrently so must use lock

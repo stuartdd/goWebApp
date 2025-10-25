@@ -242,6 +242,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		// Panic Check Done
 		h.writeResponse(w, controllers.GetSetProperty(requestData.WithParameters(p), h.config), shouldLog)
+
 		return
 	}
 	p, ok, shouldLog = getPropUserNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
@@ -373,7 +374,11 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 		p.Log(fmt.Sprintf("Resp: Error: Status:%d: '%s'", resp.Status, resp.ContentLimit(200)))
 	} else {
 		if shouldLog {
-			p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
+			if resp.LogContent() {
+				p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s Content:%s", resp.Status, resp.ContentLength(), contentType, resp.Content()))
+			} else {
+				p.Log(fmt.Sprintf("Resp: Status:%d Len:%d Type:%s", resp.Status, resp.ContentLength(), contentType))
+			}
 		}
 	}
 	hj, ok := w.(http.Hijacker)

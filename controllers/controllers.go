@@ -70,7 +70,7 @@ func (p *StaticFileHandler) Submit() *ResponseData {
 }
 
 func GetSetProperty(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
-	return NewResponseData(200).WithContentBytes([]byte(configData.GetSetUserProp(urlParts.parameters))).WithMimeType("txt")
+	return NewResponseData(200).WithContentBytes([]byte(configData.GetSetUserProp(urlParts.parameters))).WithMimeType("txt").AndLogContent(true)
 }
 
 func GetPropertiesForUser(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
