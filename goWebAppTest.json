@@ -69,7 +69,6 @@
             "home": "bob",
             "Locations": {
                 "home": "",
-                "data": "stateData",
                 "usr": "b-testfolder",
                 "pics": "b-pics"
             }
@@ -80,7 +79,6 @@
             "Locations": {
                 "home": "",
                 "logs": "logs",
-                "data": "stateData",
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "",

@@ -161,9 +161,8 @@ func TestGetSetPropNewFile(t *testing.T) {
 	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
 		t.Fatal("Content-Type should be application/json; charset=utf-8")
 	}
-	if respBody != "{}" {
-		t.Fatalf("Result Should be empty json. It was '%s'", respBody)
-	}
+
+	AssertEquivilent(t,respBody,"{\"id\":\"stuart\",\"info\":false,\"name\":\"Stuart\"}")
 
 	url = "prop/user/frrrred/name/AB/value/XX"
 	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
@@ -224,9 +223,7 @@ func TestGetSetPropNoFileDef(t *testing.T) {
 	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
 		t.Fatal("Content-Type should be application/json; charset=utf-8")
 	}
-	if respBody != "{}" {
-		t.Fatalf("Result Should be empty json. It was '%s'", respBody)
-	}
+	AssertEquivilent(t,respBody,"{\"id\":\"bob\",\"info\":false,\"name\":\"Bob\"}")
 }
 
 func TestServerGetUsers(t *testing.T) {
@@ -303,13 +300,6 @@ func TestServer(t *testing.T) {
 		"\"UpSince\":",
 		"\"Processes\":[]",
 		"goWebAppTest.json",
-	})
-
-	url = "files/user/stuart/loc/data/name/state.json"
-	_, respBody = RunClientGet(t, configData, url, 200, "?", 71, 10)
-	AssertContains(t, respBody, []string{
-		"\"id\":\"stuart\"",
-		"\"info\":true",
 	})
 
 	url = "server/users"

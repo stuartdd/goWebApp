@@ -4,7 +4,6 @@
     "Name": "Bob",
     "Home": "",
     "Locations": {
-      "data": "stateData",
       "home": "",
       "original": "***%{WebServerPictures}/originals/%{id}",
       "pics": "b-pics",
@@ -23,8 +22,6 @@
     "Name": "Stuart",
     "Home": "",
     "Locations": {
-      "cache": "cache",
-      "data": "stateData",
       "home": "",
       "original": "***%{WebServerPictures}/originals/%{id}",
       "pics": "s-pics",
