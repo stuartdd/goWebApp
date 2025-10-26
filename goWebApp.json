@@ -65,8 +65,8 @@
       "Detached": false
     }
   },
-  "UserPropertiesFile":"userProps.json",
-  "UserDataPath": "%{WebServerData}/userData.json",
+  "UserPropertiesFile":"%{WebServerConfig}/userProps.json",
+  "UserDataPath": "%{WebServerConfig}/userData.json",
   "Users": {
     "admin": {
       "Hidden": true,
@@ -97,7 +97,7 @@
     ".info",
     ".log"
   ],
-  "ServerDataRoot": "%{WebServerData}",
+  "ServerDataRoot": "%{WebServerUserData}",
   "StaticData": {
     "Path": "%{WebServerHome}/static",
     "HomePage": "tgo.html"

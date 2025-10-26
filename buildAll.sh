@@ -39,6 +39,13 @@ fi
 
 cd $deployDir
 
+mkdir data
+if [ $? -eq 1 ]; then
+  echo "Failed to create Data dir in $deployDir"
+  exit 1
+fi
+
+
 echo "COPY exec to $deployDir"
 cp -r ../testdata/exec .
 if [ $? -eq 1 ]; then

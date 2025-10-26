@@ -21,6 +21,7 @@ func main() {
 	verbose := getArgFlag("v")
 	killServer := getArgFlag("k")
 	help := getArgFlag("h")
+	portOverride, portOverrideFound := getArgValue("port")
 
 	if help {
 		h, err := os.ReadFile("helptext.md")
@@ -72,6 +73,10 @@ func main() {
 			}
 		}
 		os.Exit(0)
+	}
+
+	if portOverrideFound {
+		cfg.SetPortString(portOverride)
 	}
 
 	if doNotRun {

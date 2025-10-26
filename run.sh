@@ -1,5 +1,15 @@
 #!/bin/bash
 
+    # export WebServerParent="$HOME"
+    # ## For goWebApp run
+    # export WebServerHome="$HOME/topbox"
+    # ## For goWebApp run
+    # export WebServerUserData="$WebServerParent/topbox"
+    # export WebServerRoot="$WebServerParent/topbox/web"
+    # export WebServerPictures="/media/USBHDD1/shares"
+    # export WebServerThumbnails="$HOME/server/thumbnails"
+
+
 echo "########################################################"
 echo "Checking environment vars:"
 env | grep WebSer
@@ -17,9 +27,14 @@ if [ x"${WebServerRoot}" == "x" ]; then
   exit 1
 fi
 
-if [ x"${WebServerData}" == "x" ]; then 
-  echo "Value 'WebServerData' is not assigned to a variable"
-  echo "Should be dir outside of "WebServerRoot" that contains volatile user data"
+if [ x"${WebServerUserData}" == "x" ]; then 
+  echo "Value 'WebServerUserData' is not assigned to a variable"
+  echo "Should be dir outside of "WebServerUserData" that contains user data. Shared.. Images and files"
+	exit 1
+fi
+if [ x"${WebServerConfig}" == "x" ]; then 
+  echo "Value 'WebServerConfig' is not assigned to a variable"
+  echo "Should be dir that contains userData.json (RO) and userProps.json (RW)"
 	exit 1
 fi
 
@@ -73,18 +88,18 @@ if [ ! -d $WebServerRoot/exec ]; then
   fi
 fi
 
-if [ ! -d $WebServerData ]; then
-  echo "Check Path: '$WebServerData' does not exist"
+if [ ! -d $WebServerUserData ]; then
+  echo "Check Path:WebServerUserData '$WebServerUserData' does not exist"
   exit 1
 fi
 
 if [ ! -d $WebServerHome ]; then
-  echo "Check Path:  '$WebServerHome' does not exist. Web server not deployed!"
+  echo "Check Path:WebServerHome  '$WebServerHome' does not exist. Web server not deployed!"
   exit 1
 fi
 
 if [ ! -d $WebServerHome/static ]; then
-  echo "Check Path:  '$WebServerHome/static' does not exist. Web server not deployed!"
+  echo "Check Path:WebServerHome/static  '$WebServerHome/static' does not exist. Web server not deployed!"
   exit 1
 fi
 
@@ -122,7 +137,7 @@ fi
 
 while true
 do
-  ./goWebApp config=goWebApp.json -vr
+  ./goWebApp config=goWebApp.json -vr port=$1
   RESP=$?
   echo "########################################################"
   echo "Response: $RESP"

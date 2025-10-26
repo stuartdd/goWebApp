@@ -12,4 +12,4 @@ if [ ! -e $DEPLOY ]; then
   exit 1
 fi
 
-rsync -avz -e 'ssh' $DEPLOY/ pi@192.168.1.98:/home/pi/server
+rsync -avz -e 'ssh' $DEPLOY/ pi@192.168.1.243:/home/pi/topbox

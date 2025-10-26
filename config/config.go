@@ -29,19 +29,18 @@ type UserProperties struct {
 	values map[string]string
 }
 
-func NewUserProperties(root, path string) (*UserProperties, error) {
+func NewUserProperties(path string) (*UserProperties, error) {
 	if path == "" {
 		return &UserProperties{values: make(map[string]string), path: path}, nil
 	}
-	fPath := filepath.Join(root, path)
-	_, err := os.Stat(fPath)
+	_, err := os.Stat(path)
 	if err != nil {
-		err = os.WriteFile(fPath, []byte("{}"), 0644)
+		err = os.WriteFile(path, []byte("{}"), 0644)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create user properties file:%s. Error:%s", path, err.Error())
 		}
 	}
-	content, err := os.ReadFile(fPath)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read user properties file:%s. Error:%s", path, err.Error())
 	}
@@ -50,7 +49,14 @@ func NewUserProperties(root, path string) (*UserProperties, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to understand user properties file:%s. Error:%s", path, err.Error())
 	}
-	return &UserProperties{values: userProps, path: fPath}, nil
+	return &UserProperties{values: userProps, path: path}, nil
+}
+
+func (up *UserProperties) Details() string {
+	if len(up.values) == 0 {
+		return fmt.Sprintf("%s (No properties stored)", up.path)
+	}
+	return fmt.Sprintf("%s (File Read %d properties)", up.path, len(up.values))
 }
 
 func (up *UserProperties) writeToFile() {
@@ -551,7 +557,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		}
 	}
 
-	configDataExternal.UserProps, err = NewUserProperties(configDataFromFile.ServerDataRoot, configDataFromFile.UserPropertiesFile)
+	configDataExternal.UserProps, err = NewUserProperties(configDataFromFile.UserPropertiesFile)
 	if err != nil {
 		panic(fmt.Sprintf("Config file:%s. NewUserProperties: Failed to initialise user properties: %s", configDataExternal.ConfigName, err.Error()))
 	}
@@ -1111,6 +1117,17 @@ func padTimeDate(v int) string {
 
 func (p *ConfigData) GetPortString() string {
 	return fmt.Sprintf(":%d", p.ConfigFileData.Port)
+}
+
+func (p *ConfigData) SetPortString(ps string) {
+	if strings.TrimSpace(ps) == "" {
+		return // If value is empty then do nothing
+	}
+	port, err := strconv.Atoi(ps)
+	if err != nil {
+		panic(fmt.Sprintf("Invalid port override. App parameter: port=%s", ps))
+	}
+	p.ConfigFileData.Port = port
 }
 
 // PANIC

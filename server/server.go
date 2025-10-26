@@ -465,6 +465,7 @@ func (p *WebAppServer) Start() int {
 	for _, un := range p.Handler.config.GetUserNamesList() {
 		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
 	}
+	p.Log(fmt.Sprintf("User Properties   :%s.", p.Handler.config.UserProps.Details()))
 
 	err := p.Server.ListenAndServe()
 	if err != nil {
