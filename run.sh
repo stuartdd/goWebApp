@@ -29,7 +29,7 @@ fi
 
 if [ x"${WebServerUserData}" == "x" ]; then 
   echo "Value 'WebServerUserData' is not assigned to a variable"
-  echo "Should be dir outside of "WebServerUserData" that contains user data. Shared.. Images and files"
+  echo "Should be dir outside of "WebServerUserData" that contains user data. Shared, Users, Images and files"
 	exit 1
 fi
 if [ x"${WebServerConfig}" == "x" ]; then 

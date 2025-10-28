@@ -87,9 +87,9 @@
             }
         }
     },
-    "ServerDataRoot": "%{WebServerData}",
+    "ServerDataRoot": "%{WebServerUserData}",
     "StaticData": {
-        "Path": "%{WebServerData}/static",
+        "Path": "../testdata/static",
         "HomePage": "dart.html"
     },
     "TemplateStaticFiles": {
@@ -100,6 +100,6 @@
         ],
         "DataFile": "configDataPI.json"
     },
-    "ExecPath": "%{WebServerData}/exec",
+    "ExecPath": "../testdata/exec",
     "Env": {}
 }

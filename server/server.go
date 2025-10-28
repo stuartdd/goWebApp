@@ -15,8 +15,8 @@ import (
 	"github.com/stuartdd/goWebApp/runCommand"
 )
 
-const shouldLogTrue = true
-const shouldNotLogFalse = false
+const shouldLogYes = true
+const shouldLogNo = false
 
 type ActionId int
 
@@ -50,40 +50,42 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 	return &ActionEvent{Id: id, Rc: i, Msg: m}
 }
 
-var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET", shouldLogTrue)
-var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldNotLogFalse)
-var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET", shouldNotLogFalse)
+var getFaviconMatch = NewUrlRequestMatcher("/favicon.ico", "GET", shouldLogYes)
+var getPingMatch = NewUrlRequestMatcher("/ping", "GET", shouldLogNo)
+var getIsUpMatch = NewUrlRequestMatcher("/isup", "GET", shouldLogNo)
 
-var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLogTrue)
-var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldLogTrue)
-var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldNotLogFalse)
-var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLogTrue)
-var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLogTrue)
-var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLogTrue)
-var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldNotLogFalse)
-var delServerLogMatch = NewUrlRequestMatcher("/server/log/*", "DELETE", shouldLogTrue)
+var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLogYes)
+var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldLogYes)
+var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldLogNo)
+var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLogYes)
+var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLogYes)
+var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLogYes)
+var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldLogNo)
+var delServerLogMatch = NewUrlRequestMatcher("/server/log/*", "DELETE", shouldLogYes)
 
 // Get File asAdmin user. Location defined in admin user.
-var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLogTrue)
+var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLogYes)
 
 // Exec a script via an ID in config:"Exec" section.
 // Script must be in  config:"ExecPath":
 // User will be "admin"
-var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLogTrue)
-var getPropUserNameValueMatch = NewUrlRequestMatcher("/prop/user/*/name/*/value/*", "GET", shouldLogTrue)
-var getPropUserNameMatch = NewUrlRequestMatcher("/prop/user/*/name/*", "GET", shouldLogTrue)
-var getPropUserMatch = NewUrlRequestMatcher("/prop/user/*", "GET", shouldLogTrue)
+var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLogYes)
+var getPropUserNameValueMatch = NewUrlRequestMatcher("/prop/user/*/name/*/value/*", "GET", shouldLogYes)
+var getPropUserNameMatch = NewUrlRequestMatcher("/prop/user/*/name/*", "GET", shouldLogYes)
+var getPropUserMatch = NewUrlRequestMatcher("/prop/user/*", "GET", shouldLogYes)
 
-var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLogTrue)
-var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLogTrue)
-var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLogTrue)
-var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLogTrue)
-var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLogTrue)
-var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogTrue)
+var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLogYes)
+var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLogYes)
+var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLogYes)
+var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLogYes)
+var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLogYes)
+var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogYes)
 
-var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLogTrue)
-var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLogTrue)
-var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLogTrue)
+var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLogYes)
+var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLogYes)
+var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLogYes)
+
+var getTestUserLocNameMatch = NewUrlRequestMatcher("/test/user/*/loc/*/name/*", "GET", shouldLogNo)
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -179,8 +181,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if requestUrlparts[0] == "static" {
 		// Panic Check Done
-		requestInfo.Log(shouldNotLogFalse)
-		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, verboseFunc).Submit(), shouldLogTrue)
+		requestInfo.Log(shouldLogNo)
+		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts[1:], requestData, verboseFunc).Submit(), shouldLogYes)
 		return
 	}
 
@@ -233,6 +235,12 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
+	if ok {
+		// Panic Check Done
+		h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
+		return
+	}
+	p, ok, shouldLog = getTestUserLocNameMatch.Match(requestUrlparts, isAbsolutePath, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
 		h.writeResponse(w, controllers.NewReadFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
@@ -361,8 +369,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if staticFileData.HasStaticData() && h.config.GetStaticData().CheckFileExists(urlPath) {
-		requestInfo.Log(shouldLogTrue)
-		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, verboseFunc).Submit(), shouldLogTrue)
+		requestInfo.Log(shouldLogYes)
+		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, verboseFunc).Submit(), shouldLogYes)
 		return
 	}
 	panic(config.NewConfigError("Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s:%s%s", r.Method, urlPath, requestData.QueryAsString())))
