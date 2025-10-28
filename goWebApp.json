@@ -2,7 +2,7 @@
   "ReloadConfigSeconds": 3600,
   "Port": 8082,
   "ThumbnailTrim": [
-    20,
+    22,
     4
   ],
   "Exec": {
