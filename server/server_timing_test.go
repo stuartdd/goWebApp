@@ -27,6 +27,27 @@ func BenchmarkServer(b *testing.B) {
 	logger.Log(fmt.Sprintf("Run:%d", b.N))
 }
 
+// 6425 ns/op
+func BenchmarkSmallImageServer(b *testing.B) {
+	res, err := http.Get(requestURL + "/files/user/stuart/loc/pics/name/pic1.jpeg")
+	if err != nil {
+		b.Fatalf("Client error: %s", err.Error())
+	}
+	if res.StatusCode != 200 {
+		b.Fatalf("Status Expected 200 Actual %d", res.StatusCode)
+	}
+	logger.Log(fmt.Sprintf("Run:%d", b.N))
+}
+func BenchmarkLargeImageServer(b *testing.B) {
+	res, err := http.Get(requestURL + "/files/user/stuart/loc/pics/name/benchPic.jpg")
+	if err != nil {
+		b.Fatalf("Client error: %s", err.Error())
+	}
+	if res.StatusCode != 200 {
+		b.Fatalf("Status Expected 200 Actual %d", res.StatusCode)
+	}
+}
+
 // ------------------------------------------------------------------------------------------------------------
 
 func LoadConfigDataBenchmark() *config.ConfigData {
