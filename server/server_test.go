@@ -49,6 +49,9 @@ func (l *TLog) IsOpen() bool {
 func (l *TLog) LogFileName() string {
 	return "DummyLogger.log"
 }
+func (l *TLog) Reset() {
+	l.B.Truncate(0)
+}
 
 var serverState string = ""
 var logger = &TLog{}
@@ -162,7 +165,7 @@ func TestGetSetPropNewFile(t *testing.T) {
 		t.Fatal("Content-Type should be application/json; charset=utf-8")
 	}
 
-	AssertEquivilent(t,respBody,"{\"id\":\"stuart\",\"info\":false,\"name\":\"Stuart\"}")
+	AssertEquivilent(t, respBody, "{\"id\":\"stuart\",\"info\":false,\"name\":\"Stuart\"}")
 
 	url = "prop/user/frrrred/name/AB/value/XX"
 	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
@@ -223,7 +226,7 @@ func TestGetSetPropNoFileDef(t *testing.T) {
 	if r.Header["Content-Type"][0] != "application/json; charset=utf-8" {
 		t.Fatal("Content-Type should be application/json; charset=utf-8")
 	}
-	AssertEquivilent(t,respBody,"{\"id\":\"bob\",\"info\":false,\"name\":\"Bob\"}")
+	AssertEquivilent(t, respBody, "{\"id\":\"bob\",\"info\":false,\"name\":\"Bob\"}")
 }
 
 func TestServerGetUsers(t *testing.T) {

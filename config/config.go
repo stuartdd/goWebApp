@@ -277,7 +277,7 @@ type StaticData struct {
 	HomePage string
 }
 
-func (p *StaticData) HasStaticData() bool {
+func (p *StaticData) HasStaticDataPath() bool {
 	return p.Path != ""
 }
 
@@ -701,9 +701,9 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		p.SetServerDataRoot(f)
 	}
 
-	if p.HasStaticData() {
+	if p.HasStaticDataPath() {
 		// Check static data path exists
-		f, e = p.checkRootPathExists(p.GetServerStaticRoot(), userConfigEnv, true) // Will check ServerStaticRoot
+		f, e = p.checkRootPathExists(p.GetServerStaticPath(), userConfigEnv, true) // Will check ServerStaticRoot
 		if e != nil {
 			configErrors.AddError(fmt.Sprintf("Failed to find StaticData.Path in config file:%s. Cause:%s", p.ConfigName, e.Error()))
 		} else {
@@ -735,7 +735,7 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 
 	if p.IsTemplating() {
 		templ := p.GetTemplateData()
-		_, err := templ.Init(p.GetServerStaticRoot())
+		_, err := templ.Init(p.GetServerStaticPath())
 		if err != nil {
 			configErrors.AddError(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
 		}
@@ -749,7 +749,7 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		p.SetLogDataPath(f)
 	}
 
-	icon := filepath.Join(p.GetServerStaticRoot(), p.GetFaviconIcoPath())
+	icon := filepath.Join(p.GetServerStaticPath(), p.GetFaviconIcoPath())
 	stats, err := os.Stat(icon)
 	if err != nil {
 		configErrors.AddError(fmt.Sprintf("file [%s] Not found", icon))
@@ -923,8 +923,8 @@ func (p *ConfigData) SaveMe() error {
 	return nil
 }
 
-func (p *ConfigData) HasStaticData() bool {
-	return p.ConfigFileData.StaticData.HasStaticData()
+func (p *ConfigData) HasStaticDataPath() bool {
+	return p.ConfigFileData.StaticData.HasStaticDataPath()
 }
 
 func (p *ConfigData) getNextReloadConfigMillis() int64 {
@@ -1007,7 +1007,10 @@ func (p *ConfigData) GetFilesFilter() []string {
 	return p.ConfigFileData.FilterFiles
 }
 
-func (p *ConfigData) ConvertToThumbnail(name string) (resp string) {
+func (p *ConfigData) ConvertToThumbnail(name string, convert bool) (resp string) {
+	if !convert {
+		return name
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			resp = name
@@ -1024,7 +1027,7 @@ func (p *ConfigData) SetServerDataRoot(f string) {
 	p.ConfigFileData.ServerDataRoot = f
 }
 
-func (p *ConfigData) GetServerStaticRoot() string {
+func (p *ConfigData) GetServerStaticPath() string {
 	return p.ConfigFileData.StaticData.Path
 }
 

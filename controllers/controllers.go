@@ -33,6 +33,35 @@ type StaticFileHandler struct {
 	verboseFunc func(string)
 }
 
+func FastFile(configData *config.ConfigData, urlParts []string, url string, thumbnail bool) string {
+	if len(urlParts) < 7 {
+		panic(NewControllerError("Get File Error", http.StatusBadRequest, fmt.Sprintf("Invalid request:%s", url)))
+	}
+	ud, ok := configData.ConfigFileData.Users[urlParts[2]]
+	if !ok {
+		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid user:%s", url)))
+	}
+	loc, ok := ud.Locations[urlParts[4]]
+	if !ok {
+		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid location:%s", url)))
+	}
+	var name string = ""
+	if urlParts[5] == "name" {
+		name = filepath.Join(loc, configData.ConvertToThumbnail(decodeValue(urlParts[6]), thumbnail))
+	} else {
+		if len(urlParts) >= 9 && urlParts[5] == "path" && urlParts[7] == "name" {
+			name = filepath.Join(loc, decodeValue(urlParts[6]), configData.ConvertToThumbnail(decodeValue(urlParts[8]), thumbnail))
+		} else {
+			panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid path or name:%s", url)))
+		}
+	}
+	_, err := os.Stat(name)
+	if err != nil {
+		panic(NewControllerError("File not found", http.StatusNotFound, err.Error()))
+	}
+	return name
+}
+
 func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, verboseFunc func(string)) *StaticFileHandler {
 	return &StaticFileHandler{
 		filePath:    file,
@@ -42,7 +71,7 @@ func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, verboseFunc 
 }
 
 func (p *StaticFileHandler) Submit() *ResponseData {
-	list := []string{p.urlParts.config.GetServerStaticRoot()}
+	list := []string{p.urlParts.config.GetServerStaticPath()}
 	list = append(list, p.filePath...)
 	fullFile := filepath.Join(list...)
 

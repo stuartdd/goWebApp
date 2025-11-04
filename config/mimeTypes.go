@@ -109,7 +109,7 @@ LookupContentType for a given url return the content type based on the .ext
 func LookupContentType(cType string) string {
 	ext := cType
 	pos := strings.LastIndex(cType, ".")
-	if pos > 0 {
+	if pos >= 0 {
 		ext = cType[pos+1:]
 	}
 	mapping, found := contentTypesMap[ext]

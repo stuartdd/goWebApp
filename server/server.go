@@ -79,11 +79,12 @@ var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path
 var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLogYes)
 var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLogYes)
 var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLogYes)
-var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogYes)
 
 var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLogYes)
 var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLogYes)
 var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLogYes)
+
+var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogYes)
 
 var getTestUserLocNameMatch = NewUrlRequestMatcher("/test/user/*/loc/*/name/*", "GET", shouldLogNo)
 
@@ -106,10 +107,6 @@ func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEve
 		longRunning: lrm,
 		upSince:     upSince,
 	}
-}
-
-func (p *ServerHandler) HasStaticData() bool {
-	return p.config.HasStaticData()
 }
 
 func (p *ServerHandler) GetUpSince() time.Time {
@@ -137,12 +134,26 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, configErrors))
 		}
 	}
-	urlPath := strings.TrimSpace(r.URL.Path)
 	logFunc := h.logger.Log
 	verboseFunc := h.logger.VerboseFunction()
-	requestInfo := NewRequestInfo(r.Method, urlPath, r.URL.RawQuery, logFunc, verboseFunc)
-	staticFileData := h.config.GetStaticData()
-	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
+
+	var isAbsolutePath bool
+	var requestUrlparts []string
+
+	urlPath := strings.TrimSpace(r.URL.Path)
+	if urlPath == "/" {
+		if h.config.GetStaticData().HasStaticDataPath() {
+			requestUrlparts = []string{"static", h.config.GetStaticData().HomePage}
+		}
+	} else {
+		requestUrlparts = strings.Split(urlPath, "/")
+		if requestUrlparts[0] == "" {
+			isAbsolutePath = true
+			requestUrlparts = requestUrlparts[1:]
+		} else {
+			isAbsolutePath = false
+		}
+	}
 
 	defer func() {
 		var le LoggableError
@@ -159,26 +170,21 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				le = config.NewConfigErrorFromString(fmt.Sprintf("%v", rec), 404)
 			}
 			logFunc(le.LogError())
-			h.writeResponse(w, controllers.NewResponseData(le.Status()).SetHasErrors(true).WithContentMapAsJson(le.Map(), requestData.Query), true)
+			h.writeResponse(w, controllers.NewResponseData(le.Status()).SetHasErrors(true).WithContentMapAsJson(le.Map(), r.URL.Query()), true)
 		}
 	}()
 
-	var isAbsolutePath bool
-	var requestUrlparts []string
-	if urlPath == "/" {
-		if staticFileData.HasStaticData() {
-			requestUrlparts = []string{"static", staticFileData.HomePage}
-		}
-	} else {
-		requestUrlparts = strings.Split(urlPath, "/")
-		if requestUrlparts[0] == "" {
-			isAbsolutePath = true
-			requestUrlparts = requestUrlparts[1:]
-		} else {
-			isAbsolutePath = false
-		}
+	if requestUrlparts[0] == "ff" && r.Method == "GET" {
+		// Panic Check Done
+		tn := r.URL.Query().Get("thumbnail")
+		name := controllers.FastFile(h.config, requestUrlparts, urlPath, (tn == "true"))
+		logFunc(fmt.Sprintf("FastFile:%s", name))
+		http.ServeFile(w, r, name)
+		return
 	}
 
+	requestInfo := NewRequestInfo(r.Method, urlPath, r.URL.RawQuery, logFunc, verboseFunc)
+	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
 	if requestUrlparts[0] == "static" {
 		// Panic Check Done
 		requestInfo.Log(shouldLogNo)
@@ -368,7 +374,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if staticFileData.HasStaticData() && h.config.GetStaticData().CheckFileExists(urlPath) {
+	if h.config.GetStaticData().HasStaticDataPath() && h.config.GetStaticData().CheckFileExists(urlPath) {
 		requestInfo.Log(shouldLogYes)
 		h.writeResponse(w, controllers.NewStaticFileHandler(requestUrlparts, requestData, verboseFunc).Submit(), shouldLogYes)
 		return
@@ -459,8 +465,8 @@ func (p *WebAppServer) Start() int {
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
 	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.CurrentPath))
 	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetServerDataRoot()))
-	if p.Handler.config.HasStaticData() {
-		p.Log(fmt.Sprintf("Static Data Root  :%s.", p.Handler.config.GetServerStaticRoot()))
+	if p.Handler.config.HasStaticDataPath() {
+		p.Log(fmt.Sprintf("Static Data Root  :%s.", p.Handler.config.GetServerStaticPath()))
 	} else {
 		p.Log("Static Data       :Undefined. Add StaticData.Home to config")
 	}

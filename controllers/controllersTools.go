@@ -21,7 +21,7 @@ const ExecParam = "exec"
 const ScriptParam = "script"
 const ErrorParam = "error"
 const AdminName = "admin"
-const encodedValuePrefix = "X0X"
+const EncodedValuePrefix = "X0X"
 
 type ControllerError struct {
 	status  int
@@ -307,11 +307,7 @@ func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase
 					np = string(npBytes)
 				}
 			}
-			if asThumbnail {
-				ulp = filepath.Join(ulp, p.config.ConvertToThumbnail(np))
-			} else {
-				ulp = filepath.Join(ulp, np)
-			}
+			ulp = filepath.Join(ulp, p.config.ConvertToThumbnail(np, asThumbnail))
 		}
 	}
 	return ulp
@@ -600,8 +596,8 @@ func decodeValue(encodedValue string) string {
 	if encodedValue == "" {
 		return ""
 	}
-	if strings.HasPrefix(encodedValue, encodedValuePrefix) {
-		decoded, err := base64.StdEncoding.DecodeString(encodedValue[len(encodedValuePrefix):])
+	if strings.HasPrefix(encodedValue, EncodedValuePrefix) {
+		decoded, err := base64.StdEncoding.DecodeString(encodedValue[len(EncodedValuePrefix):])
 		if err != nil {
 			return encodedValue
 		}
@@ -614,5 +610,5 @@ func encodeValue(unEncoded string) string {
 	if unEncoded == "" {
 		return ""
 	}
-	return encodedValuePrefix + base64.StdEncoding.EncodeToString([]byte(unEncoded))
+	return EncodedValuePrefix + base64.StdEncoding.EncodeToString([]byte(unEncoded))
 }
