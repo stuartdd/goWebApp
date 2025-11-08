@@ -73,9 +73,12 @@ func TestPanicMessage(t *testing.T) {
 
 func TestThumbNailTrim(t *testing.T) {
 	conf := loadConfigData(t)
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail(""), "")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred"), "fred")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg"), "HuwSig.jpg")
+	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("", true), "")
+	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("", false), "")
+	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred", true), "fred")
+	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred", false), "fred")
+	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg", true), "HuwSig.jpg")
+	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg", false), "2024_09_21_12_22_11_HuwSig.jpg.jpg")
 }
 
 func TestJoinPath(t *testing.T) {

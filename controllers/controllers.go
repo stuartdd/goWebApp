@@ -27,50 +27,21 @@ type Handler interface {
 	Submit() *ResponseData
 }
 
-type StaticFileHandler struct {
+type StaticFileTemplateHandler struct {
 	filePath    []string
 	urlParts    *UrlRequestParts
 	verboseFunc func(string)
 }
 
-func FastFile(configData *config.ConfigData, urlParts []string, url string, thumbnail bool) string {
-	if len(urlParts) < 7 {
-		panic(NewControllerError("Get File Error", http.StatusBadRequest, fmt.Sprintf("Invalid request:%s", url)))
-	}
-	ud, ok := configData.ConfigFileData.Users[urlParts[2]]
-	if !ok {
-		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid user:%s", url)))
-	}
-	loc, ok := ud.Locations[urlParts[4]]
-	if !ok {
-		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid location:%s", url)))
-	}
-	var name string = ""
-	if urlParts[5] == "name" {
-		name = filepath.Join(loc, configData.ConvertToThumbnail(decodeValue(urlParts[6]), thumbnail))
-	} else {
-		if len(urlParts) >= 9 && urlParts[5] == "path" && urlParts[7] == "name" {
-			name = filepath.Join(loc, decodeValue(urlParts[6]), configData.ConvertToThumbnail(decodeValue(urlParts[8]), thumbnail))
-		} else {
-			panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid path or name:%s", url)))
-		}
-	}
-	_, err := os.Stat(name)
-	if err != nil {
-		panic(NewControllerError("File not found", http.StatusNotFound, err.Error()))
-	}
-	return name
-}
-
-func NewStaticFileHandler(file []string, urlParts *UrlRequestParts, verboseFunc func(string)) *StaticFileHandler {
-	return &StaticFileHandler{
+func NewStaticFileTemplateHandler(file []string, urlParts *UrlRequestParts, verboseFunc func(string)) *StaticFileTemplateHandler {
+	return &StaticFileTemplateHandler{
 		filePath:    file,
 		urlParts:    urlParts,
 		verboseFunc: verboseFunc,
 	}
 }
 
-func (p *StaticFileHandler) Submit() *ResponseData {
+func (p *StaticFileTemplateHandler) Submit() *ResponseData {
 	list := []string{p.urlParts.config.GetServerStaticPath()}
 	list = append(list, p.filePath...)
 	fullFile := filepath.Join(list...)
@@ -106,6 +77,56 @@ func GetPropertiesForUser(urlParts *UrlRequestParts, configData *config.ConfigDa
 	return NewResponseData(200).WithContentMapAsJson(configData.GetPropertiesMapForUser(urlParts.parameters), urlParts.Query).WithMimeType("json")
 }
 
+func GetFastStaticFileName(configData *config.ConfigData, urlParts []string, url string) string {
+	if !configData.HasStaticDataPath() {
+		panic(NewControllerError("Resource not found", http.StatusNotFound, "Static File Error: Static Path is undefined"))
+	}
+	list := []string{configData.GetServerStaticPath()}
+	list = append(list, urlParts...)
+	fullFile := filepath.Join(list...)
+
+	stats, err := os.Stat(fullFile)
+	if err != nil {
+		panic(NewControllerError("File not found", http.StatusNotFound, fmt.Sprintf("Static File Error:%s", err.Error())))
+	}
+	if stats.IsDir() {
+		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("Static File %s is a Directory", fullFile)))
+	}
+	return fullFile
+}
+
+func GetFastFileName(configData *config.ConfigData, urlParts []string, url string, thumbnail bool) string {
+	if len(urlParts) < 7 {
+		panic(NewControllerError("Get File Error", http.StatusBadRequest, fmt.Sprintf("Invalid request:%s", url)))
+	}
+	ud, ok := configData.ConfigFileData.Users[urlParts[2]]
+	if !ok {
+		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid user:%s", url)))
+	}
+	loc, ok := ud.Locations[urlParts[4]]
+	if !ok {
+		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid location:%s", url)))
+	}
+	var name string = ""
+	if urlParts[5] == "name" {
+		name = filepath.Join(loc, configData.ConvertToThumbnail(decodeValue(urlParts[6]), thumbnail))
+	} else {
+		if len(urlParts) >= 9 && urlParts[5] == "path" && urlParts[7] == "name" {
+			name = filepath.Join(loc, decodeValue(urlParts[6]), configData.ConvertToThumbnail(decodeValue(urlParts[8]), thumbnail))
+		} else {
+			panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid path or name:%s", url)))
+		}
+	}
+	stats, err := os.Stat(name)
+	if err != nil {
+		panic(NewControllerError("File not found", http.StatusNotFound, err.Error()))
+	}
+	if stats.IsDir() {
+		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("File %s is a Directory", name)))
+	}
+	return name
+}
+
 type ReadFileHandler struct {
 	parameters *UrlRequestParts
 	configData *config.ConfigData
@@ -122,15 +143,16 @@ func NewDeleteFileHandler(urlParts *UrlRequestParts, configData *config.ConfigDa
 	}
 }
 
-func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
-	return &ReadFileHandler{
-		parameters: urlParts,
-		configData: configData,
-		verbose:    verboseFunc,
-		delete:     false,
-	}
-}
+// func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
+// 	return &ReadFileHandler{
+// 		parameters: urlParts,
+// 		configData: configData,
+// 		verbose:    verboseFunc,
+// 		delete:     false,
+// 	}
+// }
 
+// TODO Cleanup ReadFileHandler --> DeleteFileHandler
 func (p *ReadFileHandler) Submit() *ResponseData {
 	file := p.parameters.GetUserLocPath(true, p.parameters.GetQueryAsBool("thumbnail", false), p.parameters.GetQueryAsBool("base64", false))
 
@@ -510,15 +532,11 @@ func GetLog(configData *config.ConfigData, current string, offsetString string) 
 	return NewResponseData(http.StatusOK).WithContentBytes(b.Bytes()).WithMimeType("log")
 }
 
-func GetFaveIcon(configData *config.ConfigData) *ResponseData {
+func GetFaveIconName(configData *config.ConfigData) string {
 	if configData.GetFaviconIcoPath() == "" {
 		panic(NewControllerError("favicon.ico not configured", http.StatusNotFound, "FaviconIcoPath is not defined in config file"))
 	}
-	fileContent, err := os.ReadFile(configData.GetFaviconIcoPath())
-	if err != nil {
-		panic(NewControllerError("favicon.ico not found", http.StatusNotFound, err.Error()))
-	}
-	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType("ico")
+	return configData.GetFaviconIcoPath()
 }
 
 func GetOSFreeData(configData *config.ConfigData) (res string) {

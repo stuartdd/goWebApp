@@ -18,6 +18,7 @@ func TestFastFile(t *testing.T) {
 	defer func() {
 		StopServer(t, configData)
 	}()
+	logger.Reset()
 	url := fmt.Sprintf("ff/user/stuart/loc/pics/path/%s/name/%s", encodeValue("s-testfolder"), encodeValue("testdata2.json"))
 	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
 	AssertEquivilent(t, respBody, "{\"Data\":\"This is the data for 2\"}")
@@ -52,10 +53,6 @@ func TestFastFileErrors(t *testing.T) {
 	AssertLogContains(t, logger, []string{"Invalid request:/ff/user/stuart/loc/pics/name"})
 
 	logger.Reset()
-	if logger.Get() != "" {
-		t.Fatal("Log not empty after a reset")
-	}
-
 	url = "ff/user/lol/loc/pics/name/fi"
 	_, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
 	AssertContains(t, respBody, []string{"Get File Error", "Not Found"})

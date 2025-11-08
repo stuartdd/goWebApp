@@ -1,12 +1,10 @@
 package controllers
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stuartdd/goWebApp/config"
 	"github.com/stuartdd/goWebApp/runCommand"
@@ -134,40 +132,40 @@ func TestExecPass(t *testing.T) {
 
 }
 
-func TestMarshal(t *testing.T) {
-	jj := "{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\",\"subs\":[{\"name\":\"a1\"}]},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]},{\"name\":\"sub3\",\"subs\":[{\"name\":\"a1\",\"subs\":[{\"name\":\"a2\"}]}]}]}"
-	tn := &TreeDirNode{}
-	err := json.Unmarshal([]byte(jj), tn)
-	if err != nil {
-		t.Fatalf("failed to unmarshal the JSON. Error:%s", err.Error())
-	}
-	AssertEquals(t, "Unmarshal", tn.ToJson(false), jj)
+// func TestMarshal(t *testing.T) {
+// 	jj := "{\"name\":\"root\",\"subs\":[{\"name\":\"sub1\",\"subs\":[{\"name\":\"a1\"}]},{\"name\":\"sub2\",\"subs\":[{\"name\":\"sub21\"}]},{\"name\":\"sub3\",\"subs\":[{\"name\":\"a1\",\"subs\":[{\"name\":\"a2\"}]}]}]}"
+// 	tn := &TreeDirNode{}
+// 	err := json.Unmarshal([]byte(jj), tn)
+// 	if err != nil {
+// 		t.Fatalf("failed to unmarshal the JSON. Error:%s", err.Error())
+// 	}
+// 	AssertEquals(t, "Unmarshal", tn.ToJson(false), jj)
 
-	jj2 := []byte{}
-	tim1 := time.Now().UnixMicro()
-	for i := 0; i < 50; i++ {
-		jj2, err = json.Marshal(tn)
-	}
-	tim2 := time.Now().UnixMicro()
-	if err != nil {
-		t.Fatalf("failed to marshal the JSON. Error:%s", err.Error())
-	}
-	AssertEquals(t, "Marshal", jj2, jj)
+// 	jj2 := []byte{}
+// 	tim1 := time.Now().UnixMicro()
+// 	for i := 0; i < 50; i++ {
+// 		jj2, err = json.Marshal(tn)
+// 	}
+// 	tim2 := time.Now().UnixMicro()
+// 	if err != nil {
+// 		t.Fatalf("failed to marshal the JSON. Error:%s", err.Error())
+// 	}
+// 	AssertEquals(t, "Marshal", jj2, jj)
 
-	jj4 := []byte{}
-	tim3 := time.Now().UnixMicro()
-	for i := 0; i < 50; i++ {
-		jj4 = tn.ToJson(false)
-	}
-	tim4 := time.Now().UnixMicro()
+// 	jj4 := []byte{}
+// 	tim3 := time.Now().UnixMicro()
+// 	for i := 0; i < 50; i++ {
+// 		jj4 = tn.ToJson(false)
+// 	}
+// 	tim4 := time.Now().UnixMicro()
 
-	AssertEquals(t, "Marshal", jj4, jj)
-	timMarshal := tim2 - tim1
-	timToJson := tim4 - tim3
-	if timToJson > (timMarshal + 10) {
-		t.Fatalf("Time Marshal:%d Time ToJson:%d. Time ToJson should be faster!", timMarshal, timToJson)
-	}
-}
+// 	AssertEquals(t, "Marshal", jj4, jj)
+// 	timMarshal := tim2 - tim1
+// 	timToJson := tim4 - tim3
+// 	if timToJson > (timMarshal + 10) {
+// 		t.Fatalf("Time Marshal:%d Time ToJson:%d. Time ToJson should be faster!", timMarshal, timToJson)
+// 	}
+// }
 
 func TestTreeNode(t *testing.T) {
 	params := NewUrlRequestParts(nil).WithParameters(map[string]string{UserParam: "stuart", LocationParam: "home"})

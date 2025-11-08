@@ -90,7 +90,7 @@
     "ServerDataRoot": "%{WebServerUserData}",
     "StaticData": {
         "Path": "../testdata/static",
-        "HomePage": "dart.html"
+        "HomePage": "tgo.html"
     },
     "TemplateStaticFiles": {
         "Files": [

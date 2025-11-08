@@ -51,6 +51,7 @@ func (l *TLog) LogFileName() string {
 }
 func (l *TLog) Reset() {
 	l.B.Truncate(0)
+	l.Log("Log-Reset")
 }
 
 var serverState string = ""
@@ -322,6 +323,27 @@ func TestServer(t *testing.T) {
 	})
 
 }
+
+func TestStaticTemplate(t *testing.T) {
+	configData := loadConfigData(t, testConfigFile)
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	var url string
+	var resp *http.Response
+
+	logger.Reset()
+	url = "favicon.ico"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 190985, 10)
+	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	AssertLogContains(t, logger, []string{"FastFileFavicon", "testdata/static/favicon1.ico"})
+}
+
 func TestStatic(t *testing.T) {
 	configData := loadConfigData(t, testConfigFile)
 
@@ -330,23 +352,56 @@ func TestStatic(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	url := "static/images/pic.jpeg"
-	resp, _ := RunClientGet(t, configData, url, 200, "?", 4821, 10)
-	if resp.Header["Content-Type"][0] != "image/jpeg" {
-		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
-	}
+	var url string
+	var resp *http.Response
 
-	url = "static/images/favicon.ico"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
+	logger.Reset()
+	url = "favicon.ico"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 190985, 10)
 	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
+	AssertLogContains(t, logger, []string{"FastFileFavicon", "testdata/static/favicon1.ico"})
 
+	logger.Reset()
 	url = "static/simple.html"
 	resp, _ = RunClientGet(t, configData, url, 200, "?", 103, 10)
 	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
+	AssertLogContains(t, logger, []string{"FastStaticFile", "testdata/static/simple.htm"})
+
+	logger.Reset()
+	url = "static/images/pic.jpeg"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 4821, 10)
+	if resp.Header["Content-Type"][0] != "image/jpeg" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	AssertLogContains(t, logger, []string{"FastStaticFile", "images/pic.jpeg"})
+
+	logger.Reset()
+	url = "images/pic.jpeg"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 4821, 10)
+	if resp.Header["Content-Type"][0] != "image/jpeg" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	AssertLogContains(t, logger, []string{"FastStaticFile", "images/pic.jpeg"})
+
+	logger.Reset()
+	url = "static/images/favicon.ico"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
+	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	AssertLogContains(t, logger, []string{"FastStaticFile", "static/images/favicon.ico"})
+
+	logger.Reset()
+	url = "images/favicon.ico"
+	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
+	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	AssertLogContains(t, logger, []string{"FastStaticFile", "testdata/static/images/favicon.ico"})
 
 	url = "static/notfound.pic"
 	RunClientGet(t, configData, url, 404, "?", -1, 0)
@@ -399,22 +454,6 @@ func TestTree(t *testing.T) {
 
 	RunClientGet(t, configData, "favicon.ico", 200, "?", -1, 0)
 
-}
-func TestGetFavicon(t *testing.T) {
-	configData := loadConfigData(t, testConfigFile)
-
-	if serverState != "Running" {
-		go RunServer(configData, logger)
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	resp, _ := RunClientGet(t, configData, "favicon.ico", 200, "?", -1, 0)
-	if resp.StatusCode != 200 {
-		t.Fatalf("did not get the icon!")
-	}
-	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
-		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
-	}
 }
 
 func TestPostFileAndDelete(t *testing.T) {
@@ -555,6 +594,7 @@ func TestPostFileAppendAndDelete(t *testing.T) {
 
 func TestReadDir(t *testing.T) {
 
+	logger.Reset()
 	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
@@ -578,7 +618,7 @@ func TestReadDir(t *testing.T) {
 		"{\"name\":\"testdata2.json\", \"encName\":\"X0XdGVzdGRhdGEyLmpzb24=\"}",
 	})
 
-	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
+	AssertLogContains(t, logger, []string{"Req:  GET:/files/", "Resp: Status:200"})
 	AssertLogContains(t, logger, []string{"GET:/files/user/stuart/loc/pics", "GET:/files/user/stuart/loc/picsPlus"})
 }
 
@@ -600,7 +640,7 @@ func TestReadDirNotFound(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
-
+	logger.Reset()
 	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
@@ -612,8 +652,56 @@ func TestReadFile(t *testing.T) {
 	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
 		t.Fatalf("Respons body does not start with...")
 	}
+	AssertLogContains(t, logger, []string{"FastFile:", "testdata/stuart/s-pics/t1.JSON"})
+}
 
-	AssertLogContains(t, logger, []string{"Server Started", ":8083.", "Req:  GET:/files/", "Resp: Status:200"})
+func TestReadFileWithPath(t *testing.T) {
+	logger.Reset()
+	configData := loadConfigData(t, testConfigFile)
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/path/s-testfolder/name/t5.json", http.StatusOK, "?", 251, 0)
+	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
+		t.Fatalf("Respons body does not start with...")
+	}
+
+	AssertLogContains(t, logger, []string{"FastFile:", "testdata/stuart/s-pics/s-testfolder/t5.json"})
+}
+
+func TestReadFileWithPath64enc(t *testing.T) {
+	logger.Reset()
+	configData := loadConfigData(t, testConfigFile)
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	url := fmt.Sprintf("files/user/stuart/loc/pics/path/%s/name/%s", encodeValue("s-testfolder/s-testdir1"), encodeValue("testdata.json"))
+
+	_, resBody := RunClientGet(t, configData, url, http.StatusOK, "?", 33, 0)
+	if !strings.HasPrefix(trimString(resBody), "{\"Data\":\"This is the data for 2\"}") {
+		t.Fatalf("Respons body does not start with...")
+	}
+
+	AssertLogContains(t, logger, []string{"FastFile:", "testdata/stuart/s-pics/s-testfolder/s-testdir1/testdata.json"})
+}
+
+func TestReadFileWTestOption(t *testing.T) {
+	logger.Reset()
+	configData := loadConfigData(t, testConfigFile)
+
+	if serverState != "Running" {
+		go RunServer(configData, logger)
+		time.Sleep(100 * time.Millisecond)
+	}
+	url := fmt.Sprintf("test/user/stuart/loc/pics/name/%s", encodeValue("t1.JSON"))
+	_, resBody := RunClientGet(t, configData, url, http.StatusOK, "?", 251, 0)
+	AssertContains(t, resBody, []string{"\"pics\": \"testdata\"", "\"ServerName\": \"TestServer\""})
+	AssertLogNotContains(t, logger, []string{"FastFile:", "t1.JSON"})
 }
 
 func TestReadFileNotUser(t *testing.T) {
@@ -625,9 +713,10 @@ func TestReadFileNotUser(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
+	logger.Reset()
 	_, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
-	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"User not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"cause\":\"User not found\""})
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Get File Error\""})
+	AssertLogContains(t, logger, []string{"Invalid user:", "Get File Error", "/files/user/nouser/loc/pics/name/t1.JSON"})
 }
 
 func TestReadFileNotLoc(t *testing.T) {
@@ -639,9 +728,9 @@ func TestReadFileNotLoc(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 74, 0)
-	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Location not found\""})
-	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"cause\":\"Location not found\""})
+	_, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Get File Error\""})
+	AssertLogContains(t, logger, []string{"Invalid location:", "Get File Error", "/files/user/stuart/loc/noloc/name/t1.JSON"})
 }
 
 func TestReadFileNotName(t *testing.T) {

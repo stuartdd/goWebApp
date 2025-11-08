@@ -1043,6 +1043,17 @@ func (p *ConfigData) IsTemplating() bool {
 	return p.ConfigFileData.TemplateStaticFiles != nil
 }
 
+func (p *ConfigData) ShouldTemplateFile(file string) bool {
+	if p.IsTemplating() {
+		for _, fn := range p.ConfigFileData.TemplateStaticFiles.Files {
+			if fn == file {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (p *ConfigData) SetServerStaticRoot(path string) {
 	p.ConfigFileData.StaticData.Path = path
 }
