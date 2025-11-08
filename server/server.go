@@ -397,6 +397,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	if h.config.GetStaticData().HasStaticDataPath() && h.config.GetStaticData().CheckFileExists(urlPath) {
 		if h.config.ShouldTemplateFile(requestUrlparts[len(requestUrlparts)-1]) {
 			requestInfo.Log(shouldLogNo)

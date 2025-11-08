@@ -101,5 +101,7 @@
         "DataFile": "configDataPI.json"
     },
     "ExecPath": "../testdata/exec",
-    "Env": {}
+    "Env": {
+        "TestTemplate":"This is a test"
+    }
 }

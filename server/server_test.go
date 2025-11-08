@@ -325,6 +325,7 @@ func TestServer(t *testing.T) {
 }
 
 func TestStaticTemplate(t *testing.T) {
+	logger.Reset()
 	configData := loadConfigData(t, testConfigFile)
 
 	if serverState != "Running" {
@@ -336,12 +337,21 @@ func TestStaticTemplate(t *testing.T) {
 	var resp *http.Response
 
 	logger.Reset()
-	url = "favicon.ico"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 190985, 10)
-	if resp.Header["Content-Type"][0] != "image/vnd.microsoft.icon" {
+	url = "tgo.html?arg1=ARG1"
+	resp, content := RunClientGet(t, configData, url, 200, "?", 217, 50)
+	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
 		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
 	}
-	AssertLogContains(t, logger, []string{"FastFileFavicon", "testdata/static/favicon1.ico"})
+	AssertContains(t, content, []string{"Application name GoWebApp", "<p>Config Env:This is a test</p>", "<p>Query arg:ARG1</p>", "<p>Not found:%{xxxxx}</p>", "<p>PWD:/", "goWebApp/server</p>"})
+	AssertLogContains(t, logger, []string{"Resp: Status:200"})
+	logger.Reset()
+	url = "static/tgo.html?arg1=ARG2"
+	resp, content = RunClientGet(t, configData, url, 200, "?", 217, 50)
+	if resp.Header["Content-Type"][0] != "text/html; charset=utf-8" {
+		t.Fatalf("incorrect content type :%s", resp.Header["Content-Type"][0])
+	}
+	AssertContains(t, content, []string{"Application name GoWebApp", "<p>Config Env:This is a test</p>", "<p>Query arg:ARG2</p>", "<p>Not found:%{xxxxx}</p>", "<p>PWD:/", "goWebApp/server</p>"})
+	AssertLogContains(t, logger, []string{"Resp: Status:200"})
 }
 
 func TestStatic(t *testing.T) {
