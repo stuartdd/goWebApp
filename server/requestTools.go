@@ -45,11 +45,10 @@ func (r *RequestInfo) Log(shouldLog bool) {
 }
 
 type UrlRequestMatcher struct {
-	Parts          []string
-	ReqType        string
-	isAbsolutePath bool
-	shouldLog      bool
-	Len            int
+	Parts     []string
+	ReqType   string
+	shouldLog bool
+	Len       int
 }
 
 func NewUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *UrlRequestMatcher {
@@ -58,39 +57,32 @@ func NewUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *U
 		s = s[1:]
 	}
 	return &UrlRequestMatcher{
-		Parts:          s,
-		ReqType:        strings.ToUpper(reqType),
-		isAbsolutePath: strings.HasPrefix(templateUrl, "/"),
-		shouldLog:      shouldLog,
-		Len:            len(s),
+		Parts:     s,
+		ReqType:   strings.ToUpper(reqType),
+		shouldLog: shouldLog,
+		Len:       len(s),
 	}
 }
 
 func (p *UrlRequestMatcher) String() string {
 	var buffer bytes.Buffer
-	if p.isAbsolutePath {
-		buffer.WriteRune('/')
-	}
+	len := 0
+	buffer.WriteRune('/')
 	for _, v := range p.Parts {
 		buffer.WriteString(v)
+		len = buffer.Len()
 		buffer.WriteRune('/')
 	}
+	buffer.Truncate(len)
 	return fmt.Sprintf("Req:  %s:%s", p.ReqType, buffer.String())
 }
 
-func (p *UrlRequestMatcher) Match(requestParts []string, isAbsolutePath bool, reqType string, rqi *RequestInfo) (map[string]string, bool, bool) {
-
+func (p *UrlRequestMatcher) Match(requestParts []string, reqType string, rqi *RequestInfo) (map[string]string, bool, bool) {
 	params := map[string]string{}
+	if p.Len == 0 || p.Len != len(requestParts) {
+		return params, false, p.shouldLog
+	}
 	if p.ReqType != strings.ToUpper(reqType) {
-		return params, false, p.shouldLog
-	}
-	if p.Len != len(requestParts) {
-		return params, false, p.shouldLog
-	}
-	if p.Len == 0 {
-		return params, false, p.shouldLog
-	}
-	if isAbsolutePath != p.isAbsolutePath {
 		return params, false, p.shouldLog
 	}
 	if p.Parts[0] != requestParts[0] {

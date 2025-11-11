@@ -17,7 +17,7 @@ import (
 
 const ConfigFileExtension = ".json"
 const AbsolutePathPrefix = "***"
-const defaultConfigReloadTime = 3600
+const defaultReloadConfigSeconds = 3600
 const thumbnailTrimPrefix = 20
 const thumbnailTrimSuffix = 4
 const panicMessageStatus = "status:"
@@ -436,18 +436,18 @@ func (p *ConfigDataFromFile) String() (string, error) {
 }
 
 type ConfigData struct {
-	ConfigFileData   *ConfigDataFromFile
-	CurrentPath      string
-	ModuleName       string
-	ConfigName       string
-	Debugging        bool
-	Templating       bool
-	Environment      map[string]string
-	UserProps        *UserProperties
-	NextLoadTime     int64
-	LocationsCreated []string
-	UpSince          time.Time
-	IsVerbose        bool
+	ConfigFileData           *ConfigDataFromFile
+	CurrentPath              string
+	ModuleName               string
+	ConfigName               string
+	Debugging                bool
+	Templating               bool
+	Environment              map[string]string
+	UserProps                *UserProperties
+	NextConfigLoadTimeMillis int64
+	LocationsCreated         []string
+	UpSince                  time.Time
+	IsVerbose                bool
 }
 
 /*
@@ -476,21 +476,21 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	}
 
 	configDataExternal := &ConfigData{
-		ConfigFileData:   nil,
-		UserProps:        nil,
-		Templating:       false,
-		Debugging:        debugging,
-		CurrentPath:      wd,
-		ModuleName:       moduleName,
-		ConfigName:       configFileName,
-		Environment:      environ,
-		NextLoadTime:     0,
-		LocationsCreated: []string{},
-		IsVerbose:        verbose,
+		ConfigFileData:           nil,
+		UserProps:                nil,
+		Templating:               false,
+		Debugging:                debugging,
+		CurrentPath:              wd,
+		ModuleName:               moduleName,
+		ConfigName:               configFileName,
+		Environment:              environ,
+		NextConfigLoadTimeMillis: 0,
+		LocationsCreated:         []string{},
+		IsVerbose:                verbose,
 	}
 
 	configDataFromFile := &ConfigDataFromFile{
-		ReloadConfigSeconds: defaultConfigReloadTime,
+		ReloadConfigSeconds: defaultReloadConfigSeconds,
 		Port:                8080,
 		UserDataPath:        "",
 		Users:               make(map[string]UserData),
@@ -548,7 +548,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		configDataExternal.Environment[n] = v
 	}
 
-	configDataExternal.NextLoadTime = configDataExternal.getNextReloadConfigMillis()
+	configDataExternal.ResetTimeToReloadConfig()
 
 	for i := 0; i < len(configDataFromFile.FilterFiles); i++ {
 		f := strings.ToLower(configDataFromFile.FilterFiles[i])
@@ -927,21 +927,12 @@ func (p *ConfigData) HasStaticDataPath() bool {
 	return p.ConfigFileData.StaticData.HasStaticDataPath()
 }
 
-func (p *ConfigData) getNextReloadConfigMillis() int64 {
-	return time.Now().UnixMilli() + (p.ConfigFileData.ReloadConfigSeconds * 1000)
-}
-
-func (p *ConfigData) IsTimeToReloadConfig() bool {
-	return p.NextLoadTime < time.Now().UnixMilli()
+func (p *ConfigData) IsTimeToReloadConfig(mowMillis int64) bool {
+	return p.NextConfigLoadTimeMillis < mowMillis
 }
 
 func (p *ConfigData) ResetTimeToReloadConfig() {
-	p.NextLoadTime = p.getNextReloadConfigMillis()
-}
-
-func (p *ConfigData) GetTimeToReloadConfig() float64 {
-	t := float64(p.NextLoadTime-time.Now().UnixMilli()) / float64(1000)
-	return math.Trunc(t*100) / 100
+	p.NextConfigLoadTimeMillis = time.Now().UnixMilli() + (p.ConfigFileData.ReloadConfigSeconds * 1000)
 }
 
 func (p *ConfigData) GetServerName() string {

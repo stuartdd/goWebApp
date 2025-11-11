@@ -69,7 +69,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "1", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/x/4", "GET", false, "b=1")
 	AssertMatch(t, "2", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c", "GET", false, "")
 	AssertMatch(t, "3", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c/3", "GET", true, "b=1,c=3")
-	AssertMatch(t, "4", NewUrlRequestMatcher("a", "get", true), "/a", "get", false, "")
+	AssertMatch(t, "4", NewUrlRequestMatcher("a", "get", true), "/a", "get", true, "")
 	AssertMatch(t, "5", NewUrlRequestMatcher("a", "get", true), "a", "get", true, "")
 	AssertMatch(t, "5", NewUrlRequestMatcher("/a", "get", true), "/a", "get", true, "")
 	AssertMatch(t, "6", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "post", false, "")
@@ -84,7 +84,7 @@ func TestUrlRequestParamsMap(t *testing.T) {
 func TestGetSetPropNewFile(t *testing.T) {
 	os.Remove(testConfigFileTmp)
 	os.Remove(testPropertyFile)
-	updateConfigData(t, testConfigFileTmp, "\"UserPropertiesFile\":", fmt.Sprintf("\"UserPropertiesFile\": \"%s\",", testPropertyFile))
+	updateConfigData(t, testConfigFile, testConfigFileTmp, "\"UserPropertiesFile\":", fmt.Sprintf("\"UserPropertiesFile\": \"%s\",", testPropertyFile))
 	configData := loadConfigData(t, testConfigFileTmp)
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -191,7 +191,7 @@ func TestGetSetPropNewFile(t *testing.T) {
 
 func TestGetSetPropNoFileDef(t *testing.T) {
 	os.Remove(testConfigFileTmp)
-	updateConfigData(t, testConfigFileTmp, "\"UserPropertiesFile\":", "")
+	updateConfigData(t, testConfigFile, testConfigFileTmp, "\"UserPropertiesFile\":", "")
 	configData := loadConfigData(t, testConfigFileTmp)
 	if serverState != "Running" {
 		go RunServer(configData, logger)
@@ -804,6 +804,7 @@ func TestServerLog(t *testing.T) {
 	// Make sure there is a log file to get!
 	RunClientGet(t, configData, "server/status", 200, "?", -1, 0)
 	WriteLogToFile(configData.GetLogDataPath())
+	time.Sleep(100 * time.Millisecond)
 
 	resp, resBody := RunClientGet(t, configData, "server/log", 200, "?", -1, 0)
 	AssertHeaderEquals(t, resp, "Content-Type", "text/plain; charset=utf-8")
@@ -1082,9 +1083,7 @@ func AssertMatch(t *testing.T, message string, matcher *UrlRequestMatcher, url s
 	if requestUriparts[0] == "" {
 		requestUriparts = requestUriparts[1:]
 	}
-	isAbsolutePath := strings.HasPrefix(url, "/")
-
-	p, ok, _ := matcher.Match(requestUriparts, isAbsolutePath, reqType, nil)
+	p, ok, _ := matcher.Match(requestUriparts, reqType, nil)
 	keys := make([]string, 0, len(p))
 	for k := range p {
 		keys = append(keys, k)
@@ -1128,11 +1127,11 @@ func loadConfigData(t *testing.T, file string) *config.ConfigData {
 
 var udCfgLock sync.Mutex
 
-func updateConfigData(t *testing.T, Oufile string, li, rp string) {
+func updateConfigData(t *testing.T, InFile, Oufile string, li, rp string) {
 	udCfgLock.Lock()
 	defer udCfgLock.Unlock()
 
-	fi, err := os.OpenFile(testConfigFile, os.O_RDONLY, os.ModePerm)
+	fi, err := os.OpenFile(InFile, os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		t.Fatalf("open read file error: %v", err)
 	}

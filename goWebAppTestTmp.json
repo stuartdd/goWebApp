@@ -1,7 +1,7 @@
 {
     "port": 8083,
     "ServerName": "TestServer",
-    "ReloadConfigSeconds": 3600,
+"ReloadConfigSeconds":1,
     "filterFiles": [
         "Json",
         "Data",
