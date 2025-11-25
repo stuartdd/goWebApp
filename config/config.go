@@ -931,6 +931,10 @@ func (p *ConfigData) IsTimeToReloadConfig(mowMillis int64) bool {
 	return p.NextConfigLoadTimeMillis < mowMillis
 }
 
+func (p *ConfigData) GetTimeToReloadSeconds() int64 {
+	return (p.NextConfigLoadTimeMillis - time.Now().UnixMilli()) / 1000
+}
+
 func (p *ConfigData) ResetTimeToReloadConfig() {
 	p.NextConfigLoadTimeMillis = time.Now().UnixMilli() + (p.ConfigFileData.ReloadConfigSeconds * 1000)
 }

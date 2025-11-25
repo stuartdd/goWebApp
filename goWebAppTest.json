@@ -83,8 +83,8 @@
                 "usr": "s-testfolder",
                 "pics": "s-pics",
                 "testtree": "",
-                "picsPlus": "s-pics/s-testfolder",
-                "picsMissing": "missingfolder"
+                "picsMissing": "missingfolder",
+                "picsPlus": "s-pics/s-testfolder"
             }
         }
     },

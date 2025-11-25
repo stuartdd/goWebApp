@@ -1,5 +1,5 @@
 {
-  "ReloadConfigSeconds": 3600,
+  "ReloadConfigSeconds": 60,
   "Port": 8082,
   "ThumbnailTrim": [
     22,

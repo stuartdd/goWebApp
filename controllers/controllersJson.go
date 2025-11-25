@@ -28,7 +28,7 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 	writeParamAsJsonString("ConfigName", filepath.Base(configData.ConfigName), true, false, true, &b)
 	writeParamAsJsonString("UpSince", upSince.Format(time.ANSIC), true, false, true, &b)
 	writeParamAsJsonString("UpTime", fmtDuration(time.Since(upSince)), true, false, true, &b)
-	writeParamAsJsonString("Reload Config in", fmt.Sprintf("%d seconds", configData.ConfigFileData.ReloadConfigSeconds), true, false, true, &b)
+	writeParamAsJsonString("Config Reload", fmt.Sprintf("%d seconds (Next in:%d)", configData.ConfigFileData.ReloadConfigSeconds, configData.GetTimeToReloadSeconds()), true, false, true, &b)
 	writeParamAsJsonString("Alloc", fmtAlloc(st.Alloc), true, false, true, &b)
 	writeParamAsJsonString("TotalAlloc", fmtAlloc(st.TotalAlloc), true, false, true, &b)
 	writeParamAsJsonString("Sys", fmtAlloc(st.Sys), true, false, true, &b)

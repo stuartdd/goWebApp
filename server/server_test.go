@@ -22,7 +22,8 @@ import (
 )
 
 type TLog struct {
-	B bytes.Buffer
+	B       bytes.Buffer
+	RSCount int
 }
 
 func (l *TLog) Close() {}
@@ -50,8 +51,13 @@ func (l *TLog) LogFileName() string {
 	return "DummyLogger.log"
 }
 func (l *TLog) Reset() {
+	if l.B.Len() == 0 {
+		l.RSCount = 0
+	} else {
+		l.RSCount = l.RSCount + 1
+	}
 	l.B.Truncate(0)
-	l.Log("Log-Reset")
+	l.Log(fmt.Sprintf("Log-Reset:%d", l.RSCount))
 }
 
 var serverState string = ""
@@ -61,7 +67,8 @@ const postDataFile1 = "{\"Data\":\"This is data ONE for file 1\"}"
 const postDataFile2 = "{\"Data\":\"This is data TWO for file 2\"}"
 const testdatafile = "testdata.json"
 const testConfigFile = "../goWebAppTest.json"
-const testConfigFileTmp = "../goWebAppTestTmp.json"
+const testConfigFileTmp1 = "../goWebAppTestTmp1.json"
+const testConfigFileTmp2 = "../goWebAppTestTmp2.json"
 const testPropertyFile = "../userProperties.json"
 
 func TestUrlRequestParamsMap(t *testing.T) {
@@ -82,17 +89,17 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
 }
 func TestGetSetPropNewFile(t *testing.T) {
-	os.Remove(testConfigFileTmp)
+	os.Remove(testConfigFileTmp1)
 	os.Remove(testPropertyFile)
-	updateConfigData(t, testConfigFile, testConfigFileTmp, "\"UserPropertiesFile\":", fmt.Sprintf("\"UserPropertiesFile\": \"%s\",", testPropertyFile))
-	configData := loadConfigData(t, testConfigFileTmp)
+	updateConfigData(t, testConfigFile, testConfigFileTmp1, "\"UserPropertiesFile\":", fmt.Sprintf("\"UserPropertiesFile\": \"%s\",", testPropertyFile))
+	configData := loadConfigData(t, testConfigFileTmp1)
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
 	defer func() {
 		StopServer(t, configData)
-		os.Remove(testConfigFileTmp)
+		os.Remove(testConfigFileTmp1)
 		os.Remove(testPropertyFile)
 	}()
 
@@ -190,16 +197,16 @@ func TestGetSetPropNewFile(t *testing.T) {
 }
 
 func TestGetSetPropNoFileDef(t *testing.T) {
-	os.Remove(testConfigFileTmp)
-	updateConfigData(t, testConfigFile, testConfigFileTmp, "\"UserPropertiesFile\":", "")
-	configData := loadConfigData(t, testConfigFileTmp)
+	os.Remove(testConfigFileTmp1)
+	updateConfigData(t, testConfigFile, testConfigFileTmp1, "\"UserPropertiesFile\":", "")
+	configData := loadConfigData(t, testConfigFileTmp1)
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
 	defer func() {
 		StopServer(t, configData)
-		os.Remove(testConfigFileTmp)
+		os.Remove(testConfigFileTmp1)
 	}()
 
 	if configData.ConfigFileData.UserPropertiesFile != "" {
