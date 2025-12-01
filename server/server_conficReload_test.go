@@ -24,7 +24,7 @@ func TestConfigReloadConfigChanged(t *testing.T) {
 	}()
 
 	_, resp := RunClientGet(t, configData, "server/status", 200, "?", -1, 10)
-	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds\""})
+	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds"})
 	AssertLogContains(t, logger, []string{"GET:/server/status", "Status:200"})
 	logger.Reset()
 
@@ -41,14 +41,14 @@ func TestConfigReloadConfigChanged(t *testing.T) {
 	// Timer is now 2 seconds. Wait 1 and check that no reload occurs
 	time.Sleep(1000 * time.Millisecond)
 	_, resp = RunClientGet(t, configData, "server/status", 200, "?", -1, 10)
-	AssertContains(t, resp, []string{",\"Config Reload\":\"2 seconds\""})
+	AssertContains(t, resp, []string{",\"Config Reload\":\"2 seconds"})
 	AssertLogNotContains(t, logger, []string{"file reload OK"})
 
 	// Wait another second. Check that a reload does occur
 	logger.Reset()
 	time.Sleep(1000 * time.Millisecond)
 	_, resp = RunClientGet(t, configData, "server/status", 200, "?", -1, 10)
-	AssertContains(t, resp, []string{",\"Config Reload\":\"2 seconds\""})
+	AssertContains(t, resp, []string{",\"Config Reload\":\"2 seconds"})
 	AssertLogContains(t, logger, []string{fmt.Sprintf("%s file reload OK", testConfigFileTmp1)})
 
 	// t.Fatal("\n ************\n", logger.Get(), "************\n")
@@ -70,7 +70,7 @@ func TestConfigReloadFailedMissingFolder(t *testing.T) {
 
 	// Get server status and test response to confirm ReloadConfigSeconds
 	_, resp := RunClientGet(t, configData, "server/status", 200, "?", -1, 10)
-	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds\""})
+	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds"})
 	AssertLogContains(t, logger, []string{"GET:/server/status", "Status:200"})
 	logger.Reset()
 
@@ -83,10 +83,10 @@ func TestConfigReloadFailedMissingFolder(t *testing.T) {
 
 	// Next request should run ok but the reload should fail as there is missingfolder error
 	_, resp = RunClientGet(t, configData, "server/status", 200, "?", -1, 10)
-	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds\""})
+	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds"})
 	AssertLogContains(t, logger, []string{"goWebAppTestTmp1.json Failed to load", "missingfolder] Not found"})
 	logger.Reset()
 	// Ensure changes NOT applied
 	_, resp = RunClientGet(t, configData, "server/status", 200, "?", -1, 10)
-	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds\""})
+	AssertContains(t, resp, []string{",\"Config Reload\":\"1 seconds"})
 }

@@ -108,7 +108,7 @@ func TestZeroResp(t *testing.T) {
 func TestLs(t *testing.T) {
 	tc := NewExecData([]string{"ls", "-lta"}, "", "../testdata/logs/cmdout-ls.txt", "../testdata/logs/cmderr-ls.txt", "info", "", false, false, nil, nil)
 	stdOut, stdErr, rc := wrapRunSystemProcess(t, "TestLs", []string{}, tc)
-	AssertContains(t, "TestLs", string(stdOut), []string{"go.mod", "runCommand.go"})
+	AssertContains(t, "TestLs", string(stdOut), []string{"longRunning.go", "runCommand.go"})
 	if rc != 0 {
 		t.Fatal("RC should be 0 not", rc)
 	}
