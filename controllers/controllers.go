@@ -340,15 +340,17 @@ type ExecHandler struct {
 	verbose          func(string)
 	isVerbose        bool
 	log              func(string)
+	execPath         string
 	execInfo         *config.ExecInfo
 }
 
-func NewExecHandler(urlParts *UrlRequestParts, configData *config.ConfigData, makeExecResponse func(string, string, []byte, []byte, int, map[string][]string) []byte, logFunc func(string), verboseFunc func(string)) Handler {
+func NewExecHandler(urlParts *UrlRequestParts, execPath string, makeExecResponse func(string, string, []byte, []byte, int, map[string][]string) []byte, logFunc func(string), verboseFunc func(string)) Handler {
 	return &ExecHandler{
 		parameters:       urlParts,
 		makeExecResponse: makeExecResponse,
 		verbose:          verboseFunc,
 		log:              logFunc,
+		execPath:         execPath,
 	}
 }
 
@@ -367,7 +369,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		return NewResponseData(http.StatusOK).WithContentMapAsJson(dataMap, p.parameters.Query).SetHasErrors(false)
 	}
 
-	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.Dir, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), execId, p.execInfo.StartLTSFile, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
+	execData := runCommand.NewExecData(p.execInfo.Cmd, p.execInfo.GetOutLogFile(), p.execInfo.GetErrLogFile(), execId, p.execInfo.StartLTSFile, p.execInfo.Detached, p.execInfo.CanStop, p.log, func(r []byte) string {
 		return p.parameters.SubstituteFromCachedMap(r)
 	})
 
@@ -375,7 +377,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		p.verbose(execData.String())
 	}
 
-	stdOut, stdErr, code := execData.RunSystemProcess()
+	stdOut, stdErr, code := execData.RunSystemProcess(p.execPath)
 
 	if p.execInfo.LogOutFile != "" && len(stdOut) > 0 {
 		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOutFile), p.parameters.config.GetUserEnv(userId))
@@ -541,8 +543,8 @@ func GetFaveIconName(configData *config.ConfigData) string {
 
 func GetOSFreeData(configData *config.ConfigData) (res string) {
 	execInfo := configData.GetExecInfo("free")
-	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.Dir, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run system 'free' command", execInfo.StartLTSFile, false, false, nil, nil)
-	stdOut, _, code := execData.RunSystemProcess()
+	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run system 'free' command", execInfo.StartLTSFile, false, false, nil, nil)
+	stdOut, _, code := execData.RunSystemProcess(configData.GetExecPath())
 	if code != 0 {
 		panic(NewControllerError("Get System status via 'free' exec returned nz code", http.StatusFailedDependency, fmt.Sprintf("RC:%d", code)))
 	}

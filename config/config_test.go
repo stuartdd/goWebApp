@@ -201,7 +201,8 @@ func TestUserExec(t *testing.T) {
 	if exec.CanStop {
 		t.Fatalf("Exec canstop should default to false")
 	}
-	assertContains(t, "TestUserExec ", exec.String(), []string{pre, "[cmd2]", "/logs/stdOutC2.txt"})
+	es := exec.String()
+	assertContains(t, "TestUserExec ", es, []string{pre, "[cmd2]", "/logs/stdOutC2.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {
@@ -214,10 +215,6 @@ func TestGetUserExecInfo(t *testing.T) {
 	if c1.Cmd[1] != "-lta" {
 		t.Fatal("Command should be ls -lta")
 	}
-	pre := conf.GetServerDataRoot()
-
-	assertEquals(t, "TestGetUserExecInfo", c1.Dir, pre+"/exec")
-
 }
 
 func TestGetUserLocPathBadUser(t *testing.T) {

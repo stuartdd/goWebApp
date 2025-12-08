@@ -333,9 +333,7 @@ func NewLogData() *LogData {
 Users can have Exex actions. Derived from JSON!
 */
 type ExecInfo struct {
-	id            string
 	Cmd           []string
-	Dir           string
 	StdOutType    string
 	LogDir        string
 	LogOutFile    string
@@ -345,20 +343,69 @@ type ExecInfo struct {
 	Detached      bool
 	CanStop       bool
 	Description   string
+	id            string
+	execPath      string
+}
+
+func (p *ExecInfo) Validate(execPathRoot string, addError func(string)) {
+	p.execPath = execPathRoot
+	if execPathRoot == "" {
+		return
+	}
+	stats, err := os.Stat(execPathRoot)
+	if err != nil {
+		addError(fmt.Sprintf("Config Error: ExecPath %s does not exist", execPathRoot))
+		return
+	} else {
+		if !stats.IsDir() {
+			addError(fmt.Sprintf("Config Error: ExecPath %s must be a directory", execPathRoot))
+			return
+		}
+	}
+	if p.Detached {
+		if p.LogDir != "" {
+			addError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", p.id, p.LogDir))
+		}
+		if p.LogOutFile != "" {
+			addError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogOut='%s'", p.id, p.LogOutFile))
+		}
+		if p.LogErrFile != "" {
+			addError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogErr='%s'", p.id, p.LogErrFile))
+		}
+		if p.StdOutType != "" {
+			addError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have StdOutType='%s'", p.id, p.StdOutType))
+		}
+		if p.NzCodeReturns != 0 {
+			addError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have NzCodeReturns='%d'", p.id, p.NzCodeReturns))
+		}
+	}
+	if p.LogDir != "" {
+		stats, err := os.Stat(filepath.Join(filepath.Dir(execPathRoot), p.LogDir))
+		if err != nil {
+			addError(fmt.Sprintf("Config Error: Exec [%s] log %s", p.id, err.Error()))
+		} else {
+			if !stats.IsDir() {
+				addError(fmt.Sprintf("Config Error: Exec [%s] log %s", p.id, "Must be a directory"))
+			}
+		}
+		if p.HasNoLogFilesDefined() {
+			addError(fmt.Sprintf("Config Error: Exec [%s] has a Log entry but no LogOutFile or LogErrFile files are defined", p.id))
+		}
+	}
 }
 
 func (p *ExecInfo) GetOutLogFile() string {
 	if p.LogDir == "" || p.LogOutFile == "" {
 		return ""
 	}
-	return filepath.Join(p.LogDir, p.LogOutFile)
+	return filepath.Join(p.execPath, p.LogDir, p.LogOutFile)
 }
 
 func (p *ExecInfo) GetErrLogFile() string {
 	if p.LogDir == "" || p.LogErrFile == "" {
 		return ""
 	}
-	return filepath.Join(p.LogDir, p.LogErrFile)
+	return filepath.Join(p.execPath, p.LogDir, p.LogErrFile)
 }
 
 func (p *ExecInfo) GetId() string {
@@ -377,7 +424,7 @@ func (p *ExecInfo) HasNoLogFilesDefined() bool {
 }
 
 func (p *ExecInfo) String() string {
-	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.GetOutLogFile(), p.GetErrLogFile())
+	return fmt.Sprintf("CMD:%s, LogOut:%s, LogErr:%s", p.Cmd, p.GetOutLogFile(), p.GetErrLogFile())
 }
 
 /*
@@ -761,50 +808,10 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 	p.SetFaviconIcoPath(icon)
 
 	for execName, execData := range p.ConfigFileData.Exec {
-		if execData.Detached {
-			if execData.LogDir != "" {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", execName, execData.LogDir))
-			}
-			if execData.LogOutFile != "" {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogOut='%s'", execName, execData.LogOutFile))
-			}
-			if execData.LogErrFile != "" {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogErr='%s'", execName, execData.LogErrFile))
-			}
-			if execData.StdOutType != "" {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have StdOutType='%s'", execName, execData.StdOutType))
-			}
-			if execData.NzCodeReturns != 0 {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have NzCodeReturns='%d'", execName, execData.NzCodeReturns))
-			}
-			if execData.Dir != "" {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have Dir='%s'", execName, execData.Dir))
-			}
-		}
-		if execData.LogDir != "" {
-			f, e := p.checkPathExists("", execData.LogDir, "", userConfigEnv, createDir)
-			if e != nil {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] log %s", execName, e.Error()))
-			} else {
-				execData.LogDir = f
-			}
-			if execData.HasNoLogFilesDefined() {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] has a LogDir but no LogOutFile or LogErrFile files are defined", execName))
-			}
-		}
-
-		if execData.Dir == "" && p.GetExecPath() != "" {
-			execData.Dir = p.GetExecPath()
+		if p.GetExecPath() == "" {
+			configErrors.AddError("Config Error: Exec entries found. ExecPath cannot be undefined")
 		} else {
-			if execData.Dir == "" {
-				execData.Dir = "exec"
-			}
-			f, e := p.checkPathExists("", execData.Dir, "", userConfigEnv, createDir)
-			if e != nil {
-				configErrors.AddError(fmt.Sprintf("Config Error: Exec [%s] directory %s", execName, e.Error()))
-			} else {
-				execData.Dir = f
-			}
+			execData.Validate(p.ConfigFileData.ExecPath, configErrors.AddError)
 		}
 
 		for i, v := range execData.Cmd {
@@ -1305,9 +1312,8 @@ func (p *ConfigErrorData) LogCount() int {
 	return len(p.logs)
 }
 
-func (p *ConfigErrorData) AddError(s string) *ConfigErrorData {
+func (p *ConfigErrorData) AddError(s string) {
 	p.errors = append(p.errors, s)
-	return p
 }
 
 func (p *ConfigErrorData) AddLog(s string) *ConfigErrorData {

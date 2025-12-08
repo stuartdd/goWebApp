@@ -15,16 +15,17 @@ import (
 	"time"
 )
 
+// Cmd[0] is the script name (shell, cmd,,,). Each parameter is Cmd[n]
+// All scripts M|UST| be inb the Exec Path. No Exec Path will return 404
 type execData struct {
-	Cmd          []string
-	Dir          string
-	StdOutLog    string
-	StdErrLog    string
-	StartLTSFile string
-	log          func(string)
-	id           string
-	detached     bool
-	canStop      bool
+	Cmd          []string     // ScriptName (bash/cmd file) and args
+	StdOutLog    string       // If defined StdOut returned to to process is written to this file
+	StdErrLog    string       // If defined StdErr returned to to process is written to this file
+	log          func(string) // Log details from this process
+	StartLTSFile string       // File contains output from Cmd that is returned immedialty. EG Errors, proc info...
+	id           string       // Identity uses to track Long Running Processes. Get PID via FindProcessIdWithName(id)
+	detached     bool         // Detached indicates a  Long Running Processes
+	canStop      bool         // If detached then it ncan be stopped using KillrocessWithPid
 }
 
 type ExecError struct {
@@ -68,11 +69,7 @@ func (ee *ExecError) Status() int {
 	return ee.status
 }
 
-func (p *execData) String() string {
-	return fmt.Sprintf("CMD:%s, Dir:%s, LogOut:%s, LogErr:%s", p.Cmd, p.Dir, p.StdOutLog, p.StdErrLog)
-}
-
-func NewExecData(commands []string, dir string, stdOut string, stdErr string, id string, startLTSFile string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string) *execData {
+func NewExecData(commands []string, stdOut string, stdErr string, id string, startLTSFile string, detached bool, canStop bool, logFunc func(string), substitute func([]byte) string) *execData {
 	var subCmd []string
 	if substitute != nil {
 		subCmd = make([]string, len(commands))
@@ -85,7 +82,6 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, id
 
 	return &execData{
 		Cmd:          subCmd,
-		Dir:          dir,
 		StdOutLog:    stdOut,
 		StdErrLog:    stdErr,
 		StartLTSFile: startLTSFile,
@@ -96,7 +92,42 @@ func NewExecData(commands []string, dir string, stdOut string, stdErr string, id
 	}
 }
 
-func (p *execData) RunSystemProcess() ([]byte, []byte, int) {
+func (p *execData) Validate(addError func(string)) *execData {
+	return p
+}
+
+func (p *execData) String() string {
+	return fmt.Sprintf("CMD:%s, LogOut:%s, LogErr:%s", p.Cmd, p.StdOutLog, p.StdErrLog)
+}
+
+func (p *execData) RunSystemProcess(execDir string) ([]byte, []byte, int) {
+	if execDir == "" {
+		panic(NewExecError("Exec path is undefined", p.id, "Config error", http.StatusInternalServerError))
+	}
+	absExecDir, err := filepath.Abs(execDir)
+	if err != nil {
+		panic(NewExecError("Could not get absolute path of exec dir", p.id, fmt.Sprintf("Path error: filepath.Abs(%s). Error:%s", execDir, err.Error()), http.StatusInternalServerError))
+	}
+	stat, err := os.Stat(absExecDir)
+	if err != nil {
+		panic(NewExecError("Could find exec dir", p.id, fmt.Sprintf("Path error: os.Stat(%s). Error:%s", absExecDir, err.Error()), http.StatusFailedDependency))
+	}
+	if !stat.IsDir() {
+		panic(NewExecError("Exec path is not a directory", p.id, fmt.Sprintf("Path error: os.Stat(%s). Error:%s", absExecDir, "Must be a directory"), http.StatusFailedDependency))
+	}
+
+	// Trim spaces from command and args then check there are some!
+	cleanCmd := []string{}
+	for _, v := range p.Cmd {
+		vTrim := strings.TrimSpace(v)
+		if vTrim != "" {
+			cleanCmd = append(cleanCmd, vTrim)
+		}
+	}
+	if len(cleanCmd) == 0 {
+		panic(NewExecError("No command given", p.id, "Config error", http.StatusExpectationFailed))
+	}
+
 	if p.detached {
 		if p.StdOutLog != "" {
 			panic(NewExecError("Detached process cannot use StdOutLog", p.id, "Config error", http.StatusExpectationFailed))
@@ -105,46 +136,20 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int) {
 			panic(NewExecError("Detached process cannot use StdErrLog", p.id, "Config error", http.StatusExpectationFailed))
 		}
 	}
-	pruned := []string{}
-	for _, v := range p.Cmd {
-		vTrim := strings.TrimSpace(v)
-		if vTrim != "" {
-			pruned = append(pruned, vTrim)
-		}
-	}
-	if len(pruned) == 0 {
-		panic(NewExecError("No command were given", p.id, "Config error", http.StatusExpectationFailed))
-	}
-
-	currentDir, err := os.Getwd()
-	if err != nil {
-		panic(NewExecError("Could not read working dir", p.id, fmt.Sprintf("Path error: os.Getwd(). Error:%s", err.Error()), http.StatusInternalServerError))
-	}
-
-	commandX := pruned[0]
-	if p.Dir != "" {
-		fp, err := filepath.Abs(p.Dir)
-		if err != nil {
-			panic(NewExecError("Could not get absolute path of exec dir", p.id, fmt.Sprintf("Path error: filepath.Abs(%s). Error:%s", p.Dir, err.Error()), http.StatusInternalServerError))
-		}
-		_, err = os.Stat(fp)
-		if err != nil {
-			panic(NewExecError("Could find exec dir", p.id, fmt.Sprintf("Path error: os.Stat(%s). Error:%s", fp, err.Error()), http.StatusFailedDependency))
-		}
-		err = os.Chdir(fp)
-		if err != nil {
-			panic(NewExecError("Could select exec dir", p.id, fmt.Sprintf("Path error: os.Chdir(%s). Error:%s", fp, err.Error()), http.StatusFailedDependency))
-		}
-		defer os.Chdir(currentDir)
-
-		commandX = filepath.Join(fp, pruned[0])
-	}
-
+	cmdX := filepath.Join(absExecDir, cleanCmd[0])
 	var cmd *exec.Cmd
-	if len(pruned) == 1 {
-		cmd = exec.Command(commandX)
+	if len(cleanCmd) == 1 {
+		cmd = exec.Command(cmdX)
 	} else {
-		cmd = exec.Command(commandX, p.Cmd[1:]...)
+		cmd = exec.Command(cmdX, p.Cmd[1:]...)
+	}
+	cmd.Dir = execDir
+	stat, err = os.Stat(filepath.Join(absExecDir, cleanCmd[0]))
+	if err != nil {
+		panic(NewExecError("Could not find cmd script", p.id, fmt.Sprintf("Path error: os.Stat(%s). Error:%s", filepath.Join(absExecDir, cleanCmd[0]), err.Error()), http.StatusFailedDependency))
+	}
+	if stat.IsDir() {
+		panic(NewExecError("Cmd script is not a file", p.id, fmt.Sprintf("Path error: os.Stat(%s). Error:%s", filepath.Join(absExecDir, cleanCmd[0]), "Exec is a directory"), http.StatusFailedDependency))
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -152,7 +157,7 @@ func (p *execData) RunSystemProcess() ([]byte, []byte, int) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if p.detached {
-		pidx := FindProcessIdWithName(pruned[0])
+		pidx := FindProcessIdWithName(cleanCmd[0])
 		if pidx != 0 {
 			panic(NewExecError("Process is already running", p.id, fmt.Sprintf("Process '%s' already running. PID:%d", p.id, pidx), http.StatusBadRequest))
 		}

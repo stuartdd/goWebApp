@@ -316,7 +316,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p, ok, shouldLog = getExecMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
-		h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config, nil, logFunc, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config.GetExecPath(), nil, logFunc, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	p, ok, shouldLog = postFileUserLocNameMatch.Match(requestUrlparts, r.Method, requestInfo)
