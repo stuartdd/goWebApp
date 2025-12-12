@@ -176,6 +176,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tn := r.URL.Query().Get("thumbnail")
 		name := controllers.GetFastFileName(h.config, requestUrlparts, urlPath, (tn == "true"))
 		logFunc(fmt.Sprintf("FastFile:%s", name))
+		w.Header().Set("Server", h.config.GetServerName())
+		w.Header().Set("Content-Type", config.LookupContentType(name))
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -190,6 +192,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		name := controllers.GetFastStaticFileName(h.config, requestUrlparts[1:], urlPath)
 		logFunc(fmt.Sprintf("FastStaticFile:%s", name))
+		w.Header().Set("Server", h.config.GetServerName())
+		w.Header().Set("Content-Type", config.LookupContentType(name))
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -219,6 +223,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if shouldLog {
 			logFunc(fmt.Sprintf("FastFile:%s", name))
 		}
+		w.Header().Set("Server", h.config.GetServerName())
+		w.Header().Set("Content-Type", config.LookupContentType(name))
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -230,6 +236,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if shouldLog {
 			logFunc(fmt.Sprintf("FastFile:%s", name))
 		}
+		w.Header().Set("Content-Type", config.LookupContentType(name))
+		w.Header().Set("Server", h.config.GetServerName())
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -240,6 +248,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if shouldLog {
 			logFunc(fmt.Sprintf("FastFile:%s", name))
 		}
+		w.Header().Set("Content-Type", config.LookupContentType(name))
+		w.Header().Set("Server", h.config.GetServerName())
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -376,6 +386,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if shouldLog {
 			logFunc(fmt.Sprintf("FastFileFavicon:%s", name))
 		}
+		w.Header().Set("Server", h.config.GetServerName())
+		w.Header().Set("Content-Type", config.LookupContentType(name))
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -401,6 +413,8 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		name := controllers.GetFastStaticFileName(h.config, requestUrlparts, urlPath)
 		logFunc(fmt.Sprintf("FastStaticFile:%s", name))
+		w.Header().Set("Server", h.config.GetServerName())
+		w.Header().Set("Content-Type", config.LookupContentType(name))
 		http.ServeFile(w, r, name)
 		return
 	}
@@ -421,25 +435,10 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 		}
 	}
 
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		http.Error(w, "webserver doesn't support hijacking", http.StatusInternalServerError)
-		return
-	}
-	conn, bufrw, err := hj.Hijack()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer conn.Close()
-	bufrw.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\n", resp.Status, http.StatusText(resp.Status)))
-	bufrw.WriteString(fmt.Sprintf("Content-Length: %d\n", resp.ContentLength()))
-	bufrw.WriteString(fmt.Sprintf("Content-Type: %s\n", contentType))
-	bufrw.WriteString(fmt.Sprintf("Date: %s\n", timeAsString()))
-	bufrw.WriteString(fmt.Sprintf("Server: %s\n", p.config.GetServerName()))
-	bufrw.WriteString("\n")
-	bufrw.Write(resp.Content())
-	bufrw.Flush()
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Server", p.config.GetServerName())
+	w.WriteHeader(resp.Status)
+	w.Write(resp.Content())
 }
 
 func timeAsString() string {

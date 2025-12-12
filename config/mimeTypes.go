@@ -110,7 +110,7 @@ func LookupContentType(cType string) string {
 	ext := cType
 	pos := strings.LastIndex(cType, ".")
 	if pos >= 0 {
-		ext = cType[pos+1:]
+		ext = strings.ToLower(cType[pos+1:])
 	}
 	mapping, found := contentTypesMap[ext]
 	if found {

@@ -12,7 +12,7 @@ import (
 	"github.com/stuartdd/goWebApp/runCommand"
 )
 
-var configDataBench = LoadConfigDataBenchmark()
+var _ = LoadConfigDataBenchmark()
 var requestURL = ""
 
 // GOMAXPROCS=1 go test -bench=BenchmarkServer -benchmem -benchtime=10s
