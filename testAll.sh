@@ -54,7 +54,9 @@ fi
 
 cd ../server
 echo "--------------------------------------- $PWD"
-go test
+rem Limit the number of procs to limit the number of concurrent connections.
+rem This prevents Test Failures from 'connection reset by user' events.
+GOMAXPROCS=3 go test
 if [ $? -eq 1 ]; then
   exit 1
 fi

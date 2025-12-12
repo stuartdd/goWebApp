@@ -140,11 +140,12 @@ func TestLsRC_NZ(t *testing.T) {
 	if len(stdOut) > 0 {
 		t.Fatal("StdOut should be empty")
 	}
+
 }
 func TestPWD(t *testing.T) {
-	tc := NewExecData([]string{"pwd"}, getTestLogsPath("cmdout-pwd.txt"), getTestLogsPath("cmderr-pwd.txt"), "info", "", false, false, nil, nil)
+	tc := NewExecData([]string{"pwd-test"}, getTestLogsPath("cmdout-pwd.txt"), getTestLogsPath("cmderr-pwd.txt"), "info", "", false, false, nil, nil)
 	stdOut, stdErr, rc := wrapRunSystemProcess(t, "TestPWD", []string{}, tc)
-	AssertContains(t, "TestPWD", string(stdOut), []string{"/goWebApp"})
+	AssertContains(t, "TestPWD", string(stdOut), []string{getTestExecPath()})
 	if rc != 0 {
 		t.Fatal("RC should be 0 not", rc)
 	}
@@ -154,7 +155,7 @@ func TestPWD(t *testing.T) {
 }
 
 func TestGo(t *testing.T) {
-	tc := NewExecData([]string{"go", "version"}, getTestLogsPath("cmdout-go.txt"), getTestLogsPath("cmderr-go.txt"), "go", "", false, false, nil, nil)
+	tc := NewExecData([]string{"go-version", "version"}, getTestLogsPath("cmdout-go.txt"), getTestLogsPath("cmderr-go.txt"), "go", "", false, false, nil, nil)
 	stdOut, stdErr, rc := wrapRunSystemProcess(t, "TestGo", []string{}, tc)
 	AssertContains(t, "TestGo", string(stdOut), []string{"go version"})
 	if rc != 0 {

@@ -1,0 +1,425 @@
+--------------------------------------- /home/stuart/Development/goWebApp/external
+[{"Size":197624420,"Name":"shared"},{"Size":26853904,"Name":"stuart"},{"Size":56024516,"Name":"julie"},{"Size":42223964,"Name":"owain"},{"Size":12275188,"Name":"huw"}]{"MemTotal":15987388,"MemUsed":2616264,"MemFree":10271868,"MemShared":516288,"Buff/Cache":3099256,"Available":12510188,"SwapTotal":95643644,"SwapUsed":0,"SwapFree":95643644}[{"Size":197624420,"Name":"shared"},{"Size":26853904,"Name":"stuart"},{"Size":56024516,"Name":"julie"},{"Size":42223964,"Name":"owain"},{"Size":12275188,"Name":"huw"}]PASS
+ok  	github.com/stuartdd/goWebApp/external	0.004s
+--------------------------------------- /home/stuart/Development/goWebApp/config
+PASS
+ok  	github.com/stuartdd/goWebApp/config	0.008s
+--------------------------------------- /home/stuart/Development/goWebApp/config
+PASS
+ok  	github.com/stuartdd/goWebApp/config	0.009s
+--------------------------------------- /home/stuart/Development/goWebApp/controllers
+PASS
+ok  	github.com/stuartdd/goWebApp/controllers	0.019s
+--------------------------------------- /home/stuart/Development/goWebApp/runCommand
+PASS
+ok  	github.com/stuartdd/goWebApp/runCommand	3.357s
+--------------------------------------- /home/stuart/Development/goWebApp/server
+LoadConfigDataBenchmark: BENCH arg not found:
+RUN ONCE!
+Server Config     :../goWebAppTestTmp1.json.
+Server Started    :Tue Dec  9 14:13:03 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+User Properties   : (No properties stored).
+Req:  GET:/server/status
+Resp: Status:200 Len:577 Type:application/json; charset=utf-8
+Log-Reset:1
+Config: ../goWebAppTestTmp1.json file reload OK! (1 milli seconds)
+Log-Reset:2
+Req:  GET:/server/status
+Resp: Status:200 Len:577 Type:application/json; charset=utf-8
+Log-Reset:3
+Config: ../goWebAppTestTmp1.json file reload OK! (0 milli seconds)
+Req:  GET:/server/status
+Resp: Status:200 Len:577 Type:application/json; charset=utf-8
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+Server Config     :../goWebAppTestTmp1.json.
+Server Started    :Tue Dec  9 14:13:06 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+User Properties   : (No properties stored).
+Req:  GET:/server/status
+Resp: Status:200 Len:577 Type:application/json; charset=utf-8
+Log-Reset:4
+Log-Reset:5
+Config: ../goWebAppTestTmp1.json Failed to load
+Config Error: User [stuart] Location [picsMissing] path [/home/stuart/Development/goWebApp/testdata/stuart/missingfolder] Not found
+
+Req:  GET:/server/status
+Resp: Status:200 Len:579 Type:application/json; charset=utf-8
+Log-Reset:6
+Req:  GET:/server/status
+Resp: Status:200 Len:579 Type:application/json; charset=utf-8
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+Server Config     :../goWebAppTest.json.
+Server Started    :Tue Dec  9 14:13:08 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+User Properties   : (No properties stored).
+Log-Reset:7
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata2.json
+Log-Reset:8
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/s-testdir1/testdata.json
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+Server Config     :../goWebAppTest.json.
+Server Started    :Tue Dec  9 14:13:09 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+User Properties   : (No properties stored).
+Config Error: Status:400. Get File Error. Invalid request:/ff/user/stuart/loc/pics/name
+Resp: Error: Status:400: '{"cause":"Get File Error","error":true,"msg":"Bad Request","status":400}'
+Log-Reset:9
+Config Error: Status:404. Get File Error. Invalid user:/ff/user/lol/loc/pics/name/fi
+Resp: Error: Status:404: '{"cause":"Get File Error","error":true,"msg":"Not Found","status":404}'
+Log-Reset:10
+Config Error: Status:404. Get File Error. Invalid location:/ff/user/stuart/loc/pac/name/fi
+Resp: Error: Status:404: '{"cause":"Get File Error","error":true,"msg":"Not Found","status":404}'
+Log-Reset:11
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/stuart/s-pics/fi: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Log-Reset:12
+Config Error: Status:404. Get File Error. Invalid path or name:/ff/user/stuart/loc/pics/path/s-testfolder
+Resp: Error: Status:404: '{"cause":"Get File Error","error":true,"msg":"Not Found","status":404}'
+Log-Reset:13
+Config Error: Status:404. Get File Error. Invalid path or name:/ff/user/stuart/loc/pics/path/s-testfolder/name
+Resp: Error: Status:404: '{"cause":"Get File Error","error":true,"msg":"Not Found","status":404}'
+Log-Reset:14
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/fi: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Log-Reset:15
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/stuart/s-pics/xxx/testdata2.json: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Log-Reset:16
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/xxx.json: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Log-Reset:17
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/xxx.json: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+Server Config     :../goWebAppTestTmp1.json.
+Server Started    :Tue Dec  9 14:13:09 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+User Properties   :../userProperties.json (No properties stored).
+Req:  GET:/prop/user/bob/name/xx123/value/xxABC
+Resp: Status:200 Len:5 Type:text/plain; charset=utf-8 Content:xxABC
+Req:  GET:/prop/user/bob/name/AB/value/CD
+Resp: Status:200 Len:2 Type:text/plain; charset=utf-8 Content:CD
+Req:  GET:/prop/user/bob/name/xx123
+Resp: Status:200 Len:5 Type:text/plain; charset=utf-8 Content:xxABC
+Req:  GET:/prop/user/bob/name/AB
+Resp: Status:200 Len:2 Type:text/plain; charset=utf-8 Content:CD
+Req:  GET:/prop/user/bob/name/xx123/value/yyABC
+Resp: Status:200 Len:5 Type:text/plain; charset=utf-8 Content:yyABC
+Req:  GET:/prop/user/bob/name/xx123
+Resp: Status:200 Len:5 Type:text/plain; charset=utf-8 Content:yyABC
+Req:  GET:/prop/user/bob/name/AB
+Resp: Status:200 Len:2 Type:text/plain; charset=utf-8 Content:CD
+Req:  GET:/prop/user/bob
+Resp: Status:200 Len:64 Type:application/json; charset=utf-8
+Req:  GET:/prop/user/stuart
+Resp: Status:200 Len:44 Type:application/json; charset=utf-8
+Req:  GET:/prop/user/frrrred/name/AB/value/XX
+Config Error: Status:404. User not found Log:User=frrrred
+Resp: Error: Status:404: '{"cause":"User not found","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/prop/user/frrrred/name/AB
+Config Error: Status:404. User not found Log:User=frrrred
+Resp: Error: Status:404: '{"cause":"User not found","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/prop/user/frrrred
+Config Error: Status:404. User not found Log:User=frrrred
+Resp: Error: Status:404: '{"cause":"User not found","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+Server Config     :../goWebAppTestTmp1.json.
+Server Started    :Tue Dec  9 14:13:10 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+User Properties   : (No properties stored).
+Req:  GET:/prop/user/bob/name/xx123/value/xxABC
+Resp: Status:200 Len:5 Type:text/plain; charset=utf-8 Content:xxABC
+Req:  GET:/prop/user/bob/name/xx123
+Resp: Status:200 Len:0 Type:text/plain; charset=utf-8 Content:
+Req:  GET:/prop/user/bob
+Resp: Status:200 Len:38 Type:application/json; charset=utf-8
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+Server Config     :../goWebAppTest.json.
+Server Started    :Tue Dec  9 14:13:11 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+User Properties   : (No properties stored).
+Req:  GET:/server/users
+Resp: Status:200 Len:69 Type:application/json; charset=utf-8
+Req:  GET:/server/status
+Resp: Status:200 Len:583 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/pics
+Req:  GET:/files/user/stuart/loc/pics 
+Resp: Status:200 Len:273 Type:application/json; charset=utf-8
+Req:  GET:/server/status
+Resp: Status:200 Len:583 Type:application/json; charset=utf-8
+Req:  GET:/server/users
+Resp: Status:200 Len:69 Type:application/json; charset=utf-8
+Log-Reset:18
+Log-Reset:19
+Resp: Status:200 Len:217 Type:text/html; charset=utf-8
+Log-Reset:20
+Resp: Status:200 Len:217 Type:text/html; charset=utf-8
+Log-Reset:21
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Log-Reset:22
+FastStaticFile:/home/stuart/Development/goWebApp/testdata/static/simple.html
+Log-Reset:23
+FastStaticFile:/home/stuart/Development/goWebApp/testdata/static/images/pic.jpeg
+Log-Reset:24
+FastStaticFile:/home/stuart/Development/goWebApp/testdata/static/images/pic.jpeg
+Log-Reset:25
+FastStaticFile:/home/stuart/Development/goWebApp/testdata/static/images/favicon.ico
+Log-Reset:26
+FastStaticFile:/home/stuart/Development/goWebApp/testdata/static/images/favicon.ico
+Config Error: Status:404. File not found. Static File Error:stat /home/stuart/Development/goWebApp/testdata/static/notfound.pic: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Config Error: Status:403. Is a directory. Static File /home/stuart/Development/goWebApp/testdata/static is a Directory
+Resp: Error: Status:403: '{"cause":"Is a directory","error":true,"msg":"Forbidden","status":403}'
+Req:  GET:/paths/user/stuart/loc/home
+Resp: Status:200 Len:325 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/home
+Req:  GET:/files/user/stuart/loc/home 
+Resp: Status:200 Len:202 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/testtree/tree
+Resp: Status:200 Len:369 Type:application/json; charset=utf-8
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Req:  POST:/files/user/stuart/loc/picsPlus/name/testdata.json
+Resp: Status:202 Len:156 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsPlus/name/testdata.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json
+Req:  POST:/files/user/stuart/loc/picsPlus/name/testdata.json
+Config Error: Status:412. File exists. File:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json already exists
+Resp: Error: Status:412: '{"cause":"File exists","error":true,"msg":"Precondition Failed","status":412}'
+Req:  GET:/files/user/stuart/loc/picsPlus/name/testdata.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json
+Req:  DELETE:/files/user/stuart/loc/picsPlus/name/testdata.json
+Resp: Status:202 Len:71 Type:application/json; charset=utf-8
+Req:  POST:/files/user/stuart/loc/picsPlus/name/testdata.json
+Resp: Status:202 Len:156 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsPlus/name/testdata.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json
+Req:  POST:/files/user/stuart/loc/picsPlus/name/testdata.json?action=replace
+Resp: Status:202 Len:178 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsPlus/name/testdata.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json
+Req:  DELETE:/files/user/stuart/loc/picsPlus/name/testdata.json
+Resp: Status:202 Len:71 Type:application/json; charset=utf-8
+Req:  POST:/files/user/stuart/loc/picsPlus/name/testdata.json
+Resp: Status:202 Len:156 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsPlus/name/testdata.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json
+Req:  POST:/files/user/stuart/loc/picsPlus/name/testdata.json?action=append
+Resp: Status:202 Len:176 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsPlus/name/testdata.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/testdata.json
+Req:  DELETE:/files/user/stuart/loc/picsPlus/name/testdata.json
+Resp: Status:202 Len:71 Type:application/json; charset=utf-8
+Log-Reset:27
+Req:  GET:/files/user/stuart/loc/pics
+Req:  GET:/files/user/stuart/loc/pics 
+Resp: Status:200 Len:273 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsPlus
+Req:  GET:/files/user/stuart/loc/picsPlus 
+Resp: Status:200 Len:220 Type:application/json; charset=utf-8
+Req:  GET:/files/user/stuart/loc/picsMissing
+Req:  GET:/files/user/stuart/loc/picsMissing 
+Config Error: Status:404. Dir not found. stat /home/stuart/Development/goWebApp/testdata/stuart/missingfolder: no such file or directory
+Resp: Error: Status:404: '{"cause":"Dir not found","error":true,"msg":"Not Found","status":404}'
+Log-Reset:28
+Req:  GET:/files/user/stuart/loc/pics/name/t1.JSON
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/t1.JSON
+Log-Reset:29
+Req:  GET:/files/user/stuart/loc/pics/path/s-testfolder/name/t5.json
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/t5.json
+Log-Reset:30
+Req:  GET:/files/user/stuart/loc/pics/path/X0Xcy10ZXN0Zm9sZGVyL3MtdGVzdGRpcjE=/name/X0XdGVzdGRhdGEuanNvbg==
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder/s-testdir1/testdata.json
+Log-Reset:31
+Log-Reset:32
+Req:  GET:/files/user/nouser/loc/pics/name/t1.JSON
+Config Error: Status:404. Get File Error. Invalid user:/files/user/nouser/loc/pics/name/t1.JSON
+Resp: Error: Status:404: '{"cause":"Get File Error","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/files/user/stuart/loc/noloc/name/t1.JSON
+Config Error: Status:404. Get File Error. Invalid location:/files/user/stuart/loc/noloc/name/t1.JSON
+Resp: Error: Status:404: '{"cause":"Get File Error","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/files/user/stuart/loc/pics/name/notExist
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/stuart/s-pics/notExist: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/files/user/stuart/loc/pics/name/s-testfolder
+Config Error: Status:403. Is a directory. File /home/stuart/Development/goWebApp/testdata/stuart/s-pics/s-testfolder is a Directory
+Resp: Error: Status:403: '{"cause":"Is a directory","error":true,"msg":"Forbidden","status":403}'
+Req:  GET:/server/status
+Resp: Status:200 Len:584 Type:application/json; charset=utf-8
+Req:  DELETE:/server/log/fred
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/logs/fred: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Req:  DELETE:/server/log/..
+Config Error: Status:403. Is a directory. /home/stuart/Development/goWebApp/testdata is a Directory
+Resp: Error: Status:403: '{"cause":"Is a directory","error":true,"msg":"Forbidden","status":403}'
+Req:  DELETE:/server/log/DummyLogger.log
+Config Error: Status:403. Cannot remove current log. Cannot remove current log: DummyLogger.log
+Resp: Error: Status:403: '{"cause":"Cannot remove current log","error":true,"msg":"Forbidden","status":403}'
+Req:  DELETE:/server/log/TLog.log
+Resp: Status:202 Len:86 Type:application/json; charset=utf-8
+Req:  DELETE:/server/log/TLog.log
+Config Error: Status:404. File not found. stat /home/stuart/Development/goWebApp/testdata/logs/TLog.log: no such file or directory
+Resp: Error: Status:404: '{"cause":"File not found","error":true,"msg":"Not Found","status":404}'
+Config Error: Status:404. Resource not found Log:Req:  GET:/ABC
+Resp: Error: Status:404: '{"cause":"Resource not found","error":true,"msg":"Not Found","status":404}'
+Req:  GET:/server/exit
+Resp: Status:202 Len:75 Type:application/json; charset=utf-8
+Server Shutdown Clean
+Returned from Server. RC:11. State:Stopped
+PASS
+ok  	github.com/stuartdd/goWebApp/server	8.347s
+--------------------------------------- /home/stuart/Development/goWebApp/logging
+2025/12/09 14:13:11 Should log to console
+PASS
+ok  	github.com/stuartdd/goWebApp/logging	0.012s
+***********************************  ALL PASS ****************************************
+--------------------------------------- /home/stuart/Development/goWebApp/server
+LoadConfigDataBenchmark: BENCH arg found: Arg[4]=-test.bench=.
+Server Config     :../goWebAppTest.json.
+Server Started    :Tue Dec  9 14:13:12 2025.
+Server Log        :/home/stuart/Development/goWebApp/testdata/logs.
+Server Port       :8083.
+Server Path (wd)  :/home/stuart/Development/goWebApp/server.
+Server Data Root  :/home/stuart/Development/goWebApp/testdata.
+Static Data Root  :/home/stuart/Development/goWebApp/testdata/static.
+Server Templating :/home/stuart/Development/goWebApp/server/configDataPI.json. Templates:[tgo.html tgoimage.html tgo.css].
+Exec Manager      :ExecPath:/home/stuart/Development/goWebApp/testdata/exec
+Server User       :bob --> /home/stuart/Development/goWebApp/testdata/bob
+Server User       :stuart --> /home/stuart/Development/goWebApp/testdata/stuart
+User Properties   : (No properties stored).
+LoadConfigDataBenchmark ------------->http://localhost:8083
+RUN ONCE!
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Run:1
+goos: linux
+goarch: amd64
+pkg: github.com/stuartdd/goWebApp/server
+cpu: Intel(R) Core(TM) Ultra 9 288V
+BenchmarkServer           	Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Run:100
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Run:10000
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Run:1000000
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Run:100000000
+Req:  GET:/favicon.ico
+FastFileFavicon:/home/stuart/Development/goWebApp/testdata/static/favicon1.ico
+Run:1000000000
+1000000000	         0.0004671 ns/op
+Req:  GET:/files/user/stuart/loc/pics/name/pic1.jpeg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/pic1.jpeg
+Run:1
+BenchmarkSmallImageServer 	Req:  GET:/files/user/stuart/loc/pics/name/pic1.jpeg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/pic1.jpeg
+Run:100
+Req:  GET:/files/user/stuart/loc/pics/name/pic1.jpeg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/pic1.jpeg
+Run:10000
+Req:  GET:/files/user/stuart/loc/pics/name/pic1.jpeg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/pic1.jpeg
+Run:1000000
+Req:  GET:/files/user/stuart/loc/pics/name/pic1.jpeg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/pic1.jpeg
+Run:100000000
+Req:  GET:/files/user/stuart/loc/pics/name/pic1.jpeg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/pic1.jpeg
+Run:1000000000
+1000000000	         0.0004265 ns/op
+Req:  GET:/files/user/stuart/loc/pics/name/benchPic.jpg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/benchPic.jpg
+BenchmarkLargeImageServer 	Req:  GET:/files/user/stuart/loc/pics/name/benchPic.jpg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/benchPic.jpg
+Req:  GET:/files/user/stuart/loc/pics/name/benchPic.jpg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/benchPic.jpg
+Req:  GET:/files/user/stuart/loc/pics/name/benchPic.jpg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/benchPic.jpg
+Req:  GET:/files/user/stuart/loc/pics/name/benchPic.jpg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/benchPic.jpg
+Req:  GET:/files/user/stuart/loc/pics/name/benchPic.jpg
+FastFile:/home/stuart/Development/goWebApp/testdata/stuart/s-pics/benchPic.jpg
+1000000000	         0.0005448 ns/op
+PASS
+ok  	github.com/stuartdd/goWebApp/server	0.147s
+*********************************** BENCHMARK ****************************************

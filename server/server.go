@@ -420,6 +420,7 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 			}
 		}
 	}
+
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "webserver doesn't support hijacking", http.StatusInternalServerError)

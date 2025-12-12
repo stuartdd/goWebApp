@@ -347,11 +347,12 @@ type ExecInfo struct {
 	execPath      string
 }
 
-func (p *ExecInfo) Validate(execPathRoot string, addError func(string)) {
+func (p *ExecInfo) Validate(execPathRoot string, name string, addError func(string)) {
 	p.execPath = execPathRoot
 	if execPathRoot == "" {
 		return
 	}
+	p.id = name
 	stats, err := os.Stat(execPathRoot)
 	if err != nil {
 		addError(fmt.Sprintf("Config Error: ExecPath %s does not exist", execPathRoot))
@@ -380,7 +381,12 @@ func (p *ExecInfo) Validate(execPathRoot string, addError func(string)) {
 		}
 	}
 	if p.LogDir != "" {
-		stats, err := os.Stat(filepath.Join(filepath.Dir(execPathRoot), p.LogDir))
+		if strings.HasPrefix(p.LogDir, "..") {
+			addError(fmt.Sprintf("Config Error: Exec [%s] log. %s", p.id, "Log Dir prefix ../ is invalid"))
+			p.LogDir = p.LogDir[3:]
+		}
+		fp := filepath.Join(filepath.Dir(execPathRoot), p.LogDir)
+		stats, err := os.Stat(fp)
 		if err != nil {
 			addError(fmt.Sprintf("Config Error: Exec [%s] log %s", p.id, err.Error()))
 		} else {
@@ -391,6 +397,7 @@ func (p *ExecInfo) Validate(execPathRoot string, addError func(string)) {
 		if p.HasNoLogFilesDefined() {
 			addError(fmt.Sprintf("Config Error: Exec [%s] has a Log entry but no LogOutFile or LogErrFile files are defined", p.id))
 		}
+		p.LogDir = fp
 	}
 }
 
@@ -398,14 +405,14 @@ func (p *ExecInfo) GetOutLogFile() string {
 	if p.LogDir == "" || p.LogOutFile == "" {
 		return ""
 	}
-	return filepath.Join(p.execPath, p.LogDir, p.LogOutFile)
+	return filepath.Join(p.LogDir, p.LogOutFile)
 }
 
 func (p *ExecInfo) GetErrLogFile() string {
 	if p.LogDir == "" || p.LogErrFile == "" {
 		return ""
 	}
-	return filepath.Join(p.execPath, p.LogDir, p.LogErrFile)
+	return filepath.Join(p.LogDir, p.LogErrFile)
 }
 
 func (p *ExecInfo) GetId() string {
@@ -811,7 +818,7 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		if p.GetExecPath() == "" {
 			configErrors.AddError("Config Error: Exec entries found. ExecPath cannot be undefined")
 		} else {
-			execData.Validate(p.ConfigFileData.ExecPath, configErrors.AddError)
+			execData.Validate(p.ConfigFileData.ExecPath, execName, configErrors.AddError)
 		}
 
 		for i, v := range execData.Cmd {
