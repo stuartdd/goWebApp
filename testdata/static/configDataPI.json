@@ -1,11 +1,15 @@
 {
-    "title":"GoWebApp",
+    "title": "GoWebApp",
     "poleForTime": "5000",
     "historyMaxLen": "10",
-    "css.body.background": "#b2f1b7",
-    "css.header.background": "#17663f",
-    "css.main.background": "#5df191",
-    "css.hilight.background": "#e8f560",
-    "css.button.hover": "goldenrod",
-    "css.button.border": "black"
+    "css": {
+        "button": {
+            "hover": "goldenrod"
+        },
+        "body.background": "#b2f1b7",
+        "header.background": "#17663f",
+        "main.background": "#5df191",
+        "hilight.background": "#e8f560",
+        "button.border": "black"
+    }
 }

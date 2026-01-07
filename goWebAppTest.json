@@ -10,7 +10,6 @@
     ],
     "UserPropertiesFile": "",
     "ContentTypeCharset": "utf-8",
-    "FaviconIcoPath": "favicon1.ico",
     "LogData": {
         "FileNameMask": "goWebServer-%y-%m-%d-%H-%M.log",
         "Path": "logs",
@@ -89,17 +88,20 @@
         }
     },
     "ServerDataRoot": "%{WebServerUserData}",
-    "StaticData": {
-        "Path": "../testdata/static",
-        "HomePage": "tgo.html"
-    },
-    "TemplateStaticFiles": {
-        "Files": [
-            "tgo.html",
-            "tgoimage.html",
-            "tgo.css"
-        ],
-        "DataFile": "configDataPI.json"
+    "StaticWebData": {
+        "Paths": {
+            "static": "../testdata/static",
+            "images": "../testdata/static/images"
+        },
+        "HomePage": "tgo.html",
+        "TemplateStaticFiles": {
+            "Files": [
+                "tgo.html",
+                "simple.html",
+                "tgo.css"
+            ],
+            "DataFile": "configDataPI.json"
+        }
     },
     "ExecPath": "../testdata/exec",
     "Env": {

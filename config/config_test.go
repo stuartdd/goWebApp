@@ -10,105 +10,105 @@ import (
 
 func TestPanicMessage(t *testing.T) {
 	pm := NewConfigErrorFromString("Status:404: Running process with ID:12345 could not be found", 500)
-	assertEquals(t, "String 8", pm.LogError(), "Config Error: Status:404. Running process with ID:12345 could not be found")
-	assertEquals(t, "String 8.1", pm.log, "")
+	AssertEquals(t, "String 8", pm.LogError(), "Config Error: Status:404. Running process with ID:12345 could not be found")
+	AssertEquals(t, "String 8.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("running process with ID:12345 could not be found Status:404", 500)
-	assertEquals(t, "String 9", pm.LogError(), "Config Error: Status:404. running process with ID:12345 could not be found")
-	assertEquals(t, "String 9.1", pm.log, "")
+	AssertEquals(t, "String 9", pm.LogError(), "Config Error: Status:404. running process with ID:12345 could not be found")
+	AssertEquals(t, "String 9.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC log:LM Status:404", 500)
-	assertEquals(t, "Recover 2", pm.Error(), "Config Error: Status:404. ABC")
-	assertEquals(t, "Recover 2.1", pm.log, "LM Status:404")
+	AssertEquals(t, "Recover 2", pm.Error(), "Config Error: Status:404. ABC")
+	AssertEquals(t, "Recover 2.1", pm.log, "LM Status:404")
 
 	pm = NewConfigErrorFromString("ABC log:LM", 500)
-	assertEquals(t, "Recover 3", pm.Error(), "Config Error: Status:500. ABC")
-	assertEquals(t, "Recover 3.1", pm.log, "LM")
+	AssertEquals(t, "Recover 3", pm.Error(), "Config Error: Status:500. ABC")
+	AssertEquals(t, "Recover 3.1", pm.log, "LM")
 
 	pm = NewConfigErrorFromString("ABC: log:LM Status:404", 500)
-	assertEquals(t, "Recover 4", pm.Error(), "Config Error: Status:404. ABC:")
-	assertEquals(t, "Recover 4.1", pm.log, "LM Status:404")
+	AssertEquals(t, "Recover 4", pm.Error(), "Config Error: Status:404. ABC:")
+	AssertEquals(t, "Recover 4.1", pm.log, "LM Status:404")
 
 	pm = NewConfigErrorFromString("ABC: Status:32768", 500)
-	assertEquals(t, "Recover 5", pm.LogError(), fmt.Sprintf("Config Error: Status:%d. ABC:", math.MaxInt16))
-	assertEquals(t, "Recover 5.1", pm.log, "")
+	AssertEquals(t, "Recover 5", pm.LogError(), fmt.Sprintf("Config Error: Status:%d. ABC:", math.MaxInt16))
+	AssertEquals(t, "Recover 5.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC: Status:4.9 4", 500)
-	assertEquals(t, "Recover 6", pm.LogError(), "Config Error: Status:49. ABC: 4")
-	assertEquals(t, "Recover 6.1", pm.log, "")
+	AssertEquals(t, "Recover 6", pm.LogError(), "Config Error: Status:49. ABC: 4")
+	AssertEquals(t, "Recover 6.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC: Status:4.0.4", 500)
-	assertEquals(t, "Recover 7", pm.LogError(), "Config Error: Status:404. ABC:")
-	assertEquals(t, "Recover 7.1", pm.log, "")
+	AssertEquals(t, "Recover 7", pm.LogError(), "Config Error: Status:404. ABC:")
+	AssertEquals(t, "Recover 7.1", pm.log, "")
 
 	pm = NewConfigErrorFromString("ABC: Status:404 log:LM", 500)
-	assertEquals(t, "Recover 8", pm.LogError(), "Config Error: Status:404. ABC: Log:LM")
-	assertEquals(t, "Recover 8.1", pm.log, "LM")
+	AssertEquals(t, "Recover 8", pm.LogError(), "Config Error: Status:404. ABC: Log:LM")
+	AssertEquals(t, "Recover 8.1", pm.log, "LM")
 
 	pm = NewConfigErrorFromString("ABC", 500)
-	assertEquals(t, "Recover 9", pm.Error(), "Config Error: Status:500. ABC")
-	assertEquals(t, "Recover 9.1", pm.log, "")
+	AssertEquals(t, "Recover 9", pm.Error(), "Config Error: Status:500. ABC")
+	AssertEquals(t, "Recover 9.1", pm.log, "")
 
 	pm = NewConfigError("R:X", 400, "LM")
-	assertEquals(t, "Simple 1", pm.Error(), "Config Error: Status:400. R:X")
-	assertEquals(t, "Simple 1.1", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
+	AssertEquals(t, "Simple 1", pm.Error(), "Config Error: Status:400. R:X")
+	AssertEquals(t, "Simple 1.1", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
 
 	pm = NewConfigError("R:X Status", 400, "LM")
-	assertEquals(t, "Simple 2", pm.Error(), "Config Error: Status:400. R:X Status")
+	AssertEquals(t, "Simple 2", pm.Error(), "Config Error: Status:400. R:X Status")
 
 	pm = NewConfigError("R:X Status", 400, "L Status:500")
-	assertEquals(t, "Simple 3", pm.Error(), "Config Error: Status:400. R:X Status")
+	AssertEquals(t, "Simple 3", pm.Error(), "Config Error: Status:400. R:X Status")
 
 	pm = NewConfigError("R:X", 400, "LM")
-	assertEquals(t, "Simple 4", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
-	assertEquals(t, "Simple 4.1", pm.log, "LM")
+	AssertEquals(t, "Simple 4", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
+	AssertEquals(t, "Simple 4.1", pm.log, "LM")
 
 	pm = NewConfigError("R:X Status", 400, "LM")
-	assertEquals(t, "Simple 5", pm.Error(), "Config Error: Status:400. R:X Status")
+	AssertEquals(t, "Simple 5", pm.Error(), "Config Error: Status:400. R:X Status")
 
 	pm = NewConfigError("R:X Status", 400, "L Status:500")
-	assertEquals(t, "Simple 6", pm.Error(), "Config Error: Status:400. R:X Status")
+	AssertEquals(t, "Simple 6", pm.Error(), "Config Error: Status:400. R:X Status")
 
 }
 
 func TestThumbNailTrim(t *testing.T) {
-	conf := loadConfigData(t)
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("", true), "")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("", false), "")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred", true), "fred")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred", false), "fred")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg", true), "HuwSig.jpg")
-	assertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg", false), "2024_09_21_12_22_11_HuwSig.jpg.jpg")
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
+	AssertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("", true), "")
+	AssertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("", false), "")
+	AssertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred", true), "fred")
+	AssertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("fred", false), "fred")
+	AssertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg", true), "HuwSig.jpg")
+	AssertEquals(t, "ConvertToThumbnail ", conf.ConvertToThumbnail("2024_09_21_12_22_11_HuwSig.jpg.jpg", false), "2024_09_21_12_22_11_HuwSig.jpg.jpg")
 }
 
 func TestJoinPath(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 	var f string
 	pre := conf.GetServerDataRoot()
 
 	f = conf.resolvePaths("", conf.GetServerDataRoot(), "/dir")
-	assertEquals(t, "file 3", f, filepath.Join(pre, "dir"))
+	AssertEquals(t, "file 3", f, filepath.Join(pre, "dir"))
 
 	f = conf.resolvePaths("", conf.GetServerDataRoot(), "***/dir")
-	assertEquals(t, "file 4", f, "/dir")
+	AssertEquals(t, "file 4", f, "/dir")
 
 	f = conf.resolvePaths("stuart", conf.GetServerDataRoot(), "***/dir")
-	assertEquals(t, "file 5", f, "/dir")
+	AssertEquals(t, "file 5", f, "/dir")
 
 	f = conf.resolvePaths("bob", conf.GetServerDataRoot(), "***dir")
-	assertEquals(t, "file 6", f, "dir")
+	AssertEquals(t, "file 6", f, "dir")
 
 	f = conf.resolvePaths("stuart", conf.GetServerDataRoot(), "dir")
-	assertEquals(t, "file 7", f, filepath.Join(pre, "stuart/dir"))
+	AssertEquals(t, "file 7", f, filepath.Join(pre, "stuart/dir"))
 
 	f = conf.resolvePaths("john", conf.GetServerDataRoot(), "")
-	assertEquals(t, "file 8", f, filepath.Join(pre, "john"))
+	AssertEquals(t, "file 8", f, filepath.Join(pre, "john"))
 
 	f = conf.resolvePaths("", conf.GetServerDataRoot(), "dir")
-	assertEquals(t, "file 9", f, filepath.Join(pre, "dir"))
+	AssertEquals(t, "file 9", f, filepath.Join(pre, "dir"))
 
 	f = conf.resolvePaths("", conf.GetServerDataRoot(), "")
-	assertEquals(t, "file 9", f, pre)
+	AssertEquals(t, "file 9", f, pre)
 
 }
 
@@ -117,52 +117,52 @@ func TestSubstitute(t *testing.T) {
 	m2 := map[string]string{"UA": "UX", "Ub": "UY"}
 	m3 := map[string]string{"UA": "UX", "Ub": "UX", "A": "UA"}
 
-	assertSub(t, "Ab8", "-%{UA}-%{A}-%{b}-%{Ub}-%{A}-", "-UX-UA-Y-UX-UA-", m1, m3)
-	assertSub(t, "Ab9", "-%%{%%{A}%{b}}-", "-%%{%XY}-", m1, m2)
+	AssertSub(t, "Ab8", "-%{UA}-%{A}-%{b}-%{Ub}-%{A}-", "-UX-UA-Y-UX-UA-", m1, m3)
+	AssertSub(t, "Ab9", "-%%{%%{A}%{b}}-", "-%%{%XY}-", m1, m2)
 
-	assertSub(t, "A2", "-%%{%%{A}}-", "-%%{%X}-", m1, m2)
-	assertSub(t, "A3", "-%{%%{A}}-", "-%{%X}-", m1, m2)
-	assertSub(t, "A4", "-%{%{A}}-", "-%{X}-", m1, m2)
-	assertSub(t, "A5", "-{%%{A}}-", "-{%X}-", m1, m2)
-	assertSub(t, "A6", "-{%{A}}-", "-{X}-", m1, m2)
-	assertSub(t, "A7", "-%{A}}-", "-X}-", m1, m2)
-	assertSub(t, "A8", "-%{A}-", "-X-", m1, m2)
-	assertSub(t, "A9", "-%%{A}-", "-%X-", m1, m2)
+	AssertSub(t, "A2", "-%%{%%{A}}-", "-%%{%X}-", m1, m2)
+	AssertSub(t, "A3", "-%{%%{A}}-", "-%{%X}-", m1, m2)
+	AssertSub(t, "A4", "-%{%{A}}-", "-%{X}-", m1, m2)
+	AssertSub(t, "A5", "-{%%{A}}-", "-{%X}-", m1, m2)
+	AssertSub(t, "A6", "-{%{A}}-", "-{X}-", m1, m2)
+	AssertSub(t, "A7", "-%{A}}-", "-X}-", m1, m2)
+	AssertSub(t, "A8", "-%{A}-", "-X-", m1, m2)
+	AssertSub(t, "A9", "-%%{A}-", "-%X-", m1, m2)
 
-	assertSub(t, "A5", "-%{A-", "-%{A-", m1, m2)
-	assertSub(t, "A6", "-%%{A-", "-%%{A-", m1, m2)
-	assertSub(t, "A8", "-%%A-", "-%%A-", m1, m2)
-	assertSub(t, "A9", "-%A-", "-%A-", m1, m2)
+	AssertSub(t, "A5", "-%{A-", "-%{A-", m1, m2)
+	AssertSub(t, "A6", "-%%{A-", "-%%{A-", m1, m2)
+	AssertSub(t, "A8", "-%%A-", "-%%A-", m1, m2)
+	AssertSub(t, "A9", "-%A-", "-%A-", m1, m2)
 
-	assertSub(t, "Z4", "-%{Z}-", "-%{Z}-", m1, m2)
-	assertSub(t, "Z5", "-%{Z-", "-%{Z-", m1, m2)
-	assertSub(t, "Z6", "-%%{Z-", "-%%{Z-", m1, m2)
-	assertSub(t, "Z7", "-%%{Z}-", "-%%{Z}-", m1, m2)
-	assertSub(t, "Z8", "-%%Z-", "-%%Z-", m1, m2)
-	assertSub(t, "Z9", "-%Z-", "-%Z-", m1, m2)
+	AssertSub(t, "Z4", "-%{Z}-", "-%{Z}-", m1, m2)
+	AssertSub(t, "Z5", "-%{Z-", "-%{Z-", m1, m2)
+	AssertSub(t, "Z6", "-%%{Z-", "-%%{Z-", m1, m2)
+	AssertSub(t, "Z7", "-%%{Z}-", "-%%{Z}-", m1, m2)
+	AssertSub(t, "Z8", "-%%Z-", "-%%Z-", m1, m2)
+	AssertSub(t, "Z9", "-%Z-", "-%Z-", m1, m2)
 
-	assertEquals(t, "empty", string(SubstituteFromMap([]byte(""), m1, m2)), "")
-	assertEquals(t, "1 ch", string(SubstituteFromMap([]byte("%"), m1, m2)), "%")
-	assertEquals(t, "2 ch", string(SubstituteFromMap([]byte("%{"), m1, m2)), "%{")
-	assertEquals(t, "3 ch", string(SubstituteFromMap([]byte("%{}"), m1, m2)), "%{}")
-	assertEquals(t, "4 chA", string(SubstituteFromMap([]byte("%{A}"), m1, m2)), "X")
-	assertEquals(t, "4 chX", string(SubstituteFromMap([]byte("%{Z}"), m1, m2)), "%{Z}")
+	AssertEquals(t, "empty", string(SubstituteFromMap([]byte(""), m1, m2)), "")
+	AssertEquals(t, "1 ch", string(SubstituteFromMap([]byte("%"), m1, m2)), "%")
+	AssertEquals(t, "2 ch", string(SubstituteFromMap([]byte("%{"), m1, m2)), "%{")
+	AssertEquals(t, "3 ch", string(SubstituteFromMap([]byte("%{}"), m1, m2)), "%{}")
+	AssertEquals(t, "4 chA", string(SubstituteFromMap([]byte("%{A}"), m1, m2)), "X")
+	AssertEquals(t, "4 chX", string(SubstituteFromMap([]byte("%{Z}"), m1, m2)), "%{Z}")
 }
 
-func assertSub(t *testing.T, id, sub, expected string, m1 map[string]string, m2 map[string]string) {
+func AssertSub(t *testing.T, id, sub, expected string, m1 map[string]string, m2 map[string]string) {
 	r := string(SubstituteFromMap([]byte(sub), m1, m2))
 	if r != expected {
 		t.Fatalf("Substitution: %s, \nExpected [%s]\nActual   [%s]", id, expected, r)
 	}
 }
 
-func assertEquals(t *testing.T, message string, actual string, expected string) {
+func AssertEquals(t *testing.T, message string, actual string, expected string) {
 	if actual != expected {
 		t.Fatalf("%s.\nExpected:%s\nActual:  %s", message, expected, string(actual))
 	}
 }
 
-func assertContains(t *testing.T, message string, actual string, contains []string) {
+func AssertContains(t *testing.T, message string, actual string, contains []string) {
 	for _, c := range contains {
 		if !strings.Contains(actual, c) {
 			t.Fatalf("%s.\nDoes Not Contain:%s\nActual:  %s", message, c, string(actual))
@@ -170,8 +170,15 @@ func assertContains(t *testing.T, message string, actual string, contains []stri
 	}
 }
 
+func AssertErrors(t *testing.T, message string, actual *ConfigErrorData, contains []string, count int) {
+	if actual.ErrorCount() != count {
+		t.Fatalf("%s.\nExpected:%d errors \nActual:  %d errors", message, count, actual.ErrorCount())
+	}
+	AssertContains(t, message, actual.String(), contains)
+}
+
 func TestUserExecBadExecId(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -179,8 +186,8 @@ func TestUserExecBadExecId(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("TestUserExecBadExecId: Should have returned a ConfigError")
 			}
-			assertEquals(t, "TestUserExecBadExecId", pm.LogError(), "Config Error: Status:404. Exec ID not found Log:exec-id=notid")
-			assertEquals(t, "TestUserExecBadExecId", pm.String(), "Exec ID not found")
+			AssertEquals(t, "TestUserExecBadExecId", pm.LogError(), "Config Error: Status:404. Exec ID not found Log:exec-id=notid")
+			AssertEquals(t, "TestUserExecBadExecId", pm.String(), "Exec ID not found")
 		}
 	}()
 
@@ -189,7 +196,7 @@ func TestUserExecBadExecId(t *testing.T) {
 }
 
 func TestUserExec(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -202,11 +209,11 @@ func TestUserExec(t *testing.T) {
 		t.Fatalf("Exec canstop should default to false")
 	}
 	es := exec.String()
-	assertContains(t, "TestUserExec ", es, []string{pre, "[cmd2]", "/logs/stdOutC2.txt"})
+	AssertContains(t, "TestUserExec ", es, []string{pre, "[cmd2]", "/logs/stdOutC2.txt"})
 
 }
 func TestGetUserExecInfo(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 	c1 := conf.GetExecInfo("ls")
 
 	if c1.Cmd[0] != "ls" {
@@ -218,7 +225,7 @@ func TestGetUserExecInfo(t *testing.T) {
 }
 
 func TestGetUserLocPathBadUser(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -226,8 +233,8 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a ConfigError")
 			}
-			assertEquals(t, "TestGetUserLocPathBadUser", pm.Error(), "Config Error: Status:404. User not found")
-			assertEquals(t, "TestGetUserLocPathBadUser", pm.LogError(), "Config Error: Status:404. User not found Log:User=fred")
+			AssertEquals(t, "TestGetUserLocPathBadUser", pm.Error(), "Config Error: Status:404. User not found")
+			AssertEquals(t, "TestGetUserLocPathBadUser", pm.LogError(), "Config Error: Status:404. User not found Log:User=fred")
 		}
 	}()
 
@@ -236,7 +243,7 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 }
 
 func TestGetUserLocPathBadLoc(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -244,8 +251,8 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a PanicMessage")
 			}
-			assertEquals(t, "TestGetUserLocPathBadLoc", pm.Error(), "Config Error: Status:404. Location not found")
-			assertEquals(t, "TestGetUserLocPathBadLoc", pm.LogError(), "Config Error: Status:404. Location not found Log:User=stuart Location=nothome")
+			AssertEquals(t, "TestGetUserLocPathBadLoc", pm.Error(), "Config Error: Status:404. Location not found")
+			AssertEquals(t, "TestGetUserLocPathBadLoc", pm.LogError(), "Config Error: Status:404. Location not found Log:User=stuart Location=nothome")
 		}
 	}()
 
@@ -254,7 +261,7 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 }
 
 func TestGetUserLocPath(t *testing.T) {
-	conf := loadConfigData(t)
+	conf := LoadConfigData(t, "../goWebAppTest.json", nil)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -270,14 +277,15 @@ func TestGetUserLocPath(t *testing.T) {
 
 }
 
-func loadConfigData(t *testing.T) *ConfigData {
-	errList := NewConfigErrorData()
-	configData := NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
-	if errList.ErrorCount() > 1 || configData == nil {
-		t.Fatal(errList.String())
+func LoadConfigData(t *testing.T, name string, errList *ConfigErrorData) *ConfigData {
+	maxErr := 9
+	if errList == nil {
+		maxErr = 1
+		errList = NewConfigErrorData()
 	}
-	if configData == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errList.String())
+	configData := NewConfigData(name, "goWebApp", false, false, false, errList)
+	if errList.ErrorCount() > maxErr || configData == nil {
+		t.Fatal(errList.String())
 	}
 	return configData
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +19,11 @@ import (
 	"github.com/stuartdd/goWebApp/runCommand"
 )
 
+const configRef = "../goWebAppTest.json"
+const configTmp = "../goWebAppTmp.json"
+const thumbnailTrimPrefix = 20
+const thumbnailTrimSuffix = 4
+
 type TLog struct {
 	B       bytes.Buffer
 	RSCount int
@@ -28,6 +31,15 @@ type TLog struct {
 
 func (l *TLog) Close() {}
 func (l *TLog) Log(s string) {
+	l.B.WriteString("LOG: ")
+	l.B.WriteString(s)
+	l.B.WriteString("\n")
+	os.Stdout.WriteString(s)
+	os.Stdout.WriteString("\n")
+}
+
+func (l *TLog) LogVerbose(s string) {
+	l.B.WriteString("VERBOSE: ")
 	l.B.WriteString(s)
 	l.B.WriteString("\n")
 	os.Stdout.WriteString(s)
@@ -39,8 +51,9 @@ func WriteLogToFile(path string) {
 }
 
 func (l *TLog) VerboseFunction() func(string) {
-	return nil
+	return l.LogVerbose
 }
+
 func (l *TLog) Get() string {
 	return l.B.String()
 }
@@ -67,8 +80,6 @@ const postDataFile1 = "{\"Data\":\"This is data ONE for file 1\"}"
 const postDataFile2 = "{\"Data\":\"This is data TWO for file 2\"}"
 const testdatafile = "testdata.json"
 const testConfigFile = "../goWebAppTest.json"
-const testConfigFileTmp1 = "../goWebAppTestTmp1.json"
-const testConfigFileTmp2 = "../goWebAppTestTmp2.json"
 const testPropertyFile = "../userProperties.json"
 
 func TestUrlRequestParamsMap(t *testing.T) {
@@ -89,17 +100,16 @@ func TestUrlRequestParamsMap(t *testing.T) {
 	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
 }
 func TestGetSetPropNewFile(t *testing.T) {
-	os.Remove(testConfigFileTmp1)
 	os.Remove(testPropertyFile)
-	updateConfigData(t, testConfigFile, testConfigFileTmp1, "\"UserPropertiesFile\":", fmt.Sprintf("\"UserPropertiesFile\": \"%s\",", testPropertyFile))
-	configData := loadConfigData(t, testConfigFileTmp1)
+	configData, _ := UpdateConfigAndLoad(t, func(cdff *config.ConfigDataFromFile) {
+		cdff.UserPropertiesFile = testPropertyFile
+	}, nil, true)
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
 	defer func() {
 		StopServer(t, configData)
-		os.Remove(testConfigFileTmp1)
 		os.Remove(testPropertyFile)
 	}()
 
@@ -108,35 +118,35 @@ func TestGetSetPropNewFile(t *testing.T) {
 	}
 
 	url := "prop/user/bob/name/xx123/value/xxABC"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody := RunClientGet(t, "TestGetSetPropNewFile 1", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 1", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "xxABC" {
 		t.Fatalf("Result initial set should be xxABC. It is '%s'", respBody)
 	}
 
 	url = "prop/user/bob/name/AB/value/CD"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 2", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 2", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "CD" {
 		t.Fatalf("Result first read should be CD. It is '%s'", respBody)
 	}
 
 	url = "prop/user/bob/name/xx123"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 3", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 3", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "xxABC" {
 		t.Fatalf("Result first read should be xxABC. It is '%s'", respBody)
 	}
 
 	url = "prop/user/bob/name/AB"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 4", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "CD" {
 		t.Fatalf("Result first read should be CD. It is '%s'", respBody)
 	}
 
 	url = "prop/user/bob/name/xx123/value/yyABC"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 5", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4.1", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "yyABC" {
 		t.Fatalf("Result of change value should be yyABC. It is '%s'", respBody)
@@ -144,80 +154,79 @@ func TestGetSetPropNewFile(t *testing.T) {
 	time.Sleep(300 * time.Millisecond) // Delay as write to propertiers file is async
 
 	url = "prop/user/bob/name/xx123"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 6", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4.2", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "yyABC" {
 		t.Fatalf("Result second read should be yyABC. It is '%s'", respBody)
 	}
 
 	url = "prop/user/bob/name/AB"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 7", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4.3", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "CD" {
 		t.Fatalf("Result was changed by update. Should be CD. '%s'", respBody)
 	}
 
 	url = "prop/user/bob"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 8", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 5", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{"\"AB\":\"CD\"", "\"xx123\":\"yyABC\""})
 	url = "prop/user/stuart"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 9", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 6", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 
-	AssertEquivilent(t, respBody, "{\"id\":\"stuart\",\"info\":false,\"name\":\"Stuart\"}")
+	AssertEquivilent(t, "TestGetSetPropNewFile 9.5", respBody, "{\"id\":\"stuart\",\"info\":false,\"name\":\"Stuart\"}")
 
 	url = "prop/user/frrrred/name/AB/value/XX"
-	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 10", configData, url, 404, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 7", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 
 	AssertContains(t, respBody, []string{"User not found", "\"error\":true"})
 	url = "prop/user/frrrred/name/AB"
-	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 11", configData, url, 404, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 8", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 
 	AssertContains(t, respBody, []string{"User not found", "\"error\":true"})
 
 	url = "prop/user/frrrred"
-	r, respBody = RunClientGet(t, configData, url, 404, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNewFile 12", configData, url, 404, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 9", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 
 	AssertContains(t, respBody, []string{"User not found", "\"error\":true"})
 }
 
 func TestGetSetPropNoFileDef(t *testing.T) {
-	os.Remove(testConfigFileTmp1)
-	updateConfigData(t, testConfigFile, testConfigFileTmp1, "\"UserPropertiesFile\":", "")
-	configData := loadConfigData(t, testConfigFileTmp1)
+	configData, _ := UpdateConfigAndLoad(t, func(cdff *config.ConfigDataFromFile) {
+		cdff.UserPropertiesFile = ""
+	}, nil, true)
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
 	defer func() {
 		StopServer(t, configData)
-		os.Remove(testConfigFileTmp1)
 	}()
 
 	if configData.ConfigFileData.UserPropertiesFile != "" {
 		t.Fatal("UserPropertiesFile is not empty")
 	}
 	url := "prop/user/bob/name/xx123/value/xxABC"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody := RunClientGet(t, "TestGetSetPropNoFileDef 1", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "xxABC" {
 		t.Fatalf("Result should be xxABC. It is '%s'", respBody)
 	}
 
 	url = "prop/user/bob/name/xx123"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNoFileDef 2", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4", r, []string{"text/plain", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	if respBody != "" {
 		t.Fatalf("Result should be empty. It is '%s'", respBody)
 	}
 	url = "prop/user/bob"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestGetSetPropNoFileDef 3", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
-	AssertEquivilent(t, respBody, "{\"id\":\"bob\",\"info\":false,\"name\":\"Bob\"}")
+	AssertEquivilent(t, "TestGetSetPropNewFile 4", respBody, "{\"id\":\"bob\",\"info\":false,\"name\":\"Bob\"}")
 }
 
 func TestServerGetUsers(t *testing.T) {
@@ -229,7 +238,7 @@ func TestServerGetUsers(t *testing.T) {
 	}
 
 	url := "server/users"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody := RunClientGet(t, "TestServerGetUsers", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestGetSetPropNewFile 4", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"id\":\"bob\"",
@@ -246,14 +255,14 @@ func TestServerGetTime(t *testing.T) {
 	}
 
 	url := "server/time"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody := RunClientGet(t, "TestServerGetTime", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServerGetTime", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"time\":{\"dom\":",
 		"\"millis\":",
 		"\"timestamp\":",
 	})
-	AssertLogNotContains(t, logger, []string{"GET:/server/time"})
+	AssertLogContains(t, logger, []string{"VERBOSE: Req:  GET:/server/time"})
 }
 
 func TestServerStatus(t *testing.T) {
@@ -265,7 +274,7 @@ func TestServerStatus(t *testing.T) {
 	}
 
 	url := "server/status"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody := RunClientGet(t, "TestServerStatus", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServerStatus", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"error\":false,",
@@ -284,7 +293,7 @@ func TestServer(t *testing.T) {
 	}
 
 	url := "files/user/stuart/loc/pics"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody := RunClientGet(t, "TestServer 1", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServer 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"",
@@ -292,21 +301,21 @@ func TestServer(t *testing.T) {
 	})
 
 	url = "files/user/stuart/loc/pics/name/t1.JSON"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestServer 2", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServer 1.1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"UserDataRoot\": \"..\"", "\"ServerName\": \"TestServer\"",
 	})
 
 	url = fmt.Sprintf("files/user/stuart/loc/pics/path/%s/name/t5.json", encodeValue("s-testfolder"))
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestServer 3", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServer 1.2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"UserDataRoot\": \"..\"", "\"ServerName\": \"TestServer\"",
 	})
 
 	url = "server/status"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 10)
+	r, respBody = RunClientGet(t, "TestServer 4", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServer 2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"error\":false,\"status\":",
@@ -316,7 +325,7 @@ func TestServer(t *testing.T) {
 	})
 
 	url = "server/users"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", 69, 10)
+	r, respBody = RunClientGet(t, "TestServer 5", configData, url, 200, "?", 69, 10)
 	AssertHeader(t, "TestServer 3", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"users\"",
@@ -325,7 +334,7 @@ func TestServer(t *testing.T) {
 	})
 
 	url = "server/time"
-	r, respBody = RunClientGet(t, configData, url, 200, "?", -1, 0)
+	r, respBody = RunClientGet(t, "TestServer 6", configData, url, 200, "?", -1, 0)
 	AssertHeader(t, "TestServer 4", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"time\"",
@@ -346,19 +355,60 @@ func TestStaticTemplate(t *testing.T) {
 
 	var url string
 	var resp *http.Response
+	var content string
+
+	logger.Reset()
+	url = "static/html/simple.html?arg1=ARG1"
+	resp, content = RunClientGet(t, "TestStaticTemplate 2", configData, url, 200, "?", 98, 5)
+	AssertHeader(t, "TestStaticTemplate 1", resp, []string{"text/html", "charset=utf-8"}, "")
+	AssertContains(t, content, []string{
+		"<h1>ARG1 %{arg1}</h1>",
+	})
+	AssertLogContains(t, logger, []string{"FastFile: /", "/html/simple.html"})
+
+	logger.Reset()
+	url = "static/tgo.html?arg1=ARG2"
+	resp, content = RunClientGet(t, "TestStaticTemplate 2", configData, url, 200, "?", 217, 50)
+	AssertHeader(t, "TestStaticTemplate 2", resp, []string{"text/html", "charset=utf-8"}, "")
+	AssertContains(t, content, []string{
+		"Application name GoWebApp",
+		"<p>Config Env:This is a test</p>",
+		"<p>Query arg:ARG2</p>",
+		"<p>Not found:%{xxxxx}</p>",
+		"<p>PWD:/",
+		"goWebApp/server</p>",
+	})
+	AssertLogContains(t, logger, []string{"Resp: Status:200"})
+
+	logger.Reset()
+	url = ""
+	resp, content = RunClientGet(t, "TestStaticTemplate 0", configData, url, 200, "?", 220, 50)
+	AssertHeader(t, "TestStaticTemplate 0", resp, []string{"text/html", "charset=utf-8"}, "")
+	AssertContains(t, content, []string{
+		"<!DOCTYPE html>",
+		"Application name GoWebApp",
+		"<p>Config Env:This is a test</p>",
+		"Query arg:%{arg1}",
+		"found:%{xxxxx}",
+		"<p>PWD:/",
+		"goWebApp/server</p>",
+	})
+	AssertLogContains(t, logger, []string{"Resp: Status:200", "/static/tgo.html"})
 
 	logger.Reset()
 	url = "tgo.html?arg1=ARG1"
-	resp, content := RunClientGet(t, configData, url, 200, "?", 217, 50)
+	resp, content = RunClientGet(t, "TestStaticTemplate 1", configData, url, 200, "?", 217, 50)
 	AssertHeader(t, "TestStaticTemplate 1", resp, []string{"text/html", "charset=utf-8"}, "")
-	AssertContains(t, content, []string{"Application name GoWebApp", "<p>Config Env:This is a test</p>", "<p>Query arg:ARG1</p>", "<p>Not found:%{xxxxx}</p>", "<p>PWD:/", "goWebApp/server</p>"})
+	AssertContains(t, content, []string{
+		"Application name GoWebApp",
+		"<p>Config Env:This is a test</p>",
+		"<p>Query arg:ARG1</p>",
+		"<p>Not found:%{xxxxx}</p>",
+		"<p>PWD:/",
+		"goWebApp/server</p>",
+	})
 	AssertLogContains(t, logger, []string{"Resp: Status:200"})
-	logger.Reset()
-	url = "static/tgo.html?arg1=ARG2"
-	resp, content = RunClientGet(t, configData, url, 200, "?", 217, 50)
-	AssertHeader(t, "TestStaticTemplate 2", resp, []string{"text/html", "charset=utf-8"}, "")
-	AssertContains(t, content, []string{"Application name GoWebApp", "<p>Config Env:This is a test</p>", "<p>Query arg:ARG2</p>", "<p>Not found:%{xxxxx}</p>", "<p>PWD:/", "goWebApp/server</p>"})
-	AssertLogContains(t, logger, []string{"Resp: Status:200"})
+
 }
 
 func TestStatic(t *testing.T) {
@@ -374,44 +424,44 @@ func TestStatic(t *testing.T) {
 
 	logger.Reset()
 	url = "favicon.ico"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 190985, 10)
+	resp, _ = RunClientGet(t, "TestStatic 1", configData, url, 200, "?", 177174, 10)
 	AssertHeader(t, "TestStatic 1", resp, []string{"image/vnd.microsoft.icon"}, "")
-	AssertLogContains(t, logger, []string{"FastFileFavicon", "testdata/static/favicon1.ico"})
+	AssertLogContains(t, logger, []string{"FastFile:", "testdata/static/favicon.ico"})
+
+	logger.Reset()
+	url = "images/favicon2.ico"
+	resp, _ = RunClientGet(t, "TestStatic 6", configData, url, 200, "?", 177174, 10)
+	AssertHeader(t, "TestStatic 6", resp, []string{"image/vnd.microsoft.icon"}, "")
+	AssertLogContains(t, logger, []string{"FastFile", "testdata/static/images/favicon2.ico"})
 
 	logger.Reset()
 	url = "static/simple.html"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 103, 10)
+	resp, _ = RunClientGet(t, "TestStatic 2", configData, url, 200, "?", 103, 10)
 	AssertHeader(t, "TestStatic 2", resp, []string{"text/html", "charset=utf-8"}, "103")
-	AssertLogContains(t, logger, []string{"FastStaticFile", "testdata/static/simple.htm"})
+	AssertLogContains(t, logger, []string{"Read Template File", "testdata/static/simple.htm"})
 
 	logger.Reset()
 	url = "static/images/pic.jpeg"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 4821, 10)
+	resp, _ = RunClientGet(t, "TestStatic 3", configData, url, 200, "?", 4821, 10)
 	AssertHeader(t, "TestStatic 3", resp, []string{"image/jpeg"}, "")
-	AssertLogContains(t, logger, []string{"FastStaticFile", "images/pic.jpeg"})
+	AssertLogContains(t, logger, []string{"FastFile", "images/pic.jpeg"})
 
 	logger.Reset()
 	url = "images/pic.jpeg"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 4821, 10)
+	resp, _ = RunClientGet(t, "TestStatic 4", configData, url, 200, "?", 4821, 10)
 	AssertHeader(t, "TestStatic 4", resp, []string{"image/jpeg"}, "")
-	AssertLogContains(t, logger, []string{"FastStaticFile", "images/pic.jpeg"})
+	AssertLogContains(t, logger, []string{"FastFile", "images/pic.jpeg"})
 
 	logger.Reset()
-	url = "static/images/favicon.ico"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
-	AssertHeader(t, "TestStatic 1", resp, []string{"image/vnd.microsoft.icon"}, "")
-	AssertLogContains(t, logger, []string{"FastStaticFile", "static/images/favicon.ico"})
-
-	logger.Reset()
-	url = "images/favicon.ico"
-	resp, _ = RunClientGet(t, configData, url, 200, "?", 177174, 10)
-	AssertHeader(t, "TestStatic 1", resp, []string{"image/vnd.microsoft.icon"}, "")
-	AssertLogContains(t, logger, []string{"FastStaticFile", "testdata/static/images/favicon.ico"})
+	url = "static/images/favicon2.ico"
+	resp, _ = RunClientGet(t, "TestStatic 5", configData, url, 200, "?", 177174, 10)
+	AssertHeader(t, "TestStatic 5", resp, []string{"image/vnd.microsoft.icon"}, "")
+	AssertLogContains(t, logger, []string{"FastFile", "static/images/favicon2.ico"})
 
 	url = "static/notfound.pic"
-	RunClientGet(t, configData, url, 404, "?", -1, 0)
+	RunClientGet(t, "TestStatic 7", configData, url, 404, "?", -1, 0)
 	url = "static"
-	RunClientGet(t, configData, url, 403, "?", -1, 0)
+	RunClientGet(t, "TestStatic 8", configData, url, 404, "?", -1, 0)
 
 }
 
@@ -424,13 +474,11 @@ func TestFilePath(t *testing.T) {
 	}
 
 	url := "paths/user/stuart/loc/home"
-	r, respBody := RunClientGet(t, configData, url, 200, "?", -1, 0)
+	r, respBody := RunClientGet(t, "TestFilePath 1", configData, url, 200, "?", -1, 0)
 	AssertHeader(t, "TestFilePath 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{"\"error\":false", "\"name\":\"s-pics\""})
-	// url = "files/user/stuart/loc/home/path/" + controllers.encodePath("s-pics")
-	// RunClientGet(t, configData, url, 200, "?", -1, 0)
 	url = "files/user/stuart/loc/home"
-	r, respBody = RunClientGet(t, configData, url, 200, "\"path\":null|\"error\":false", -1, 0)
+	r, respBody = RunClientGet(t, "TestFilePath 3", configData, url, 200, "\"path\":null|\"error\":false", -1, 0)
 	AssertHeader(t, "TestFilePath 2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{"\"error\":false", "\"name\":\"t2.Data\"", "\"encName\":\"X0XdDIuRGF0YQ==\""})
 
@@ -445,7 +493,7 @@ func TestTree(t *testing.T) {
 
 	url := "files/user/stuart/loc/testtree/tree"
 
-	r, dirList := RunClientGet(t, configData, url, 200, "?", -1, 0)
+	r, dirList := RunClientGet(t, "TestTree 1", configData, url, 200, "?", -1, 0)
 	AssertHeader(t, "TestFilePath 2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(dirList)))
 
 	tn := make(map[string]interface{})
@@ -460,7 +508,7 @@ func TestTree(t *testing.T) {
 		t.Fatalf("response 'tree' is nil")
 	}
 
-	RunClientGet(t, configData, "favicon.ico", 200, "?", -1, 0)
+	RunClientGet(t, "TestTree 2", configData, "favicon.ico", 200, "?", -1, 0)
 
 }
 
@@ -481,14 +529,14 @@ func TestPostFileAndDelete(t *testing.T) {
 	url := fmt.Sprintf("files/user/stuart/loc/picsPlus/name/%s", testdatafile)
 
 	RunClientPost(t, configData, url, 202, "File:Action:save", postDataFile1)
-	r, resBody := RunClientGet(t, configData, url, 200, "?", -1, 0)
+	r, resBody := RunClientGet(t, "TestPostFileAndDelete 1", configData, url, 200, "?", -1, 0)
 	AssertHeader(t, "TestPostFileAndDelete 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if resBody != postDataFile1 {
 		t.Fatalf("Response body does not equal postDataFile1")
 	}
 	// Try to save again with different content but should not overwrite so content remains the same!
 	RunClientPost(t, configData, url, 412, "File exists", postDataFile2)
-	r, resBody = RunClientGet(t, configData, url, 200, "?", -1, 0)
+	r, resBody = RunClientGet(t, "TestPostFileAndDelete 2", configData, url, 200, "?", -1, 0)
 	AssertHeader(t, "TestPostFileAndDelete 2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if resBody != postDataFile1 {
 		t.Fatalf("Response body does not equal postDataFile1")
@@ -532,14 +580,14 @@ func TestPostFileOverwriteAndDelete(t *testing.T) {
 	urlB := fmt.Sprintf("files/user/stuart/loc/picsPlus/name/%s", testdatafile)
 
 	RunClientPost(t, configData, urlB, 202, "File:Action:save", postDataFile1)
-	r, resBody := RunClientGet(t, configData, urlB, 200, "?", -1, 0)
+	r, resBody := RunClientGet(t, "TestPostFileOverwriteAndDelete 1", configData, urlB, 200, "?", -1, 0)
 	AssertHeader(t, "TestPostFileAndDelete 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if resBody != postDataFile1 {
 		t.Fatalf("Response body does not equal postDataFile1")
 	}
 	// Try to save again with different content this should not overwrite so content will change!
 	RunClientPost(t, configData, urlA, 202, "File:Action:replace", postDataFile2)
-	r, resBody = RunClientGet(t, configData, urlB, 200, "?", -1, 0)
+	r, resBody = RunClientGet(t, "TestPostFileOverwriteAndDelete 2", configData, urlB, 200, "?", -1, 0)
 	AssertHeader(t, "TestPostFileAndDelete 2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if resBody != postDataFile2 {
 		t.Fatalf("Response body does not equal postDataFile2")
@@ -578,14 +626,14 @@ func TestPostFileAppendAndDelete(t *testing.T) {
 	urlB := fmt.Sprintf("files/user/stuart/loc/picsPlus/name/%s", testdatafile)
 
 	RunClientPost(t, configData, urlB, 202, "File:Action:save", postDataFile1)
-	r, resBody := RunClientGet(t, configData, urlB, 200, "?", -1, 0)
+	r, resBody := RunClientGet(t, "TestPostFileAppendAndDelete 1", configData, urlB, 200, "?", -1, 0)
 	AssertHeader(t, "TestPostFileAppendAndDelete 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if resBody != postDataFile1 {
 		t.Fatalf("Response body does not equal postDataFile1")
 	}
 	// Try to save again with different content this should append so content will change!
 	RunClientPost(t, configData, urlA, 202, "File:Action:append", postDataFile2)
-	r, resBody = RunClientGet(t, configData, urlB, 200, "?", -1, 0)
+	r, resBody = RunClientGet(t, "TestPostFileAppendAndDelete 2", configData, urlB, 200, "?", -1, 0)
 	AssertHeader(t, "TestPostFileAppendAndDelete 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if resBody != postDataFile1+postDataFile2 {
 		t.Fatalf("Response body does not equal postDataFile2 + postDataFile2")
@@ -615,7 +663,7 @@ func TestReadDir(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics", 200, "?", -1, 0)
+	r, resBody := RunClientGet(t, "TestReadDir 1", configData, "files/user/stuart/loc/pics", 200, "?", -1, 0)
 	AssertHeader(t, "TestReadDir 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 
 	AssertContains(t, resBody, []string{
@@ -625,7 +673,7 @@ func TestReadDir(t *testing.T) {
 		"{\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"}",
 	})
 
-	r, resBody = RunClientGet(t, configData, "files/user/stuart/loc/picsPlus", 200, "?", -1, 0)
+	r, resBody = RunClientGet(t, "TestReadDir 2", configData, "files/user/stuart/loc/picsPlus", 200, "?", -1, 0)
 	AssertHeader(t, "TestReadDir 2", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 
 	AssertContains(t, resBody, []string{
@@ -647,7 +695,7 @@ func TestReadDirNotFound(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/picsMissing", http.StatusNotFound, "?", -1, 0)
+	r, resBody := RunClientGet(t, "TestReadDirNotFound 1", configData, "files/user/stuart/loc/picsMissing", http.StatusNotFound, "?", -1, 0)
 	AssertHeader(t, "TestReadDirNotFound 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	AssertContains(t, resBody, []string{
 		"\"error\":true",
@@ -665,7 +713,7 @@ func TestReadFile(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/t1.JSON", http.StatusOK, "?", 251, 0)
+	r, resBody := RunClientGet(t, "TestReadFile 1", configData, "files/user/stuart/loc/pics/name/t1.JSON", http.StatusOK, "?", 251, 0)
 	AssertHeader(t, "TestReadDirNotFound 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
 		t.Fatalf("Respons body does not start with...")
@@ -682,7 +730,7 @@ func TestReadFileWithPath(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/path/s-testfolder/name/t5.json", http.StatusOK, "?", 251, 0)
+	r, resBody := RunClientGet(t, "TestReadFileWithPath 1", configData, "files/user/stuart/loc/pics/path/s-testfolder/name/t5.json", http.StatusOK, "?", 251, 0)
 	AssertHeader(t, "TestReadFileWithPath 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if !strings.HasPrefix(trimString(resBody), "{ \"ServerName\": \"TestServer\", \"Users\":") {
 		t.Fatalf("Respons body does not start with...")
@@ -701,7 +749,7 @@ func TestReadFileWithPath64enc(t *testing.T) {
 	}
 	url := fmt.Sprintf("files/user/stuart/loc/pics/path/%s/name/%s", encodeValue("s-testfolder/s-testdir1"), encodeValue("testdata.json"))
 
-	r, resBody := RunClientGet(t, configData, url, http.StatusOK, "?", 33, 0)
+	r, resBody := RunClientGet(t, "TestReadFileWithPath64enc 1", configData, url, http.StatusOK, "?", 33, 0)
 	AssertHeader(t, "TestReadFileWithPath64enc 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if !strings.HasPrefix(trimString(resBody), "{\"Data\":\"This is the data for 2\"}") {
 		t.Fatalf("Respons body does not start with...")
@@ -719,10 +767,11 @@ func TestReadFileWTestOption(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	url := fmt.Sprintf("test/user/stuart/loc/pics/name/%s", encodeValue("t1.JSON"))
-	r, resBody := RunClientGet(t, configData, url, http.StatusOK, "?", 251, 0)
-	AssertHeader(t, "TestReadFileWithPath64enc 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
+	r, resBody := RunClientGet(t, "TestReadFileWTestOption 1", configData, url, http.StatusOK, "?", 251, 0)
+	AssertHeader(t, "TestReadFileWTestOption 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	AssertContains(t, resBody, []string{"\"pics\": \"testdata\"", "\"ServerName\": \"TestServer\""})
-	AssertLogNotContains(t, logger, []string{"FastFile:", "t1.JSON"})
+	AssertLogContains(t, logger, []string{"VERBOSE: Req:", "name/X0XdDEuSlNPTg=="})
+	AssertLogNotContains(t, logger, []string{"LOG: FastFile:"})
 }
 
 func TestReadFileNotUser(t *testing.T) {
@@ -735,7 +784,7 @@ func TestReadFileNotUser(t *testing.T) {
 	}
 
 	logger.Reset()
-	r, resBody := RunClientGet(t, configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
+	r, resBody := RunClientGet(t, "TestReadFileNotUser 1", configData, "files/user/nouser/loc/pics/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
 	AssertHeader(t, "TestReadFileNotUser 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Get File Error\""})
 	AssertLogContains(t, logger, []string{"Invalid user:", "Get File Error", "/files/user/nouser/loc/pics/name/t1.JSON"})
@@ -750,7 +799,7 @@ func TestReadFileNotLoc(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
+	r, resBody := RunClientGet(t, "TestReadFileNotLoc 1", configData, "files/user/stuart/loc/noloc/name/t1.JSON", http.StatusNotFound, "?", 70, 0)
 	AssertHeader(t, "TestReadFileNotLoc 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Get File Error\""})
 	AssertLogContains(t, logger, []string{"Invalid location:", "Get File Error", "/files/user/stuart/loc/noloc/name/t1.JSON"})
@@ -765,7 +814,7 @@ func TestReadFileNotName(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 70, 0)
+	r, resBody := RunClientGet(t, "TestReadFileNotName 1", configData, "files/user/stuart/loc/pics/name/notExist", http.StatusNotFound, "?", 70, 0)
 	AssertHeader(t, "TestReadFileNotName 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"File not found\""})
 	AssertLogContains(t, logger, []string{"\"error\":true", "\"status\":404", "\"cause\":\"File not found\""})
@@ -780,14 +829,14 @@ func TestReadFileIsDir(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusForbidden, "?", 70, 0)
+	r, resBody := RunClientGet(t, "TestReadFileIsDir 1", configData, "files/user/stuart/loc/pics/name/s-testfolder", http.StatusBadRequest, "?", 72, 1)
 	AssertHeader(t, "TestReadFileIsDir 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
-	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Is a directory\""})
+	AssertContains(t, string(resBody), []string{"\"error\":true", "\"cause\":\"Is a Directory\""})
 	AssertLogContains(t, logger, []string{
 		"/stuart/s-pics/s-testfolder is a Directory",
-		"Resp: Error: Status:403",
-		"\"error\":true", "\"status\":403",
-		"\"cause\":\"Is a directory\""})
+		"Resp: Error: Status:400",
+		"\"error\":true", "\"status\":400",
+		"\"cause\":\"Is a Directory\""})
 }
 
 func TestServerTime(t *testing.T) {
@@ -798,17 +847,18 @@ func TestServerTime(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	r, resBody := RunClientGet(t, configData, "server/time", 200, "?", 173, 20)
+	r, resBody := RunClientGet(t, "TestServerTime 1", configData, "server/time", 200, "?", 173, 20)
 	AssertHeader(t, "TestServerTime 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	if !strings.HasPrefix(trimString(resBody), "{\"time\":{") {
 		t.Fatalf("Respons body does not start with...")
 	}
 
-	if strings.Contains(logger.Get(), "/time") {
+	if strings.Contains(logger.Get(), "LOG: Req:  GET:/server/time") {
 		os.Stderr.WriteString(logger.Get())
 		t.Fatal("Log must NOT contain the time request response")
 	}
 }
+
 func TestServerLog(t *testing.T) {
 	configData := loadConfigData(t, testConfigFile)
 
@@ -818,20 +868,20 @@ func TestServerLog(t *testing.T) {
 	}
 
 	// Make sure there is a log file to get!
-	resp, resBody := RunClientGet(t, configData, "server/status", 200, "?", -1, 0)
+	resp, resBody := RunClientGet(t, "TestServerLog 0", configData, "server/status", 200, "?", -1, 0)
 	AssertHeader(t, "TestServerLog 0", resp, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
 	WriteLogToFile(configData.GetLogDataPath())
 	time.Sleep(100 * time.Millisecond)
 
-	resp, resBody = RunClientGet(t, configData, "server/log", 200, "?", -1, 0)
+	resp, resBody = RunClientGet(t, "TestServerLog 1", configData, "server/log", 200, "?", -1, 0)
 	AssertHeader(t, "TestServerLog 1", resp, []string{"text/plain", "charset=utf-8"}, "")
 
-	resp, resBody0 := RunClientGet(t, configData, "server/log?offset=0", 200, "?", -1, 0)
+	resp, resBody0 := RunClientGet(t, "TestServerLog 2", configData, "server/log?offset=0", 200, "?", -1, 0)
 	AssertHeader(t, "TestServerLog 2", resp, []string{"text/plain", "charset=utf-8"}, "")
 	if resBody != resBody0 {
 		t.Fatalf("Respons body default offset !=  Respons body offset=0")
 	}
-	resp, s := RunClientGet(t, configData, "server/log?offset=A", 200, "?", -1, 0)
+	resp, s := RunClientGet(t, "TestServerLog 3", configData, "server/log?offset=A", 200, "?", -1, 0)
 	AssertHeader(t, "TestServerLog 3", resp, []string{"text/plain", "charset=utf-8"}, "")
 	AssertContains(t, s, []string{"##I Index:A is not an integer. Index set to 0"})
 
@@ -850,12 +900,15 @@ func TestServerIsUp(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-
-	resp, resBody := RunClientGet(t, configData, "isup", 200, "{\"error\":false,\"msg\":\"OK\",\"cause\":\"ServerIsUp\",\"status\":200}", 60, 2)
-	AssertHeader(t, "TestServerLog 0", resp, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
-	if strings.Contains(logger.Get(), "/isup") {
+	resp, resBody := RunClientGet(t, "TestServerIsUp 1", configData, "isup", 200, "{\"error\":false,\"msg\":\"OK\",\"cause\":\"ServerIsUp\",\"status\":200}", 60, 2)
+	AssertHeader(t, "TestServerIsUp 1", resp, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(resBody)))
+	if !strings.Contains(logger.Get(), "VERBOSE: Req:  GET:/isup") {
 		os.Stderr.WriteString(logger.Get())
-		t.Fatal("Log must NOT contain the isup request response")
+		t.Fatal("Log should contain 'VERBOSE: Req:  GET:/isup'")
+	}
+	if strings.Contains(logger.Get(), "LOG: Req:  GET:/isup") {
+		os.Stderr.WriteString(logger.Get())
+		t.Fatal("Log should NOT contain 'LOG: Req:  GET:/isup'")
 	}
 }
 
@@ -865,13 +918,13 @@ func TestClient(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	res, _ := RunClientGet(t, configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"Resource not found\"}", 74, 0)
+	res, _ := RunClientGet(t, "TestClient 1", configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"File not found\"}", 70, 0)
 	AssertHeader(t, "TestClient 1", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
-	res, _ = RunClientGet(t, configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 54, 2)
+	res, _ = RunClientGet(t, "TestClient 2", configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 54, 2)
 	AssertHeader(t, "TestClient 2", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
-	res, _ = RunClientGet(t, configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 75, 2)
+	res, _ = RunClientGet(t, "TestClient 3", configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 75, 2)
 	AssertHeader(t, "TestClient 3", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
-	AssertLogContains(t, logger, []string{"Req:  GET:/ABC", "Error: Status:404"})
+	AssertLogContains(t, logger, []string{"Resp: Error: Status:404:", "ABC: no such file or directory", "GET:/ping", "GET:/server/exit"})
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -920,29 +973,29 @@ func RunClientDelete(t *testing.T, config *config.ConfigData, path string, expec
 	return res, string(resBody)
 }
 
-func RunClientGet(t *testing.T, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int, plusMinus int) (*http.Response, string) {
+func RunClientGet(t *testing.T, id string, config *config.ConfigData, path string, expectedStatus int, expectedBody string, expectedLen int, plusMinus int) (*http.Response, string) {
 	requestURL := fmt.Sprintf("http://localhost%s/%s", config.GetPortString(), path)
 	res, err := http.Get(requestURL)
 	if err != nil {
-		t.Fatalf("Client error: %s", err.Error())
+		t.Fatalf("RunClientGet:id:%s. Client error: %s", id, err.Error())
 	}
 	if res.StatusCode != expectedStatus {
-		t.Fatalf("Status for path http://localhost%s/%s. Expected %d Actual %d", config.GetPortString(), path, expectedStatus, res.StatusCode)
+		t.Fatalf("RunClientGet:id:%s. Status for path http://localhost%s/%s. Expected %d Actual %d", id, config.GetPortString(), path, expectedStatus, res.StatusCode)
 	}
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		t.Fatalf("client: could not read response body: %s\n", err)
+		t.Fatalf("RunClientGet:id:%s. client: could not read response body: %s\n", id, err)
 	}
 	expectedList := strings.Split(expectedBody, "|")
 	if len(expectedList) > 1 {
 		for _, ex := range expectedList {
 			if !strings.Contains(string(resBody), ex) {
-				t.Fatalf("Body \n%s\ndoes not contain '%s'", string(resBody), ex)
+				t.Fatalf("RunClientGet:id:%s. Body \n%s\ndoes not contain '%s'", id, string(resBody), ex)
 			}
 		}
 	} else {
 		if expectedBody != "?" {
-			AssertEquivilent(t, string(resBody), expectedBody)
+			AssertEquivilent(t, fmt.Sprintf("RunClientGet:id[%s]", id), string(resBody), expectedBody)
 		}
 	}
 
@@ -951,10 +1004,10 @@ func RunClientGet(t *testing.T, config *config.ConfigData, path string, expected
 		maxLen := expectedLen + plusMinus
 		len, err := strconv.Atoi(res.Header["Content-Length"][0])
 		if err != nil {
-			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' Content-Length conversion error:'%s'", config.GetPortString(), path, minLen, maxLen, err)
+			t.Fatalf("%s: Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' Content-Length conversion error:'%s'", id, config.GetPortString(), path, minLen, maxLen, err)
 		}
 		if len < minLen || len > maxLen {
-			t.Fatalf("Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' \nActual   '%d'\n%s", config.GetPortString(), path, minLen, maxLen, len, resBody)
+			t.Fatalf("%s: Status for path http://localhost%s/%s.\nExpectedMin '%d'.\nExpectedMax '%d' \nActual   '%d'\n%s", id, config.GetPortString(), path, minLen, maxLen, len, resBody)
 		}
 	}
 	return res, string(resBody)
@@ -1087,22 +1140,22 @@ func AssertHeaderContains(t *testing.T, id string, r *http.Response, name, value
 	}
 }
 
-func AssertEquivilent(t *testing.T, actualJson string, expectedJson string) {
+func AssertEquivilent(t *testing.T, id string, actualJson string, expectedJson string) {
 	act := make(map[string]interface{}, 0)
 	err := json.Unmarshal([]byte(actualJson), &act)
 	if err != nil {
-		t.Fatalf("Actual Is not valid JSON\n%s\nError:'%s'", actualJson, err.Error())
+		t.Fatalf("AssertEquivilent:%s. Actual Is not valid JSON\n%s\nError:'%s'", id, actualJson, err.Error())
 	}
 	exp := make(map[string]interface{}, 0)
 	err = json.Unmarshal([]byte(expectedJson), &exp)
 	if err != nil {
-		t.Fatalf("Expected Is not valid JSON\n%s\nError:'%s'", expectedJson, err.Error())
+		t.Fatalf("AssertEquivilent:%s. Expected Is not valid JSON\n%s\nError:'%s'", id, expectedJson, err.Error())
 	}
 
 	for n, v1 := range exp {
 		v2 := act[n]
 		if fmt.Sprintf("%v", v1) != fmt.Sprintf("%v", v2) {
-			t.Fatalf("Value \n%s\nIs not a subset of\n%s", actualJson, expectedJson)
+			t.Fatalf("AssertEquivilent:%s. Value \n%s\nIs not a subset of\n%s", id, actualJson, expectedJson)
 		}
 	}
 }
@@ -1164,7 +1217,7 @@ func AssertMatch(t *testing.T, message string, matcher *UrlRequestMatcher, url s
 func loadConfigData(t *testing.T, file string) *config.ConfigData {
 	errList := config.NewConfigErrorData()
 	configData := config.NewConfigData(file, "goWebApp", false, false, false, errList)
-	if errList.ErrorCount() > 1 || configData == nil {
+	if errList.ErrorCount() > 1 {
 		t.Fatal(errList.String())
 	}
 	if configData == nil {
@@ -1173,51 +1226,40 @@ func loadConfigData(t *testing.T, file string) *config.ConfigData {
 	return configData
 }
 
-var udCfgLock sync.Mutex
-
-func updateConfigData(t *testing.T, InFile, Oufile string, li, rp string) {
-	udCfgLock.Lock()
-	defer udCfgLock.Unlock()
-
-	fi, err := os.OpenFile(InFile, os.O_RDONLY, os.ModePerm)
+func UpdateConfigAndLoad(t *testing.T, callBack func(*config.ConfigDataFromFile), errList *config.ConfigErrorData, load bool) (*config.ConfigData, string) {
+	content, err := os.ReadFile(configRef)
 	if err != nil {
-		t.Fatalf("open read file error: %v", err)
+		t.Fatalf("Failed to read config data file:%s. Error:%s", configRef, err.Error())
 	}
-	defer fi.Close()
-	fo, err := os.Create(Oufile)
+	configDataFromFile := &config.ConfigDataFromFile{
+		ThumbnailTrim: []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
+	}
+	err = json.Unmarshal(content, &configDataFromFile)
 	if err != nil {
-		t.Fatalf("open create file error: %v", err)
+		t.Fatalf("Failed to understand the config data in the file:%s. Error:%s", configRef, err.Error())
 	}
-	defer fo.Close()
+	callBack(configDataFromFile)
+	cf2, err := json.MarshalIndent(configDataFromFile, "", "  ")
+	if err != nil {
+		t.Fatalf("Failed to martial new json. Error:%s", err.Error())
+	}
+	err = os.WriteFile(configTmp, cf2, os.ModePerm)
+	if err != nil {
+		t.Fatalf("Failed to write new json file %s. Error:%s", configTmp, err.Error())
+	}
+	if load {
+		defer os.Remove(configTmp)
 
-	inLine := ""
-
-	sc := bufio.NewScanner(fi)
-	for sc.Scan() {
-		inLine = sc.Text()
-		if strings.Contains(inLine, li) {
-			if rp != "" {
-				_, err = fo.WriteString(rp)
-				if err != nil {
-					t.Fatalf("open write li error: %v", err)
-				}
-				_, err = fo.WriteString("\n")
-				if err != nil {
-					t.Fatalf("open write li EOL file error: %v", err)
-				}
-			}
-		} else {
-			_, err = fo.WriteString(inLine)
-			if err != nil {
-				t.Fatalf("open write file error: %v", err)
-			}
-			_, err = fo.WriteString("\n")
-			if err != nil {
-				t.Fatalf("open write EOL file error: %v", err)
-			}
+		maxErr := 9
+		if errList == nil {
+			maxErr = 1
+			errList = config.NewConfigErrorData()
 		}
+		configData := config.NewConfigData(configTmp, "goWebApp", false, false, false, errList)
+		if errList.ErrorCount() > maxErr || configData == nil {
+			t.Fatal(errList.String())
+		}
+		return configData, configTmp
 	}
-	if err := sc.Err(); err != nil {
-		t.Fatalf("scan file error: %v", err)
-	}
+	return nil, configTmp
 }

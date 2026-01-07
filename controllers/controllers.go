@@ -27,23 +27,26 @@ type Handler interface {
 	Submit() *ResponseData
 }
 
-type StaticFileTemplateHandler struct {
-	filePath    []string
-	urlParts    *UrlRequestParts
-	verboseFunc func(string)
-}
-
-func NewStaticFileTemplateHandler(file []string, urlParts *UrlRequestParts, verboseFunc func(string)) *StaticFileTemplateHandler {
-	return &StaticFileTemplateHandler{
-		filePath:    file,
-		urlParts:    urlParts,
-		verboseFunc: verboseFunc,
+func StaticFileTemplate(fullFile string, urlParts *UrlRequestParts, verboseFunc func(string)) *ResponseData {
+	fileContent, err := os.ReadFile(fullFile)
+	if err != nil {
+		panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
+	if verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
+		verboseFunc(fmt.Sprintf("Read Template File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(fullFile), len(fileContent)))
+	}
+	td := urlParts.config.GetStaticWebData().TemplateStaticFiles
+	fileContent = []byte(urlParts.config.SubstituteFromMap([]byte(string(fileContent)), td.DataPlus(*urlParts.GetCachedMapFlat())))
+	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(fullFile)
 }
 
-func (p *StaticFileTemplateHandler) Submit() *ResponseData {
-	list := []string{p.urlParts.config.GetServerStaticPath()}
-	list = append(list, p.filePath...)
+func StaticFileTemplateX(filePath []string, urlParts *UrlRequestParts, verboseFunc func(string)) *ResponseData {
+	// TODO: Revisit paths
+	if urlParts.config.IsTemplating {
+		panic(NewControllerError("Templating error", http.StatusExpectationFailed, "Templating is disabled"))
+	}
+	list := []string{urlParts.config.GetStaticWebData().Paths["static"]}
+	list = append(list, filePath...)
 	fullFile := filepath.Join(list...)
 
 	stats, err := os.Stat(fullFile)
@@ -57,16 +60,14 @@ func (p *StaticFileTemplateHandler) Submit() *ResponseData {
 	if err != nil {
 		panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
-	if p.verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
-		p.verboseFunc(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(p.filePath[len(p.filePath)-1]), len(fileContent)))
+	if verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
+		verboseFunc(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(filePath[len(filePath)-1]), len(fileContent)))
 	}
-	if p.urlParts.config.IsTemplating() {
-		td := p.urlParts.config.GetTemplateData()
-		if td.ShouldTemplate(list[len(list)-1]) {
-			fileContent = []byte(p.urlParts.config.SubstituteFromMap([]byte(string(fileContent)), td.Data(*p.urlParts.GetCachedMap())))
-		}
+	td := urlParts.config.GetStaticWebData().TemplateStaticFiles
+	if urlParts.config.ShouldTemplateFile(list[len(list)-1]) {
+		fileContent = []byte(urlParts.config.SubstituteFromMap([]byte(string(fileContent)), td.DataPlus(*urlParts.GetCachedMapFlat())))
 	}
-	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.filePath[len(p.filePath)-1])
+	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(filePath[len(filePath)-1])
 }
 
 func GetSetProperty(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
@@ -78,10 +79,11 @@ func GetPropertiesForUser(urlParts *UrlRequestParts, configData *config.ConfigDa
 }
 
 func GetFastStaticFileName(configData *config.ConfigData, urlParts []string, url string) string {
-	if !configData.HasStaticDataPath() {
+	if !configData.HasStaticWebData {
 		panic(NewControllerError("Resource not found", http.StatusNotFound, "Static File Error: Static Path is undefined"))
 	}
-	list := []string{configData.GetServerStaticPath()}
+	// TODO: Revisit paths
+	list := []string{configData.GetStaticWebData().Paths["static"]}
 	list = append(list, urlParts...)
 	fullFile := filepath.Join(list...)
 
@@ -117,13 +119,6 @@ func GetFastFileName(configData *config.ConfigData, urlParts []string, url strin
 			panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid path or name:%s", url)))
 		}
 	}
-	stats, err := os.Stat(name)
-	if err != nil {
-		panic(NewControllerError("File not found", http.StatusNotFound, err.Error()))
-	}
-	if stats.IsDir() {
-		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("File %s is a Directory", name)))
-	}
 	return name
 }
 
@@ -142,15 +137,6 @@ func NewDeleteFileHandler(urlParts *UrlRequestParts, configData *config.ConfigDa
 		delete:     true,
 	}
 }
-
-// func NewReadFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, verboseFunc func(string)) Handler {
-// 	return &ReadFileHandler{
-// 		parameters: urlParts,
-// 		configData: configData,
-// 		verbose:    verboseFunc,
-// 		delete:     false,
-// 	}
-// }
 
 // TODO Cleanup ReadFileHandler --> DeleteFileHandler
 func (p *ReadFileHandler) Submit() *ResponseData {
@@ -532,13 +518,6 @@ func GetLog(configData *config.ConfigData, current string, offsetString string) 
 	}
 	b.WriteString(string(fileContent))
 	return NewResponseData(http.StatusOK).WithContentBytes(b.Bytes()).WithMimeType("log")
-}
-
-func GetFaveIconName(configData *config.ConfigData) string {
-	if configData.GetFaviconIcoPath() == "" {
-		panic(NewControllerError("favicon.ico not configured", http.StatusNotFound, "FaviconIcoPath is not defined in config file"))
-	}
-	return configData.GetFaviconIcoPath()
 }
 
 func GetOSFreeData(configData *config.ConfigData) (res string) {

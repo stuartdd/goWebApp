@@ -129,9 +129,9 @@ func (p *UrlRequestParts) WithFile(file string) *UrlRequestParts {
 	return p
 }
 
-func (p *UrlRequestParts) GetCachedMap() *map[string]string {
+func (p *UrlRequestParts) GetCachedMapFlat() *map[string]string {
 	if p.cache == nil {
-		m := map[string]string{}
+		m := make(map[string]string)
 		for n, v := range p.Header {
 			if len(v[0]) != 0 {
 				m[n] = decodeValue(v[0])
@@ -280,7 +280,7 @@ func (p *UrlRequestParts) SubstituteFromUserEnv(cmd []byte) string {
 }
 
 func (p *UrlRequestParts) SubstituteFromCachedMap(cmd []byte) string {
-	return p.config.SubstituteFromMap(cmd, *p.GetCachedMap())
+	return p.config.SubstituteFromMap(cmd, *p.GetCachedMapFlat())
 }
 
 func (p *UrlRequestParts) GetUserLocPath(withName bool, asThumbnail bool, isBase64 bool) string {

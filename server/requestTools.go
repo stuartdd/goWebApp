@@ -9,6 +9,26 @@ import (
 	"time"
 )
 
+type RootUrls struct {
+	ids map[string]bool
+}
+
+func NewRootUrls() *RootUrls {
+	return &RootUrls{ids: map[string]bool{}}
+}
+
+func (p *RootUrls) Get(name string) bool {
+	_, ok := p.ids[name]
+	return ok
+}
+
+func (p *RootUrls) Add(info *UrlRequestMatcher) *UrlRequestMatcher {
+	if len(info.Parts) > 0 {
+		p.ids[info.Parts[0]] = true
+	}
+	return info
+}
+
 type RequestInfo struct {
 	method         string
 	path           string

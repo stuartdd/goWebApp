@@ -1,0 +1,226 @@
+:root {
+    --mono-font: 'Courier New', serif;
+    --main-font: Arial, Helvetica, sans-serif;
+    --main-font-size: x-large;
+    --main-back-colour: bisque;
+    --main-text-colour: black;
+
+    --dir-btn-back-colour-lu: pink;
+    --dir-btn-back-colour: white;
+
+    --head-font: Arial, Helvetica, sans-serif;
+    --head-font-size: xx-large;
+    --head-back-colour: bisque;
+    --head-text-colour: #0049b5;
+    --head-btn-back-colour: transparent;
+
+    --table-font: Arial, Helvetica, sans-serif;
+    --table-btn-font: 'Courier New', serif;
+    --table-btn-size: large;
+    --table-btn-text-colour: blue;
+    --table-btn-back-colour: white;
+    --table-btn-back-colour_dis: lightgrey;
+    --table-btn-text-colour_dis: rgb(100, 100, 100);
+    --table-font-size: x-large;
+    --table-text-colour: green;
+
+    --error-colour: red;
+    --alert-colour: blue;
+}
+
+body {
+    font-family: var(--main-font);
+    font-size: var(--main-font-size);
+    background-color: var(--main-back-colour);
+    color: var(--main-text-colour);
+}
+
+header {
+    padding-top: 5px;
+    text-align: center;
+    width: 100%;
+    background-color: var(--head-back-colour);
+    -khtml-opacity: .70;
+    -moz-opacity: .70;
+    -ms-filter: ”alpha(opacity=70)”;
+    filter: alpha(opacity=70);
+    filter: progid:DXImageTransform.Microsoft.Alpha(opacity=0.70);
+    opacity: .70;
+}
+
+hr {
+    color: black;
+    margin: 2px;
+}
+
+img {
+    image-orientation: from-image;
+    object-fit: contain;
+}
+
+.card {
+    display: grid;
+    place-items: center;
+}
+
+.grid {
+    display: grid;
+    gap: 0 0rem;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 0.5fr));
+    grid-template-rows: auto;
+}
+
+.UserListText {
+    font-size: xx-large;
+    position: relative;
+    top: -40px;
+    left: 10px;
+}
+
+.DirListButton {
+    font-size: x-large;
+    background-color: var(--dir-btn-back-colour);
+}
+
+.DirListButtonLastUsed {
+    font-size: x-large;
+    background-color: var(--dir-btn-back-colour-lu);
+}
+
+.AlertText {
+    color: var(--alert-colour);
+    padding-left: 10px;
+    text-align: left;
+}
+
+.ErrorText {
+    color: var(--error-colour);
+    text-align: left;
+}
+
+.LogInfoLine {
+    font-family: var(--mono-font);
+    padding-left: 5px;
+    text-align: left;
+}
+
+.LogLine {
+    font-family: var(--mono-font);
+    font-size: medium;
+    padding-left: 5px;
+    text-align: left;
+}
+
+.sticky-div {
+    position: sticky;
+    top: 10px;
+    border: 1px solid black;
+}
+
+/* Used in tgoimage.html for the main image properties */
+.imageMain {
+    image-orientation: from-image;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.headerButtonLeft {
+    float: left;
+    border: none;
+    font-family: var(--head-font);
+    font-size: var(--head-font-size);
+    color: var(--head-text-colour);
+    background-color: var(--head-btn-back-colour);
+}
+
+.headerButtonRight {
+    float: right;
+    border: none;
+    font-family: var(--head-font);
+    font-size: var(--head-font-size);
+    color: var(--head-text-colour);
+    background-color: var(--head-btn-back-colour);
+}
+
+.headerGapLeft {
+    float: left;
+}
+
+.headerGapRight {
+    float: right;
+}
+
+.headerTextMiddle {
+    padding-left: 10px;
+    padding-right: 10px;
+    float: none;
+    font-family: var(--head-font);
+    font-size: var(--head-font-size);
+    color: var(--head-text-colour);
+}
+
+.tableClass {
+    font-family: var(--table-font);
+    font-size: var(--table-font-size);
+    border: 1px solid red;
+    border-collapse: collapse;
+}
+
+.tableButton {
+    padding: 5px;
+    font-family: var(--mono-font);
+    font-size: var(--table-btn-size);
+    color: var(--table-btn-text-colour);
+    background-color: var(--table-btn-back-colour);
+}
+
+.tableButtonDisabled {
+    padding: 5px;
+    font-family: var(--mono-font);
+    font-size: var(--table-btn-size);
+    color: var(--table-btn-text-colour_dis);
+    background-color: var(--table-btn-back-colour_dis);
+}
+
+.tableDataLhs {
+    border: 1px solid red;
+    border-collapse: collapse;
+}
+
+.tableDataRhs {
+    border: none;
+}
+
+.tableInfoRhs {
+    font-family: var(--main-font);
+    font-size: var(--main-font-size);
+    color: blue;
+}
+
+.tableInfoLhs {
+    font-family: var(--main-font);
+    font-size: var(--main-font-size);
+    color: var(--table-text-colour);
+}
+
+.tableInfoTitle {
+    font-size: x-large;
+    background-color: white;
+    border: 1px solid red;
+    border-collapse: collapse;
+}
+
+.LogTd {
+    font-size: x-large;
+    width: 100%;
+}
+
+div.horizontalgap {
+    float: left;
+    overflow: hidden;
+    height: 1px;
+    width: 0px;
+}

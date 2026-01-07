@@ -13,3 +13,8 @@ if [ ! -e $DEPLOY ]; then
 fi
 
 rsync -avz -e 'ssh' $DEPLOY/ pi@192.168.1.243:/home/pi/topbox
+if [ $? -eq 1 ]; then
+  echo "Deploy:rsync failed"
+  exit 1
+fi
+echo "Deployed to /home/pi/topbox"

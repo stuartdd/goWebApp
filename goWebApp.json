@@ -30,7 +30,7 @@
       "Cmd": [
         "longRunTest1.sh"
       ],
-      "Description":"Test long running process",
+      "Description": "Test long running process",
       "StartLTSFile": "LongRunTest1Error.txt",
       "Detached": true,
       "CanStop": true
@@ -39,7 +39,7 @@
       "Cmd": [
         "thumbnails.sh"
       ],
-      "Description":"Update Thumbnails",
+      "Description": "Update Thumbnails",
       "StartLTSFile": "thumbnailsError.txt",
       "Detached": true,
       "CanStop": true
@@ -65,7 +65,7 @@
       "Detached": false
     }
   },
-  "UserPropertiesFile":"%{WebServerConfig}/userProps.json",
+  "UserPropertiesFile": "%{WebServerConfig}/userProps.json",
   "UserDataPath": "%{WebServerConfig}/userData.json",
   "Users": {
     "admin": {
@@ -98,19 +98,21 @@
     ".log"
   ],
   "ServerDataRoot": "%{WebServerUserData}",
-  "StaticData": {
-    "Path": "%{WebServerHome}/static",
-    "HomePage": "tgo.html"
+  "StaticWebData": {
+    "Paths": {
+      "static": "%{WebServerHome}/static",
+      "images": "%{WebServerHome}/static"
+    },
+    "HomePage": "tgo.html",
+    "TemplateStaticFiles": {
+      "Files": [
+        "tgo.html",
+        "tgoimage.html",
+        "tgo.css"
+      ],
+      "DataFile": "templateData.json"
+    }
   },
-  "TemplateStaticFiles": {
-    "Files": [
-      "tgo.html",
-      "tgoimage.html",
-      "tgo.css"
-    ],
-    "DataFile": "templateData.json"
-  },
-  "FaviconIcoPath": "favicon1.ico",
   "Env": {},
   "ExecPath": "%{WebServerRoot}/exec"
 }

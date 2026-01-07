@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +24,8 @@ const thumbnailTrimPrefix = 20
 const thumbnailTrimSuffix = 4
 const panicMessageStatus = "status:"
 const panicMessageLog = "log:"
+const StaticPathName = "static"
+const ImagesPathName = "images"
 
 type UserProperties struct {
 	mu     sync.Mutex
@@ -218,25 +222,46 @@ func parseInt(s string, pos int, fallback int) (int, int) {
 Template data read from configuration data JSONn file.
 */
 type TemplateStaticFiles struct {
-	Files    []string
-	DataFile string
-	data     map[string]string
+	Files            []string
+	DataFile         string
+	flatDataFromFile map[string]string
+	isTemplating     bool
 }
 
-func (t *TemplateStaticFiles) Init(staticPath string) (*TemplateStaticFiles, error) {
-	f := filepath.Join(staticPath, t.DataFile)
-	content, err := os.ReadFile(f)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read template data file. Error:%s", err.Error())
+func (t *TemplateStaticFiles) Init(staticPath string, configErrors *ConfigErrorData, addTemplate func(string)) {
+	t.flatDataFromFile = make(map[string]string)
+	t.isTemplating = false
+	if t.DataFile != "" {
+		f := filepath.Join(staticPath, t.DataFile)
+		content, err := os.ReadFile(f)
+		if err != nil {
+			configErrors.AddError(fmt.Sprintf("failed to read template data file. Error:%s", err.Error()))
+			return
+		}
+		m := make(map[string]interface{})
+		err = json.Unmarshal(content, &m)
+		if err != nil {
+			configErrors.AddError(fmt.Sprintf("failed to parse template json file:%s. Error:%s", f, err.Error()))
+			return
+		}
+		t.flatDataFromFile = FlattenMap(m, "")
 	}
-	m := make(map[string]interface{})
-	err = json.Unmarshal(content, &m)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse template json file:%s. Error:%s", f, err.Error())
+	if len(t.Files) == 0 {
+		configErrors.AddError("No template 'TemplateStaticFiles.Files' have been defined")
+	} else {
+		for _, tf := range t.Files {
+			f := filepath.Join(staticPath, tf)
+			stat, err := os.Stat(f)
+			if err != nil {
+				configErrors.AddError(fmt.Sprintf("failed to find template file:%s. Error:%s", f, err.Error()))
+			}
+			if stat != nil && stat.IsDir() {
+				configErrors.AddError(fmt.Sprintf("template file:%s is a directory", f))
+			}
+			addTemplate(f)
+		}
 	}
-	t.data = FlattenMap(m, "")
-
-	return t, nil
+	t.isTemplating = configErrors.ErrorCount() == 0
 }
 
 func (t *TemplateStaticFiles) String() string {
@@ -244,24 +269,10 @@ func (t *TemplateStaticFiles) String() string {
 	return fmt.Sprintf("%s. Templates:%s", f, t.Files)
 }
 
-func (t *TemplateStaticFiles) Data(plus map[string]string) map[string]string {
-	m := map[string]string{}
-	for n, v := range t.data {
-		m[n] = v
-	}
-	for n, v := range plus {
-		m[n] = v
-	}
+func (t *TemplateStaticFiles) DataPlus(plusFlatMap map[string]string) map[string]string {
+	m := maps.Clone(t.flatDataFromFile)
+	maps.Copy(m, plusFlatMap)
 	return m
-}
-
-func (t *TemplateStaticFiles) ShouldTemplate(file string) bool {
-	for _, v := range t.Files {
-		if v == file {
-			return true
-		}
-	}
-	return false
 }
 
 type LogData struct {
@@ -272,51 +283,101 @@ type LogData struct {
 	ConsoleOut       bool
 }
 
-type StaticData struct {
-	Path     string
-	HomePage string
+type StaticWebData struct {
+	Paths               map[string]string
+	HomePage            string
+	TemplateStaticFiles *TemplateStaticFiles
 }
 
-func (p *StaticData) HasStaticDataPath() bool {
-	return p.Path != ""
+func (p *StaticWebData) IsDefined() bool {
+	return len(p.Paths) == 0
 }
 
-func (p *StaticData) GetHomePage() string {
-	return filepath.Join(p.Path, p.HomePage)
+func (p *StaticWebData) GetHomePage() string {
+	return p.HomePage
+}
+
+func (p *StaticWebData) GetPathOrStatic(id string) string {
+	v, ok := p.Paths[id]
+	if ok {
+		return v
+	}
+	return p.Paths[StaticPathName]
+}
+
+func (p *StaticWebData) GetStaticFile(name string) string {
+	return filepath.Join(p.Paths[StaticPathName], name)
 }
 
 /*
 Check that the file exists in the static path
 */
-func (p *StaticData) CheckFileExists(file string) bool {
+func (p *StaticWebData) checkFileExists(id, file string, configErrors *ConfigErrorData) (bool, string) {
 	file = strings.TrimPrefix(file, "/")
 	fileParts := strings.SplitN(file, "&", 2)
 	if len(fileParts) < 1 {
-		return false
+		configErrors.AddError(fmt.Sprintf("StaticWebData file name is invalid '%s'", file))
+		return false, ""
 	}
 
-	absFilePath := filepath.Join(p.Path, strings.ReplaceAll(fileParts[0], "/", string(os.PathSeparator)))
+	absFilePath := filepath.Join(p.GetPathOrStatic(id), strings.ReplaceAll(fileParts[0], "/", string(os.PathSeparator)))
 	stats, err := os.Stat(absFilePath)
 	if err != nil {
-		return false
-	} else {
-		if stats.IsDir() {
-			return false
-		}
+		configErrors.AddError(fmt.Sprintf("StaticWebData file '%s'. %s", absFilePath, err.Error()))
+		return false, ""
 	}
-	return true
+	if stats.IsDir() {
+		configErrors.AddError(fmt.Sprintf("StaticWebData file '%s'. is a directory", absFilePath))
+		return false, ""
+	}
+	return true, absFilePath
 }
 
-func (p *StaticData) CheckHomePageExists() error {
+func (p *StaticWebData) ValidateStaticWebData(configErrors *ConfigErrorData, addTemplate func(string)) bool {
 	if p.HomePage == "" {
-		return fmt.Errorf("static data 'Home' page is undefined in 'StaticData'")
+		configErrors.AddError("StaticWebData 'Home' page is undefined in 'StaticWebData'")
+		return false
 	}
-	ok := p.CheckFileExists(p.HomePage)
+	if len(p.Paths) == 0 {
+		configErrors.AddError("StaticWebData 'Paths' is empty. Requiries at least 'static")
+		return false
+	}
+	staticPath := ""
+	for n, v := range p.Paths {
+		absFilePath, err := filepath.Abs(v)
+		if err != nil {
+			configErrors.AddError(fmt.Sprintf("StaticWebData 'Paths[%s]=%s'. %s", n, v, err.Error()))
+		}
+		stats, err := os.Stat(absFilePath)
+		if err != nil {
+			configErrors.AddError(fmt.Sprintf("StaticWebData 'Paths[%s]'. %s", n, err))
+		} else {
+			if !stats.IsDir() {
+				configErrors.AddError(fmt.Sprintf("StaticWebData 'Paths[%s]=%s' is not a directory", n, absFilePath))
+			}
+		}
+		if n == "static" {
+			staticPath = absFilePath
+		}
+		if configErrors.ErrorCount() == 0 {
+			p.Paths[n] = absFilePath
+		}
+	}
+	if staticPath == "" {
+		configErrors.AddError("StaticWebData 'Paths[static]' was not found")
+		return false
+	}
+	if configErrors.ErrorCount() != 0 {
+		return false
+	}
+	ok, path := p.checkFileExists(StaticPathName, p.HomePage, configErrors)
 	if ok {
-		return nil
-	} else {
-		return fmt.Errorf("static data 'Home' page html file[%s] does not exist", filepath.Join(p.Path, p.HomePage))
+		p.HomePage = path
 	}
+	if p.TemplateStaticFiles != nil {
+		p.TemplateStaticFiles.Init(staticPath, configErrors, addTemplate)
+	}
+	return configErrors.ErrorCount() == 0
 }
 
 func NewLogData() *LogData {
@@ -357,12 +418,12 @@ func (p *ExecInfo) Validate(execPathRoot string, name string, addError func(stri
 	if err != nil {
 		addError(fmt.Sprintf("Config Error: ExecPath %s does not exist", execPathRoot))
 		return
-	} else {
-		if !stats.IsDir() {
-			addError(fmt.Sprintf("Config Error: ExecPath %s must be a directory", execPathRoot))
-			return
-		}
 	}
+	if !stats.IsDir() {
+		addError(fmt.Sprintf("Config Error: ExecPath %s must be a directory", execPathRoot))
+		return
+	}
+
 	if p.Detached {
 		if p.LogDir != "" {
 			addError(fmt.Sprintf("Config Error: Exec [%s] is detached. Cannot have LogDir='%s'", p.id, p.LogDir))
@@ -390,7 +451,7 @@ func (p *ExecInfo) Validate(execPathRoot string, name string, addError func(stri
 		if err != nil {
 			addError(fmt.Sprintf("Config Error: Exec [%s] log %s", p.id, err.Error()))
 		} else {
-			if !stats.IsDir() {
+			if stats != nil && !stats.IsDir() {
 				addError(fmt.Sprintf("Config Error: Exec [%s] log %s", p.id, "Must be a directory"))
 			}
 		}
@@ -473,9 +534,7 @@ type ConfigDataFromFile struct {
 	PanicResponseCode   int
 	FilterFiles         []string
 	ServerDataRoot      string
-	StaticData          *StaticData
-	TemplateStaticFiles *TemplateStaticFiles
-	FaviconIcoPath      string
+	StaticWebData       *StaticWebData
 	Env                 map[string]string
 	Exec                map[string]*ExecInfo
 	ExecPath            string
@@ -495,13 +554,15 @@ type ConfigData struct {
 	ModuleName               string
 	ConfigName               string
 	Debugging                bool
-	Templating               bool
 	Environment              map[string]string
 	UserProps                *UserProperties
 	NextConfigLoadTimeMillis int64
 	LocationsCreated         []string
 	UpSince                  time.Time
 	IsVerbose                bool
+	HasStaticWebData         bool
+	IsTemplating             bool
+	TemplateFiles            []string
 }
 
 /*
@@ -532,7 +593,6 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	configDataExternal := &ConfigData{
 		ConfigFileData:           nil,
 		UserProps:                nil,
-		Templating:               false,
 		Debugging:                debugging,
 		CurrentPath:              wd,
 		ModuleName:               moduleName,
@@ -541,6 +601,9 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		NextConfigLoadTimeMillis: 0,
 		LocationsCreated:         []string{},
 		IsVerbose:                verbose,
+		HasStaticWebData:         false,
+		IsTemplating:             false,
+		TemplateFiles:            []string{},
 	}
 
 	configDataFromFile := &ConfigDataFromFile{
@@ -555,9 +618,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		FilterFiles:         []string{},
 		PanicResponseCode:   500,
 		ServerDataRoot:      "",
-		StaticData:          &StaticData{Path: "", HomePage: ""},
-		TemplateStaticFiles: nil,
-		FaviconIcoPath:      "",
+		StaticWebData:       &StaticWebData{Paths: make(map[string]string), HomePage: "", TemplateStaticFiles: nil},
 		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
 		Env:                 map[string]string{},
 		Exec:                map[string]*ExecInfo{},
@@ -598,9 +659,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	/*
 		Add config data Env to the Environment variables
 	*/
-	for n, v := range configDataFromFile.Env {
-		configDataExternal.Environment[n] = v
-	}
+	maps.Copy(configDataExternal.Environment, configDataFromFile.Env)
 
 	configDataExternal.ResetTimeToReloadConfig()
 
@@ -701,6 +760,15 @@ func (p *ConfigData) loadUserData() error {
 	return nil
 }
 
+func (p *ConfigData) ShouldTemplateFile(name string) bool {
+	if p.IsTemplating {
+		if slices.Contains(p.TemplateFiles, name) {
+			return true
+		}
+	}
+	return false
+}
+
 /*
 Construct a path from a relative path and user path.
 
@@ -755,19 +823,15 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		p.SetServerDataRoot(f)
 	}
 
-	if p.HasStaticDataPath() {
-		// Check static data path exists
-		f, e = p.checkRootPathExists(p.GetServerStaticPath(), userConfigEnv, true) // Will check ServerStaticRoot
-		if e != nil {
-			configErrors.AddError(fmt.Sprintf("Failed to find StaticData.Path in config file:%s. Cause:%s", p.ConfigName, e.Error()))
-		} else {
-			p.SetServerStaticRoot(f)
-		}
-
-		e = p.GetStaticData().CheckHomePageExists()
-		if e != nil {
-			configErrors.AddError(fmt.Sprintf("Failed to find StaticData.Home in config file:%s. Cause:%s", p.ConfigName, e.Error()))
-		}
+	p.HasStaticWebData = false
+	p.IsTemplating = false
+	p.TemplateFiles = []string{}
+	if p.ConfigFileData.StaticWebData != nil {
+		// Check static data
+		p.HasStaticWebData = p.ConfigFileData.StaticWebData.ValidateStaticWebData(configErrors, func(s string) {
+			p.TemplateFiles = append(p.TemplateFiles, s)
+		})
+		p.IsTemplating = p.ConfigFileData.StaticWebData.TemplateStaticFiles.isTemplating
 	}
 
 	if p.ConfigFileData.ExecPath != "" {
@@ -787,32 +851,12 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 		p.ConfigFileData.UserDataPath = f
 	}
 
-	if p.IsTemplating() {
-		templ := p.GetTemplateData()
-		_, err := templ.Init(p.GetServerStaticPath())
-		if err != nil {
-			configErrors.AddError(fmt.Sprintf("Failed to initialiase templating:%s", err.Error()))
-		}
-		configErrors.AddLog(fmt.Sprintf("Config template   :%s", templ))
-	}
-
 	f, e = p.checkPathExists("", p.GetLogDataPath(), "", userConfigEnv, false)
 	if e != nil {
 		configErrors.AddError(fmt.Sprintf("Config Error: LogData.Path %s", e))
 	} else {
 		p.SetLogDataPath(f)
 	}
-
-	icon := filepath.Join(p.GetServerStaticPath(), p.GetFaviconIcoPath())
-	stats, err := os.Stat(icon)
-	if err != nil {
-		configErrors.AddError(fmt.Sprintf("file [%s] Not found", icon))
-	} else {
-		if stats.IsDir() {
-			configErrors.AddError(fmt.Sprintf("file [%s] is a directory", icon))
-		}
-	}
-	p.SetFaviconIcoPath(icon)
 
 	for execName, execData := range p.ConfigFileData.Exec {
 		if p.GetExecPath() == "" {
@@ -875,11 +919,10 @@ func (p *ConfigData) checkRootPathExists(rootPath string, userEnv map[string]str
 	stats, err := os.Stat(absPathPath)
 	if err != nil {
 		return absPathPath, fmt.Errorf("path [%s] Not found", absPathPath)
-	} else {
-		if !stats.IsDir() {
-			if mustBeDir {
-				return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
-			}
+	}
+	if !stats.IsDir() {
+		if mustBeDir {
+			return absPathPath, fmt.Errorf("path[%s] Not a Directory", absPathPath)
 		}
 	}
 	return absPathPath, nil
@@ -935,10 +978,6 @@ func (p *ConfigData) SaveMe() error {
 		return err
 	}
 	return nil
-}
-
-func (p *ConfigData) HasStaticDataPath() bool {
-	return p.ConfigFileData.StaticData.HasStaticDataPath()
 }
 
 func (p *ConfigData) IsTimeToReloadConfig(mowMillis int64) bool {
@@ -1036,47 +1075,15 @@ func (p *ConfigData) SetServerDataRoot(f string) {
 	p.ConfigFileData.ServerDataRoot = f
 }
 
-func (p *ConfigData) GetServerStaticPath() string {
-	return p.ConfigFileData.StaticData.Path
-}
-
-func (p *ConfigData) GetStaticData() *StaticData {
-	return p.ConfigFileData.StaticData
-}
-
-func (p *ConfigData) GetTemplateData() *TemplateStaticFiles {
-	return p.ConfigFileData.TemplateStaticFiles
-}
-
-func (p *ConfigData) IsTemplating() bool {
-	return p.ConfigFileData.TemplateStaticFiles != nil
-}
-
-func (p *ConfigData) ShouldTemplateFile(file string) bool {
-	if p.IsTemplating() {
-		for _, fn := range p.ConfigFileData.TemplateStaticFiles.Files {
-			if fn == file {
-				return true
-			}
-		}
+func (p *ConfigData) GetStaticWebData() *StaticWebData {
+	if p.HasStaticWebData {
+		return p.ConfigFileData.StaticWebData
 	}
-	return false
-}
-
-func (p *ConfigData) SetServerStaticRoot(path string) {
-	p.ConfigFileData.StaticData.Path = path
+	return nil
 }
 
 func (p *ConfigData) GetContentTypeCharset() string {
 	return p.ConfigFileData.ContentTypeCharset
-}
-
-func (p *ConfigData) GetFaviconIcoPath() string {
-	return p.ConfigFileData.FaviconIcoPath
-}
-
-func (p *ConfigData) SetFaviconIcoPath(f string) {
-	p.ConfigFileData.FaviconIcoPath = f
 }
 
 func (p *ConfigData) GetLogDataPath() string {
