@@ -33,7 +33,7 @@ func StaticFileTemplate(fullFile string, urlParts *UrlRequestParts, verboseFunc 
 		panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
 	if verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
-		verboseFunc(fmt.Sprintf("Read Template File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(fullFile), len(fileContent)))
+		verboseFunc(fmt.Sprintf("Read Template File:%s Mime[%s] Len[%d]", urlParts.config.GetPathForDisplay(fullFile), config.LookupContentType(fullFile), len(fileContent)))
 	}
 	td := urlParts.config.GetStaticWebData().TemplateStaticFiles
 	fileContent = []byte(urlParts.config.SubstituteFromMap([]byte(string(fileContent)), td.DataPlus(*urlParts.GetCachedMapFlat())))
@@ -61,7 +61,7 @@ func StaticFileTemplateX(filePath []string, urlParts *UrlRequestParts, verboseFu
 		panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
 	if verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
-		verboseFunc(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", fullFile, config.LookupContentType(filePath[len(filePath)-1]), len(fileContent)))
+		verboseFunc(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", urlParts.config.GetPathForDisplay(fullFile), config.LookupContentType(filePath[len(filePath)-1]), len(fileContent)))
 	}
 	td := urlParts.config.GetStaticWebData().TemplateStaticFiles
 	if urlParts.config.ShouldTemplateFile(list[len(list)-1]) {

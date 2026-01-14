@@ -111,7 +111,6 @@
     "ConsoleOut": true
   },
   "ServerName": "MyServer",
-  "PanicResponseCode": 500,
   "FilterFiles": [
     ".json",
     ".data",

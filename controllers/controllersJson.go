@@ -34,7 +34,7 @@ func GetServerStatusAsJson(configData *config.ConfigData, logFileName string, up
 	writeParamAsJsonString("Sys", fmtAlloc(st.Sys), true, false, true, &b)
 	writeParamAsJsonString("Processes", longRunningJson, false, false, true, &b)
 	writeParamAsJsonString("OS", GetOSFreeData(configData), false, false, true, &b)
-	writeParamAsJsonString("Log_Dir", configData.GetLogDataPathForStatus(), true, false, true, &b)
+	writeParamAsJsonString("Log_Dir", configData.GetPathForDisplay(configData.ConfigFileData.LogData.Path), true, false, true, &b)
 	writeParamAsJsonString("Log_File", logFileName, true, false, false, &b)
 	b.WriteRune('}')
 	b.WriteRune('}')

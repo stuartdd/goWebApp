@@ -83,11 +83,9 @@
     "FileNameMask": "goWebServer-%y-%m-%d.log",
     "Path": "***%{WebServerParent}/logs",
     "MonitorSeconds": 30,
-    "ShowPathInStatus": 2,
     "ConsoleOut": true
   },
   "ServerName": "MyServer",
-  "PanicResponseCode": 500,
   "FilterFiles": [
     ".json",
     ".data",

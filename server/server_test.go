@@ -364,7 +364,7 @@ func TestStaticTemplate(t *testing.T) {
 	AssertContains(t, content, []string{
 		"<h1>ARG1 %{arg1}</h1>",
 	})
-	AssertLogContains(t, logger, []string{"FastFile: /", "/html/simple.html"})
+	AssertLogContains(t, logger, []string{"FastFile: ", "/html/simple.html"})
 
 	logger.Reset()
 	url = "static/tgo.html?arg1=ARG2"

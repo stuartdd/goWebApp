@@ -19,6 +19,7 @@ import (
 
 const shouldLogYes = true
 const shouldLogNo = false
+const ServerExitUrl = "/server/exit"
 
 type ActionId int
 
@@ -62,7 +63,7 @@ var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldL
 var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldLogNo)
 var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLogYes)
 var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLogYes)
-var getServerExitMatch = NewUrlRequestMatcher("/server/exit", "GET", shouldLogYes)
+var getServerExitMatch = NewUrlRequestMatcher(ServerExitUrl, "GET", shouldLogYes)
 var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldLogNo)
 var delServerLogMatch = NewUrlRequestMatcher("/server/log/*", "DELETE", shouldLogYes)
 
@@ -135,10 +136,10 @@ func (h *ServerHandler) serveFile(w http.ResponseWriter, r *http.Request, name s
 		panic(config.NewConfigError("Is a Directory", http.StatusBadRequest, fmt.Sprintf("File %s is a Directory.", name)))
 	}
 	if shouldLog && logFunc != nil {
-		logFunc(fmt.Sprintf("FastFile: %s", name))
+		logFunc(fmt.Sprintf("FastFile: %s", h.config.GetPathForDisplay(name)))
 	} else {
 		if verboseFunc != nil {
-			verboseFunc(fmt.Sprintf("FastFile: %s", name))
+			verboseFunc(fmt.Sprintf("FastFile: %s", h.config.GetPathForDisplay(name)))
 		}
 	}
 	w.Header().Set("Server", h.config.GetServerName())
@@ -474,28 +475,30 @@ func (p *WebAppServer) Start() int {
 	}
 	p.Log(fmt.Sprintf("Server Started    :%s.", p.Handler.GetUpSince().Format(time.ANSIC)))
 	if p.Handler.logger.IsOpen() {
-		p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetLogDataPath()))
+		p.Log(fmt.Sprintf("Server Log        :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.ConfigFileData.LogData.Path)))
 	} else {
 		p.Log("Server Log        :Is not Open. All logging is to the console")
 	}
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
-	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.CurrentPath))
-	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetServerDataRoot()))
+	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.CurrentPath)))
+	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.GetServerDataRoot())))
 	if p.Handler.config.HasStaticWebData {
-		p.Log(fmt.Sprintf("Static Data Root  :%s.", p.Handler.config.GetStaticWebData().Paths[config.StaticPathName]))
+		for n, v := range p.Handler.config.ConfigFileData.StaticWebData.Paths {
+			p.Log(fmt.Sprintf("Web Data          :%s --> %s.", n, p.Handler.config.GetPathForDisplay(v)))
+		}
 	} else {
 		p.Log("Static Data       :Undefined. Add StaticWebData.Home to config")
 	}
 	if p.Handler.config.IsTemplating {
-		p.Log(fmt.Sprintf("Server Templating :%s.", p.Handler.config.GetStaticWebData().TemplateStaticFiles.String()))
+		p.Log(fmt.Sprintf("Server Templating :%s.", p.Handler.config.GetStaticWebData().TemplateStaticFiles.DataFile))
 	} else {
 		p.Log("Server Templating :OFF.")
 	}
-	p.Log(fmt.Sprintf("Exec Manager      :%s", p.Handler.longRunning.String()))
+	p.Log(fmt.Sprintf("Exec Files        :%s", p.Handler.config.GetPathForDisplay(p.Handler.config.GetExecPath())))
 	for _, un := range p.Handler.config.GetUserNamesList() {
-		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetUserRoot(un)))
+		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetPathForDisplay(p.Handler.config.GetUserRoot(un))))
 	}
-	p.Log(fmt.Sprintf("User Properties   :%s.", p.Handler.config.UserProps.Details()))
+	p.Log(fmt.Sprintf("User Properties   :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.UserProps.Details())))
 
 	err := p.Server.ListenAndServe()
 	if err != nil {

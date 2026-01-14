@@ -20,6 +20,7 @@ import (
 const ConfigFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultReloadConfigSeconds = 3600
+const defaultPort = 8080
 const thumbnailTrimPrefix = 20
 const thumbnailTrimSuffix = 4
 const panicMessageStatus = "status:"
@@ -276,11 +277,10 @@ func (t *TemplateStaticFiles) DataPlus(plusFlatMap map[string]string) map[string
 }
 
 type LogData struct {
-	FileNameMask     string
-	Path             string
-	MonitorSeconds   int
-	ShowPathInStatus int
-	ConsoleOut       bool
+	FileNameMask   string
+	Path           string
+	MonitorSeconds int
+	ConsoleOut     bool
 }
 
 type StaticWebData struct {
@@ -382,11 +382,10 @@ func (p *StaticWebData) ValidateStaticWebData(configErrors *ConfigErrorData, add
 
 func NewLogData() *LogData {
 	return &LogData{
-		FileNameMask:     "",
-		Path:             "",
-		MonitorSeconds:   -1,
-		ShowPathInStatus: 2,
-		ConsoleOut:       false,
+		FileNameMask:   "",
+		Path:           "",
+		MonitorSeconds: -1,
+		ConsoleOut:     false,
 	}
 }
 
@@ -531,7 +530,6 @@ type ConfigDataFromFile struct {
 	ContentTypeCharset  string
 	LogData             *LogData
 	ServerName          string
-	PanicResponseCode   int
 	FilterFiles         []string
 	ServerDataRoot      string
 	StaticWebData       *StaticWebData
@@ -580,7 +578,6 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 			environ[pair[0]] = pair[1]
 		}
 	}
-
 	wd, _ := os.Getwd()
 	if !strings.HasSuffix(configFileName, ConfigFileExtension) {
 		configFileName = fmt.Sprintf("%s%s", configFileName, ConfigFileExtension)
@@ -608,7 +605,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 
 	configDataFromFile := &ConfigDataFromFile{
 		ReloadConfigSeconds: defaultReloadConfigSeconds,
-		Port:                8080,
+		Port:                defaultPort,
 		UserDataPath:        "",
 		Users:               make(map[string]UserData),
 		UserPropertiesFile:  "",
@@ -616,7 +613,6 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		ContentTypeCharset:  "utf-8",
 		ServerName:          moduleName,
 		FilterFiles:         []string{},
-		PanicResponseCode:   500,
 		ServerDataRoot:      "",
 		StaticWebData:       &StaticWebData{Paths: make(map[string]string), HomePage: "", TemplateStaticFiles: nil},
 		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
@@ -646,13 +642,6 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 
 	if len(configDataExternal.ConfigFileData.ThumbnailTrim) < 2 {
 		configErrors.AddError("Config data entry ThumbnailTrim data has less than 2 entries")
-	}
-
-	if configDataExternal.ConfigFileData.LogData != nil {
-		n := configDataExternal.ConfigFileData.LogData.ShowPathInStatus
-		if n < 0 || n > 10 {
-			configErrors.AddError(fmt.Sprintf("Config data entry LogData.ShowPathInStatus=%d must be from 0 to 10", n))
-		}
 	}
 
 	SetContentTypeCharset(configDataFromFile.ContentTypeCharset)
@@ -1090,18 +1079,13 @@ func (p *ConfigData) GetLogDataPath() string {
 	return p.ConfigFileData.LogData.Path
 }
 
-func (p *ConfigData) GetLogDataPathForStatus() string {
-	sl := strings.Split(p.ConfigFileData.LogData.Path, string(filepath.Separator))
-	ln := len(sl) - p.ConfigFileData.LogData.ShowPathInStatus
-	if ln < 1 {
-		return p.ConfigFileData.LogData.Path
+func (p *ConfigData) GetPathForDisplay(path string) string {
+	spl := strings.Split(path, "/")
+	l := len(spl)
+	if l < 3 {
+		return spl[l-1]
 	}
-	var buff bytes.Buffer
-	for i := ln; i < len(sl); i++ {
-		buff.WriteString(sl[i])
-		buff.WriteRune(filepath.Separator)
-	}
-	return buff.String()
+	return strings.Join(spl[3:], "/")
 }
 
 func (p *ConfigData) SetLogDataPath(f string) {

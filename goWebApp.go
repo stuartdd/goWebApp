@@ -59,7 +59,7 @@ func main() {
 	}
 
 	if killServer {
-		server.SendToHost(cfg.GetPortString(), "server/exit")
+		server.SendToHost(cfg.GetPortString(), server.ServerExitUrl)
 		time.Sleep(999 * time.Millisecond)
 		osExitWithMessage(0, "Server exit requested")
 	}
