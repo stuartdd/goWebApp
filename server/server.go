@@ -148,19 +148,6 @@ func (h *ServerHandler) serveFile(w http.ResponseWriter, r *http.Request, name s
 }
 
 func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	nowMillis := time.Now().UnixMilli()
-	if h.config.IsTimeToReloadConfig(nowMillis) {
-		configErrors := config.NewConfigErrorData()
-		cfg := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, h.config.IsVerbose, configErrors)
-		if configErrors.ErrorCount() == 0 {
-			h.config = cfg
-			h.Log(fmt.Sprintf("Config: %s file reload OK! (%d milli seconds)", h.config.ConfigName, (time.Now().UnixMilli() - nowMillis)))
-		} else {
-			h.config.ResetTimeToReloadConfig()
-			h.Log(fmt.Sprintf("Config: %s Failed to load\n%s", h.config.ConfigName, configErrors))
-		}
-	}
-
 	logFunc := h.logger.Log
 	verboseFunc := h.logger.VerboseFunction()
 	defer func() {
@@ -480,11 +467,11 @@ func (p *WebAppServer) Start() int {
 		p.Log("Server Log        :Is not Open. All logging is to the console")
 	}
 	p.Log(fmt.Sprintf("Server Port       %s.", p.Handler.config.GetPortString()))
-	p.Log(fmt.Sprintf("Server Path (wd)  :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.CurrentPath)))
+	p.Log(fmt.Sprintf("Server Root       :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.CurrentPath)))
 	p.Log(fmt.Sprintf("Server Data Root  :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.GetServerDataRoot())))
 	if p.Handler.config.HasStaticWebData {
 		for n, v := range p.Handler.config.ConfigFileData.StaticWebData.Paths {
-			p.Log(fmt.Sprintf("Web Data          :%s --> %s.", n, p.Handler.config.GetPathForDisplay(v)))
+			p.Log(fmt.Sprintf("Web Server Path   :%s --> %s.", n, p.Handler.config.GetPathForDisplay(v)))
 		}
 	} else {
 		p.Log("Static Data       :Undefined. Add StaticWebData.Home to config")
@@ -496,7 +483,7 @@ func (p *WebAppServer) Start() int {
 	}
 	p.Log(fmt.Sprintf("Exec Files        :%s", p.Handler.config.GetPathForDisplay(p.Handler.config.GetExecPath())))
 	for _, un := range p.Handler.config.GetUserNamesList() {
-		p.Log(fmt.Sprintf("Server User       :%s --> %s", un, p.Handler.config.GetPathForDisplay(p.Handler.config.GetUserRoot(un))))
+		p.Log(fmt.Sprintf("Server User Root  :%s --> %s", un, p.Handler.config.GetPathForDisplay(p.Handler.config.GetUserRoot(un))))
 	}
 	p.Log(fmt.Sprintf("User Properties   :%s.", p.Handler.config.GetPathForDisplay(p.Handler.config.UserProps.Details())))
 

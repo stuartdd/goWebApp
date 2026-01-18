@@ -19,7 +19,6 @@ import (
 
 const ConfigFileExtension = ".json"
 const AbsolutePathPrefix = "***"
-const defaultReloadConfigSeconds = 3600
 const defaultPort = 8080
 const thumbnailTrimPrefix = 20
 const thumbnailTrimSuffix = 4
@@ -521,21 +520,20 @@ func (p *UserData) IsHidden() bool {
 }
 
 type ConfigDataFromFile struct {
-	ReloadConfigSeconds int64
-	Port                int
-	ThumbnailTrim       []int
-	UserDataPath        string
-	UserPropertiesFile  string
-	Users               map[string]UserData
-	ContentTypeCharset  string
-	LogData             *LogData
-	ServerName          string
-	FilterFiles         []string
-	ServerDataRoot      string
-	StaticWebData       *StaticWebData
-	Env                 map[string]string
-	Exec                map[string]*ExecInfo
-	ExecPath            string
+	Port               int
+	ThumbnailTrim      []int
+	UserDataPath       string
+	UserPropertiesFile string
+	Users              map[string]UserData
+	ContentTypeCharset string
+	LogData            *LogData
+	ServerName         string
+	FilterFiles        []string
+	ServerDataRoot     string
+	StaticWebData      *StaticWebData
+	Env                map[string]string
+	Exec               map[string]*ExecInfo
+	ExecPath           string
 }
 
 func (p *ConfigDataFromFile) String() (string, error) {
@@ -547,20 +545,19 @@ func (p *ConfigDataFromFile) String() (string, error) {
 }
 
 type ConfigData struct {
-	ConfigFileData           *ConfigDataFromFile
-	CurrentPath              string
-	ModuleName               string
-	ConfigName               string
-	Debugging                bool
-	Environment              map[string]string
-	UserProps                *UserProperties
-	NextConfigLoadTimeMillis int64
-	LocationsCreated         []string
-	UpSince                  time.Time
-	IsVerbose                bool
-	HasStaticWebData         bool
-	IsTemplating             bool
-	TemplateFiles            []string
+	ConfigFileData   *ConfigDataFromFile
+	CurrentPath      string
+	ModuleName       string
+	ConfigName       string
+	Debugging        bool
+	Environment      map[string]string
+	UserProps        *UserProperties
+	LocationsCreated []string
+	UpSince          time.Time
+	IsVerbose        bool
+	HasStaticWebData bool
+	IsTemplating     bool
+	TemplateFiles    []string
 }
 
 /*
@@ -588,37 +585,35 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	}
 
 	configDataExternal := &ConfigData{
-		ConfigFileData:           nil,
-		UserProps:                nil,
-		Debugging:                debugging,
-		CurrentPath:              wd,
-		ModuleName:               moduleName,
-		ConfigName:               configFileName,
-		Environment:              environ,
-		NextConfigLoadTimeMillis: 0,
-		LocationsCreated:         []string{},
-		IsVerbose:                verbose,
-		HasStaticWebData:         false,
-		IsTemplating:             false,
-		TemplateFiles:            []string{},
+		ConfigFileData:   nil,
+		UserProps:        nil,
+		Debugging:        debugging,
+		CurrentPath:      wd,
+		ModuleName:       moduleName,
+		ConfigName:       configFileName,
+		Environment:      environ,
+		LocationsCreated: []string{},
+		IsVerbose:        verbose,
+		HasStaticWebData: false,
+		IsTemplating:     false,
+		TemplateFiles:    []string{},
 	}
 
 	configDataFromFile := &ConfigDataFromFile{
-		ReloadConfigSeconds: defaultReloadConfigSeconds,
-		Port:                defaultPort,
-		UserDataPath:        "",
-		Users:               make(map[string]UserData),
-		UserPropertiesFile:  "",
-		LogData:             NewLogData(),
-		ContentTypeCharset:  "utf-8",
-		ServerName:          moduleName,
-		FilterFiles:         []string{},
-		ServerDataRoot:      "",
-		StaticWebData:       &StaticWebData{Paths: make(map[string]string), HomePage: "", TemplateStaticFiles: nil},
-		ThumbnailTrim:       []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
-		Env:                 map[string]string{},
-		Exec:                map[string]*ExecInfo{},
-		ExecPath:            "",
+		Port:               defaultPort,
+		UserDataPath:       "",
+		Users:              make(map[string]UserData),
+		UserPropertiesFile: "",
+		LogData:            NewLogData(),
+		ContentTypeCharset: "utf-8",
+		ServerName:         moduleName,
+		FilterFiles:        []string{},
+		ServerDataRoot:     "",
+		StaticWebData:      &StaticWebData{Paths: make(map[string]string), HomePage: "", TemplateStaticFiles: nil},
+		ThumbnailTrim:      []int{thumbnailTrimPrefix, thumbnailTrimSuffix},
+		Env:                map[string]string{},
+		Exec:               map[string]*ExecInfo{},
+		ExecPath:           "",
 	}
 
 	/*
@@ -649,8 +644,6 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 		Add config data Env to the Environment variables
 	*/
 	maps.Copy(configDataExternal.Environment, configDataFromFile.Env)
-
-	configDataExternal.ResetTimeToReloadConfig()
 
 	for i := 0; i < len(configDataFromFile.FilterFiles); i++ {
 		f := strings.ToLower(configDataFromFile.FilterFiles[i])
@@ -967,18 +960,6 @@ func (p *ConfigData) SaveMe() error {
 		return err
 	}
 	return nil
-}
-
-func (p *ConfigData) IsTimeToReloadConfig(mowMillis int64) bool {
-	return p.NextConfigLoadTimeMillis < mowMillis
-}
-
-func (p *ConfigData) GetTimeToReloadSeconds() int64 {
-	return (p.NextConfigLoadTimeMillis - time.Now().UnixMilli()) / 1000
-}
-
-func (p *ConfigData) ResetTimeToReloadConfig() {
-	p.NextConfigLoadTimeMillis = time.Now().UnixMilli() + (p.ConfigFileData.ReloadConfigSeconds * 1000)
 }
 
 func (p *ConfigData) GetServerName() string {
