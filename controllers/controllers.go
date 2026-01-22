@@ -30,7 +30,7 @@ type Handler interface {
 func StaticFileTemplate(fullFile string, urlParts *UrlRequestParts, verboseFunc func(string)) *ResponseData {
 	fileContent, err := os.ReadFile(fullFile)
 	if err != nil {
-		panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
+		panic(config.NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
 	}
 	if verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
 		verboseFunc(fmt.Sprintf("Read Template File:%s Mime[%s] Len[%d]", urlParts.config.GetPathForDisplay(fullFile), config.LookupContentType(fullFile), len(fileContent)))
@@ -40,74 +40,38 @@ func StaticFileTemplate(fullFile string, urlParts *UrlRequestParts, verboseFunc 
 	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(fullFile)
 }
 
-func StaticFileTemplateX(filePath []string, urlParts *UrlRequestParts, verboseFunc func(string)) *ResponseData {
-	// TODO: Revisit paths
-	if urlParts.config.IsTemplating {
-		panic(NewControllerError("Templating error", http.StatusExpectationFailed, "Templating is disabled"))
-	}
-	list := []string{urlParts.config.GetStaticWebData().Paths["static"]}
-	list = append(list, filePath...)
-	fullFile := filepath.Join(list...)
-
-	stats, err := os.Stat(fullFile)
-	if err != nil {
-		panic(NewControllerError("File not found", http.StatusNotFound, fmt.Sprintf("Static File Error:%s", err.Error())))
-	}
-	if stats.IsDir() {
-		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("Static file %s is a Directory", fullFile)))
-	}
-	fileContent, err := os.ReadFile(fullFile)
-	if err != nil {
-		panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, fmt.Sprintf("Static File Error:%s", err.Error())))
-	}
-	if verboseFunc != nil { // Only do this if abs necessary as Sprintf does not need to be done
-		verboseFunc(fmt.Sprintf("Static Read File:%s Mime[%s] Len[%d]", urlParts.config.GetPathForDisplay(fullFile), config.LookupContentType(filePath[len(filePath)-1]), len(fileContent)))
-	}
-	td := urlParts.config.GetStaticWebData().TemplateStaticFiles
-	if urlParts.config.ShouldTemplateFile(list[len(list)-1]) {
-		fileContent = []byte(urlParts.config.SubstituteFromMap([]byte(string(fileContent)), td.DataPlus(*urlParts.GetCachedMapFlat())))
-	}
-	return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(filePath[len(filePath)-1])
-}
-
-func GetSetProperty(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
-	return NewResponseData(200).WithContentBytes([]byte(configData.GetSetUserProp(urlParts.parameters))).WithMimeType("txt").AndLogContent(true)
-}
-
 func GetPropertiesForUser(urlParts *UrlRequestParts, configData *config.ConfigData) *ResponseData {
-	return NewResponseData(200).WithContentMapAsJson(configData.GetPropertiesMapForUser(urlParts.parameters), urlParts.Query).WithMimeType("json")
-}
-
-func GetFastStaticFileName(configData *config.ConfigData, urlParts []string, url string) string {
-	if !configData.HasStaticWebData {
-		panic(NewControllerError("Resource not found", http.StatusNotFound, "Static File Error: Static Path is undefined"))
+	user, ok := urlParts.parameters["user"]
+	if !ok {
+		panic(config.NewConfigError("User not defined", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
 	}
-	// TODO: Revisit paths
-	list := []string{configData.GetStaticWebData().Paths["static"]}
-	list = append(list, urlParts...)
-	fullFile := filepath.Join(list...)
-
-	stats, err := os.Stat(fullFile)
-	if err != nil {
-		panic(NewControllerError("File not found", http.StatusNotFound, fmt.Sprintf("Static File Error:%s", err.Error())))
+	userData := configData.GetUserData(user)
+	if userData == nil {
+		panic(config.NewConfigError("User not found", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
 	}
-	if stats.IsDir() {
-		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("Static File %s is a Directory", fullFile)))
+	out := make(map[string]any)
+	for n, v := range configData.UserProps.Properties() {
+		if strings.HasPrefix(n, user+".") {
+			out[n[len(user)+1:]] = v
+		}
 	}
-	return fullFile
+	out["id"] = user
+	out["info"] = userData.CanSeeInfo()
+	out["name"] = userData.Name
+	return NewResponseData(200).WithContentMapAsJson(out, urlParts.Query).WithMimeType("json")
 }
 
 func GetFastFileName(configData *config.ConfigData, urlParts []string, url string, thumbnail bool) string {
 	if len(urlParts) < 7 {
-		panic(NewControllerError("Get File Error", http.StatusBadRequest, fmt.Sprintf("Invalid request:%s", url)))
+		panic(config.NewControllerError("Get File Error", http.StatusBadRequest, fmt.Sprintf("Invalid request:%s", url)))
 	}
 	ud, ok := configData.ConfigFileData.Users[urlParts[2]]
 	if !ok {
-		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid user:%s", url)))
+		panic(config.NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid user:%s", url)))
 	}
 	loc, ok := ud.Locations[urlParts[4]]
 	if !ok {
-		panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid location:%s", url)))
+		panic(config.NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid location:%s", url)))
 	}
 	var name string = ""
 	if urlParts[5] == "name" {
@@ -116,7 +80,7 @@ func GetFastFileName(configData *config.ConfigData, urlParts []string, url strin
 		if len(urlParts) >= 9 && urlParts[5] == "path" && urlParts[7] == "name" {
 			name = filepath.Join(loc, decodeValue(urlParts[6]), configData.ConvertToThumbnail(decodeValue(urlParts[8]), thumbnail))
 		} else {
-			panic(NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid path or name:%s", url)))
+			panic(config.NewControllerError("Get File Error", http.StatusNotFound, fmt.Sprintf("Invalid path or name:%s", url)))
 		}
 	}
 	return name
@@ -141,31 +105,34 @@ func NewDeleteFileHandler(urlParts *UrlRequestParts, configData *config.ConfigDa
 // TODO Cleanup ReadFileHandler --> DeleteFileHandler
 func (p *ReadFileHandler) Submit() *ResponseData {
 	file := p.parameters.GetUserLocPath(true, p.parameters.GetQueryAsBool("thumbnail", false), p.parameters.GetQueryAsBool("base64", false))
-
+	fd := p.configData.GetPathForDisplay(file)
 	stats, err := os.Stat(file)
 	if err != nil {
-		panic(NewControllerError("File not found", http.StatusNotFound, err.Error()))
+		panic(config.NewControllerError("File not found", http.StatusNotFound, fd))
 	}
 	if stats.IsDir() {
-		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", file)))
+		panic(config.NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", fd)))
 	}
 	if p.delete {
 		err = os.Remove(file)
 		if err != nil {
-			panic(NewControllerError("File could not be deleted", http.StatusUnprocessableEntity, err.Error()))
+			panic(config.NewControllerError("File could not be deleted", http.StatusUnprocessableEntity, fd))
 		}
 		_, err = os.Stat(file)
 		if err == nil {
-			panic(NewControllerError("File was not be deleted", http.StatusUnprocessableEntity, fmt.Sprintf("File %s was not deleted", file)))
+			panic(config.NewControllerError("File was not be deleted", http.StatusUnprocessableEntity, fmt.Sprintf("File %s was not deleted", fd)))
+		}
+		if p.verbose != nil { // Only do this if abs necessary as Sprintf does not need to be done
+			p.verbose(fmt.Sprintf("Delete File:%s", fd))
 		}
 		return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson("File deleted OK", p.parameters.Query)
 	} else {
 		fileContent, err := os.ReadFile(file)
 		if err != nil {
-			panic(NewControllerError("File could not be read", http.StatusUnprocessableEntity, err.Error()))
+			panic(config.NewControllerError("File could not be read", http.StatusUnprocessableEntity, err.Error()))
 		}
 		if p.verbose != nil { // Only do this if abs necessary as Sprintf does not need to be done
-			p.verbose(fmt.Sprintf("Read File:%s Mime[%s] Len[%d]", file, config.LookupContentType(p.parameters.GetName()), len(fileContent)))
+			p.verbose(fmt.Sprintf("Read File:%s Mime[%s] Len[%d]", fd, config.LookupContentType(p.parameters.GetName()), len(fileContent)))
 		}
 		return NewResponseData(http.StatusOK).WithContentBytes(fileContent).WithMimeType(p.parameters.GetName())
 	}
@@ -190,16 +157,16 @@ func (p *DirHandler) Submit() *ResponseData {
 	file := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	stats, err := os.Stat(file)
 	if err != nil {
-		panic(NewControllerError("Dir not found", http.StatusNotFound, err.Error()))
+		panic(config.NewControllerError("Dir not found", http.StatusNotFound, err.Error()))
 	}
 	if !stats.IsDir() {
-		panic(NewControllerError("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", file)))
+		panic(config.NewControllerError("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", file)))
 	}
 	index := p.parameters.GetQueryAsInt("index", -1)
 	if p.listFiles {
 		entries, err := os.ReadDir(file)
 		if err != nil {
-			panic(NewControllerError("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
+			panic(config.NewControllerError("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
 		}
 		// Panic Check Done
 		return NewResponseData(http.StatusOK).WithContentBytes(listFilesAsJson(entries, p.parameters, p.verbose, file, index)).WithMimeType("json")
@@ -223,10 +190,10 @@ func (p *TreeHandler) Submit() *ResponseData {
 	file := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	stats, err := os.Stat(file)
 	if err != nil {
-		panic(NewControllerError("Dir not found", http.StatusNotFound, err.Error()))
+		panic(config.NewControllerError("Dir not found", http.StatusNotFound, err.Error()))
 	}
 	if !stats.IsDir() {
-		panic(NewControllerError("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", file)))
+		panic(config.NewControllerError("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("%s is NOT a Directory", file)))
 	}
 
 	root := NewTreeNode("fs")
@@ -241,7 +208,7 @@ func (p *TreeHandler) Submit() *ResponseData {
 			return nil
 		})
 	if err != nil {
-		panic(NewControllerError("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
+		panic(config.NewControllerError("Dir could not be read", http.StatusUnprocessableEntity, err.Error()))
 	}
 	return NewResponseData(http.StatusOK).WithContentBytes(treeAsJson(root, p.parameters)).WithMimeType("json")
 }
@@ -251,6 +218,7 @@ type PostFileHandler struct {
 	request    *http.Request
 	postToLog  bool
 	verbose    func(string)
+	configData *config.ConfigData
 }
 
 func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData, r *http.Request, postToLog bool, verboseFunc func(string)) Handler {
@@ -259,6 +227,7 @@ func NewPostFileHandler(urlParts *UrlRequestParts, configData *config.ConfigData
 		request:    r,
 		verbose:    verboseFunc,
 		postToLog:  postToLog,
+		configData: configData,
 	}
 }
 
@@ -266,43 +235,44 @@ func (p *PostFileHandler) Submit() *ResponseData {
 	dir := p.parameters.GetUserLocPath(false, false, p.parameters.GetQueryAsBool("base64", false))
 	stats, err := os.Stat(dir)
 	if err != nil {
-		panic(NewControllerError("Dir not found", http.StatusNotFound, err.Error()))
+		panic(config.NewControllerError("Dir not found", http.StatusNotFound, err.Error()))
 	}
 	if !stats.IsDir() {
-		panic(NewControllerError("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("PostFileHandler: %s is NOT a Directory", dir)))
+		panic(config.NewControllerError("Is NOT a directory", http.StatusForbidden, fmt.Sprintf("PostFileHandler: %s is NOT a Directory", dir)))
 	}
 	body, err := io.ReadAll(p.request.Body)
 	if err != nil {
-		panic(NewControllerError("Failed to read posted data", http.StatusBadRequest, err.Error()))
+		panic(config.NewControllerError("Failed to read posted data", http.StatusBadRequest, err.Error()))
 	}
 	file := p.parameters.GetUserLocPath(true, false, p.parameters.GetQueryAsBool("base64", false))
+	fd := p.configData.GetPathForDisplay(file)
 
 	action := p.parameters.GetOptionalQuery("action", "save")
 	switch action {
 	case "append":
 		err = AppendFile(file, body, 0644)
 		if err != nil {
-			panic(NewControllerError("Failed to append data", http.StatusInternalServerError, fmt.Sprintf("File:%s Error:%s", file, err.Error())))
+			panic(config.NewControllerError("Failed to append data", http.StatusInternalServerError, fmt.Sprintf("File:%s Error:%s", fd, err.Error())))
 		}
 	case "replace":
 		err = os.WriteFile(file, body, 0644)
 		if err != nil {
-			panic(NewControllerError("Failed to save data", http.StatusInternalServerError, err.Error()))
+			panic(config.NewControllerError("Failed to save data", http.StatusInternalServerError, err.Error()))
 		}
 	default:
 		_, err := os.Stat(file)
 		if err == nil {
-			panic(NewControllerError("File exists", http.StatusPreconditionFailed, fmt.Sprintf("File:%s already exists", file)))
+			panic(config.NewControllerError("File exists", http.StatusPreconditionFailed, fmt.Sprintf("File:%s already exists", fd)))
 		}
 		err = os.WriteFile(file, body, 0644)
 		if err != nil {
-			panic(NewControllerError("Failed to save data", http.StatusInternalServerError, err.Error()))
+			panic(config.NewControllerError("Failed to save data", http.StatusInternalServerError, err.Error()))
 		}
 	}
 	if p.verbose != nil { // Only do this if abs necessary as Sprintf does not need to be done
-		p.verbose(fmt.Sprintf("File action[%s]:%s [%d] bytes", action, file, len(body)))
+		p.verbose(fmt.Sprintf("File action[%s]:%s [%d] bytes", action, fd, len(body)))
 	}
-	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("File:Action:%s %s", action, file), p.parameters.Query)
+	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("File:Action:%s %s", action, fd), p.parameters.Query)
 }
 
 func AppendFile(filename string, data []byte, perm os.FileMode) error {
@@ -348,7 +318,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 	if action == "stop" {
 		pid := runCommand.FindProcessIdWithName(p.execInfo.Cmd[0])
 		if pid < 100 {
-			panic(NewControllerError("Process not found", http.StatusExpectationFailed, fmt.Sprintf("Command:%s", p.execInfo.Cmd[0])))
+			panic(config.NewControllerError("Process not found", http.StatusExpectationFailed, fmt.Sprintf("Command:%s", p.execInfo.Cmd[0])))
 		}
 		runCommand.KillrocessWithPid(pid)
 		dataMap := map[string]interface{}{"error": false, "id": execId, "status": http.StatusOK, "msg": http.StatusText(http.StatusOK), "rc": 0, "stdOut": "Stop process complete", "stdErr": ""}
@@ -369,7 +339,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogOutFile), p.parameters.config.GetUserEnv(userId))
 		err := os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdOut, 0644)
 		if err != nil {
-			panic(NewControllerError("Failed to write stdOut to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdOut. RC:%d Error:%s", code, err.Error())))
+			panic(config.NewControllerError("Failed to write stdOut to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdOut. RC:%d Error:%s", code, err.Error())))
 		}
 	}
 
@@ -377,7 +347,7 @@ func (p *ExecHandler) Submit() *ResponseData {
 		of := p.parameters.config.SubstituteFromMap([]byte(p.execInfo.LogErrFile), p.parameters.config.GetUserEnv(userId))
 		err := os.WriteFile(filepath.Join(p.execInfo.LogDir, string(of)), stdErr, 0644)
 		if err != nil {
-			panic(NewControllerError("Failed to write stdErr to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdErr. RC:%d Error:%s", code, err.Error())))
+			panic(config.NewControllerError("Failed to write stdErr to log", http.StatusInternalServerError, fmt.Sprintf("Failed to write stdErr. RC:%d Error:%s", code, err.Error())))
 		}
 	}
 
@@ -426,7 +396,7 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 		}
 	}
 	if len(l1) == 0 {
-		panic(NewControllerError("No users are defined", http.StatusNotFound, "GetUsersAsMap: No un-hidden users found"))
+		panic(config.NewControllerError("No users are defined", http.StatusNotFound, "GetUsersAsMap: No un-hidden users found"))
 	}
 	m1["users"] = l1
 	return m1
@@ -435,20 +405,20 @@ func GetUsersAsMap(users *map[string]config.UserData) map[string]interface{} {
 func DelLog(configData *config.ConfigData, logName string, current string, queries map[string][]string) *ResponseData {
 	logName = decodeValue(logName)
 	if logName == current {
-		panic(NewControllerError("Cannot remove current log", http.StatusForbidden, fmt.Sprintf("Cannot remove current log: %s", current)))
+		panic(config.NewControllerError("Cannot remove current log", http.StatusForbidden, fmt.Sprintf("Cannot remove current log: %s", current)))
 	}
 
 	ld := filepath.Join(configData.GetLogData().Path, logName)
 	stats, err := os.Stat(ld)
 	if err != nil {
-		panic(NewControllerError("File not found", http.StatusNotFound, err.Error()))
+		panic(config.NewControllerError("File not found", http.StatusNotFound, err.Error()))
 	}
 	if stats.IsDir() {
-		panic(NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", ld)))
+		panic(config.NewControllerError("Is a directory", http.StatusForbidden, fmt.Sprintf("%s is a Directory", ld)))
 	}
 	err = os.Remove(ld)
 	if err != nil {
-		panic(NewControllerError("Could not be deleted", http.StatusForbidden, fmt.Sprintf("%s Could not be deleted. Error: %s", ld, err.Error())))
+		panic(config.NewControllerError("Could not be deleted", http.StatusForbidden, fmt.Sprintf("%s Could not be deleted. Error: %s", ld, err.Error())))
 	}
 	return NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(fmt.Sprintf("Log file '%s' deleted OK", logName), queries)
 }
@@ -463,7 +433,7 @@ func GetLog(configData *config.ConfigData, current string, offsetString string) 
 		return nil
 	})
 	if len(list) == 0 {
-		panic(NewControllerError("No log files were found", http.StatusNotFound, "GetLog: No log files were found"))
+		panic(config.NewControllerError("No log files were found", http.StatusNotFound, "GetLog: No log files were found"))
 	}
 
 	sort.Slice(list, func(i, j int) bool {
@@ -514,7 +484,7 @@ func GetLog(configData *config.ConfigData, current string, offsetString string) 
 
 	fileContent, err := os.ReadFile(fileName)
 	if err != nil {
-		panic(NewControllerError("Log file read error", http.StatusUnprocessableEntity, fmt.Sprintf("GetLog: Log file could not be read. Error:%s", err.Error())))
+		panic(config.NewControllerError("Log file read error", http.StatusUnprocessableEntity, fmt.Sprintf("GetLog: Log file could not be read. Error:%s", err.Error())))
 	}
 	b.WriteString(string(fileContent))
 	return NewResponseData(http.StatusOK).WithContentBytes(b.Bytes()).WithMimeType("log")
@@ -525,7 +495,7 @@ func GetOSFreeData(configData *config.ConfigData) (res string) {
 	execData := runCommand.NewExecData(execInfo.Cmd, execInfo.GetOutLogFile(), execInfo.GetErrLogFile(), "Run system 'free' command", execInfo.StartLTSFile, false, false, nil, nil)
 	stdOut, _, code := execData.RunSystemProcess(configData.GetExecPath())
 	if code != 0 {
-		panic(NewControllerError("Get System status via 'free' exec returned nz code", http.StatusFailedDependency, fmt.Sprintf("RC:%d", code)))
+		panic(config.NewControllerError("Get System status via 'free' exec returned nz code", http.StatusFailedDependency, fmt.Sprintf("RC:%d", code)))
 	}
 	return string(stdOut)
 }

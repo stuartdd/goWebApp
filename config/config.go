@@ -17,6 +17,30 @@ import (
 	"time"
 )
 
+type LoggableErrorType int
+
+const (
+	ConfigErrorType LoggableErrorType = iota
+	ControllerErrorType
+	ServerErrorType
+	PanicErrorType
+	UndefinedErrorType
+)
+
+func (t LoggableErrorType) Name() string {
+	switch t {
+	case ConfigErrorType:
+		return "Config"
+	case ControllerErrorType:
+		return "Controller"
+	case ServerErrorType:
+		return "Server"
+	case PanicErrorType:
+		return "Panic"
+	}
+	return "Undefined"
+}
+
 const ConfigFileExtension = ".json"
 const AbsolutePathPrefix = "***"
 const defaultPort = 8080
@@ -31,6 +55,10 @@ type UserProperties struct {
 	mu     sync.Mutex
 	path   string
 	values map[string]string
+}
+
+func (up *UserProperties) Properties() map[string]string {
+	return up.values
 }
 
 func NewUserProperties(path string) (*UserProperties, error) {
@@ -56,6 +84,7 @@ func NewUserProperties(path string) (*UserProperties, error) {
 	return &UserProperties{values: userProps, path: path}, nil
 }
 
+// Called on start up for info
 func (up *UserProperties) Details() string {
 	if len(up.values) == 0 {
 		return fmt.Sprintf("%s (No properties stored)", up.path)
@@ -74,21 +103,8 @@ func (up *UserProperties) writeToFile() {
 	}
 }
 
-func (up *UserProperties) MapDataForUser(user string, userData *UserData) map[string]interface{} {
-	out := make(map[string]interface{})
-	for n, v := range up.values {
-		if strings.HasPrefix(n, user+".") {
-			out[n[len(user)+1:]] = v
-		}
-	}
-	out["id"] = user
-	out["info"] = userData.CanSeeInfo()
-	out["name"] = userData.Name
-	return out
-}
-
 // Cannot run concurrently so use mutex lock
-func (up *UserProperties) Update(user, key, value string) string {
+func (up *UserProperties) Update(key, value string) string {
 	if up.path == "" {
 		return value
 	}
@@ -99,92 +115,105 @@ func (up *UserProperties) Update(user, key, value string) string {
 	v, found := up.values[key]
 	if found {
 		if value == "" {
-			return v
+			return v // If no value is provided then it is just a read (get)
 		}
 		if v == value {
-			return v
+			return v // If it is a set to same value just return the value
 		}
 	}
+	// Found with a different value or not found at all
 	up.values[key] = value
 	up.writeToFile()
 	return value
 }
 
-type ConfigError struct {
-	status  int
-	message string
-	log     string
+type LoggableError interface {
+	Error() string       // Display to the user, such as cause. NO Sensitive data!
+	LogError() string    // Append to the logs. Contains diagnostic data for admin.
+	Status() int         // The status code returned to the browser
+	String() string      // Same as Error()
+	Map() map[string]any // A map that is usded to constructs the JSON response
 }
 
-func (pm *ConfigError) Error() string {
-	return fmt.Sprintf("Config Error: Status:%d. %s", pm.status, pm.message)
+/*
+ * Should implement LoggableError
+ */
+type LoggableErrorWithStatus struct {
+	errorType LoggableErrorType
+	status    int
+	message   string
+	log       string
 }
 
-func (ee *ConfigError) Map() map[string]interface{} {
-	m := make(map[string]interface{})
-	m["error"] = true
-	m["status"] = ee.Status()
-	m["msg"] = http.StatusText(ee.status)
-	m["cause"] = ee.String()
-	return m
+func NewConfigError(message string, status int, logged string) LoggableError {
+	return &LoggableErrorWithStatus{errorType: ConfigErrorType, message: strings.TrimSpace(message), status: status, log: strings.TrimSpace(logged)}
 }
 
-func (ee *ConfigError) Status() int {
-	return ee.status
+func NewServerError(message string, status int, logged string) LoggableError {
+	return &LoggableErrorWithStatus{errorType: ServerErrorType, message: strings.TrimSpace(message), status: status, log: strings.TrimSpace(logged)}
 }
 
-func (ee *ConfigError) String() string {
-	return ee.message
+func NewControllerError(message string, status int, logged string) LoggableError {
+	return &LoggableErrorWithStatus{errorType: ControllerErrorType, message: strings.TrimSpace(message), status: status, log: strings.TrimSpace(logged)}
 }
 
-func (pm *ConfigError) LogError() string {
-	if pm.log == "" {
-		return pm.Error()
-	}
-	return fmt.Sprintf("%s Log:%s", pm.Error(), pm.log)
+func NewPanicError(message string, fallbackStatus int) LoggableError {
+	return NewLoggableErrorFromPanic(message, fallbackStatus)
 }
 
-func NewConfigError(message string, status int, logged string) *ConfigError {
-	return &ConfigError{message: strings.TrimSpace(message), status: status, log: strings.TrimSpace(logged)}
-}
-
-func NewConfigErrorFromString(message string, fallback int) *ConfigError {
+func NewLoggableErrorFromPanic(message string, fallbackStatus int) LoggableError {
 	mLc := strings.ToLower(message)
-	sp := strings.Index(mLc, panicMessageStatus)
-	lp := strings.Index(mLc, panicMessageLog)
-
-	// Every thing after log: is logged with the message
-	lm := ""
-	if lp >= 0 {
-		lm = message[lp+4:]
-	}
-
-	if sp < 0 {
-		// No status so message is everything up to log:. Status if fallback
-		if lp >= 0 {
-			message = message[0:lp]
+	status := fallbackStatus
+	statusEnd := 0
+	statusStart := strings.Index(mLc, panicMessageStatus)
+	if statusStart >= 0 {
+		status, statusEnd = parseStatus(message, statusStart+len(panicMessageStatus)-1, fallbackStatus)
+		if statusEnd > statusStart {
+			message = strings.TrimSpace(fmt.Sprintf("%s%s", message[:statusStart], message[statusEnd+1:]))
 		}
-		return NewConfigError(message, fallback, lm)
 	}
+	mLc = strings.ToLower(message)
+	logStart := strings.Index(mLc, panicMessageLog)
 
-	// read the status. Return status and the char at the end of the status number.
-	// if fails then status is fallback and end
-	status, end := parseInt(message, sp+len(panicMessageStatus)-1, fallback)
-	m := ""
-	if end > sp {
-		m = message[0:sp] + message[end+1:]
+	// Every thing after log: is written to log
+	lm := ""
+	if logStart < 0 {
+		return &LoggableErrorWithStatus{errorType: PanicErrorType, message: strings.TrimSpace(message), status: status, log: ""}
 	} else {
-		m = message
-	}
-	lp = strings.Index(strings.ToLower(m), "log:")
-	if lp >= 0 {
-		m = m[0:lp]
+		lm = strings.TrimSpace(message[logStart+4:])
+		message = strings.TrimSpace(message[:logStart])
 	}
 
-	return NewConfigError(m, status, lm)
+	return &LoggableErrorWithStatus{errorType: PanicErrorType, message: strings.TrimSpace(message), status: status, log: strings.TrimSpace(lm)}
 }
 
-func parseInt(s string, pos int, fallback int) (int, int) {
+func (ce *LoggableErrorWithStatus) Map() map[string]any {
+	return map[string]any{"status": ce.status, "error": true, "msg": http.StatusText(ce.status), "cause": ce.Error()}
+}
+
+func (ce *LoggableErrorWithStatus) Status() int {
+	return ce.status
+}
+
+func (ce *LoggableErrorWithStatus) Error() string {
+	return ce.message
+}
+
+func (ce *LoggableErrorWithStatus) String() string {
+	return ce.message
+}
+
+func (ce *LoggableErrorWithStatus) LogError() string {
+	if ce.log == "" {
+		return fmt.Sprintf("%s Error: Status:%d. %s", ce.errorType.Name(), ce.Status(), ce.message)
+	}
+	if ce.message == "" {
+		return fmt.Sprintf("%s Error: Status:%d. %s", ce.errorType.Name(), ce.Status(), ce.log)
+	}
+	return fmt.Sprintf("%s Error: Status:%d. Msg:%s. Log:%s", ce.errorType.Name(), ce.Status(), ce.message, ce.log)
+}
+
+func parseStatus(s string, pos int, fallback int) (int, int) {
 	b := []byte(s)
 	n := -1
 	p := -1
@@ -238,7 +267,7 @@ func (t *TemplateStaticFiles) Init(staticPath string, configErrors *ConfigErrorD
 			configErrors.AddError(fmt.Sprintf("failed to read template data file. Error:%s", err.Error()))
 			return
 		}
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		err = json.Unmarshal(content, &m)
 		if err != nil {
 			configErrors.AddError(fmt.Sprintf("failed to parse template json file:%s. Error:%s", f, err.Error()))
@@ -666,20 +695,7 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 
 }
 
-func (p *ConfigData) GetPropertiesMapForUser(data map[string]string) map[string]interface{} {
-	user, ok := data["user"]
-	if !ok {
-		panic(NewConfigError("User not defined", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
-	}
-	userData := p.GetUserData(user)
-	if userData == nil {
-		panic(NewConfigError("User not found", http.StatusNotFound, fmt.Sprintf("User=%s", user)))
-	}
-	return p.UserProps.MapDataForUser(user, userData)
-}
-
 // run concurrently so must use lock
-
 func (p *ConfigData) GetSetUserProp(data map[string]string) string {
 	user, ok := data["user"]
 	if !ok {
@@ -700,7 +716,7 @@ func (p *ConfigData) GetSetUserProp(data map[string]string) string {
 		return value
 	}
 	key := fmt.Sprintf("%s.%s", user, name)
-	return p.UserProps.Update(user, key, value)
+	return p.UserProps.Update(key, value)
 }
 
 /*
@@ -785,7 +801,7 @@ func (p *ConfigData) resolveLocations(createDir bool, configErrors *ConfigErrorD
 	defer func() {
 		if rec := recover(); rec != nil {
 			switch x := rec.(type) {
-			case *ConfigError:
+			case *LoggableErrorWithStatus:
 				configErrors.AddError(x.LogError())
 			case string:
 				configErrors.AddError(x)
@@ -1159,19 +1175,19 @@ func (p *ConfigData) String() (string, error) {
 	return string(data), nil
 }
 
-func FlattenMap(m map[string]interface{}, prefix string) map[string]string {
+func FlattenMap(m map[string]any, prefix string) map[string]string {
 	out := make(map[string]string)
 	flattenRec(out, []string{}, prefix, m)
 	return out
 }
 
-func flattenRec(m map[string]string, path []string, n string, v interface{}) {
+func flattenRec(m map[string]string, path []string, n string, v any) {
 	switch x := v.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		for nn, vv := range x {
 			flattenRec(m, appendStrF(path, n), nn, vv)
 		}
-	case []interface{}:
+	case []any:
 		for nn, vv := range x {
 			flattenRec(m, appendStrF(path, n), strconv.Itoa(nn), vv)
 		}

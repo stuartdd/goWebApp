@@ -9,20 +9,33 @@ import (
 	"time"
 )
 
-type RootUrls struct {
+type RootUrlList struct {
 	ids map[string]bool
 }
 
-func NewRootUrls() *RootUrls {
-	return &RootUrls{ids: map[string]bool{}}
+func NewRootUrlList() *RootUrlList {
+	return &RootUrlList{ids: map[string]bool{}}
 }
 
-func (p *RootUrls) Get(name string) bool {
+func (rl *RootUrlList) AddUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *urlRequestMatcher {
+	return rl.add(newUrlRequestMatcher(templateUrl, reqType, shouldLog))
+}
+
+func (p *RootUrlList) HasRoot(name string) bool {
 	_, ok := p.ids[name]
 	return ok
 }
 
-func (p *RootUrls) Add(info *UrlRequestMatcher) *UrlRequestMatcher {
+func (p *RootUrlList) String() string {
+	var buffer bytes.Buffer
+	for n, _ := range p.ids {
+		buffer.WriteString(n)
+		buffer.WriteString(",")
+	}
+	return buffer.String()
+}
+
+func (p *RootUrlList) add(info *urlRequestMatcher) *urlRequestMatcher {
 	if len(info.Parts) > 0 {
 		p.ids[info.Parts[0]] = true
 	}
@@ -55,28 +68,28 @@ func (r *RequestInfo) String() string {
 }
 
 func (r *RequestInfo) Log(shouldLog bool) {
+	if r.logFunc != nil && shouldLog {
+		r.logFunc(r.String())
+		return
+	}
 	if r.verboseLogFunc != nil {
 		r.verboseLogFunc(r.String())
-	} else {
-		if r.logFunc != nil && shouldLog {
-			r.logFunc(r.String())
-		}
 	}
 }
 
-type UrlRequestMatcher struct {
+type urlRequestMatcher struct {
 	Parts     []string
 	ReqType   string
 	shouldLog bool
 	Len       int
 }
 
-func NewUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *UrlRequestMatcher {
+func newUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *urlRequestMatcher {
 	s := strings.Split(strings.TrimSpace(templateUrl), "/")
 	if s[0] == "" {
 		s = s[1:]
 	}
-	return &UrlRequestMatcher{
+	return &urlRequestMatcher{
 		Parts:     s,
 		ReqType:   strings.ToUpper(reqType),
 		shouldLog: shouldLog,
@@ -84,7 +97,7 @@ func NewUrlRequestMatcher(templateUrl string, reqType string, shouldLog bool) *U
 	}
 }
 
-func (p *UrlRequestMatcher) String() string {
+func (p *urlRequestMatcher) String() string {
 	var buffer bytes.Buffer
 	len := 0
 	buffer.WriteRune('/')
@@ -97,17 +110,17 @@ func (p *UrlRequestMatcher) String() string {
 	return fmt.Sprintf("Req:  %s:%s", p.ReqType, buffer.String())
 }
 
-func (p *UrlRequestMatcher) Match(requestParts []string, reqType string, rqi *RequestInfo) (map[string]string, bool, bool) {
-	params := map[string]string{}
+func (p *urlRequestMatcher) Match(requestParts []string, reqType string, rqi *RequestInfo) (map[string]string, bool, bool) {
 	if p.Len == 0 || p.Len != len(requestParts) {
-		return params, false, p.shouldLog
-	}
-	if p.ReqType != strings.ToUpper(reqType) {
-		return params, false, p.shouldLog
+		return nil, false, p.shouldLog
 	}
 	if p.Parts[0] != requestParts[0] {
-		return params, false, p.shouldLog
+		return nil, false, p.shouldLog
 	}
+	if p.ReqType != strings.ToUpper(reqType) {
+		return nil, false, p.shouldLog
+	}
+	params := map[string]string{}
 	for i := 1; i < p.Len; i++ {
 		if p.Parts[i] != "*" {
 			if p.Parts[i] != requestParts[i] {

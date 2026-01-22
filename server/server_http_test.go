@@ -16,7 +16,7 @@ func TestHttpContentLocPath(t *testing.T) {
 	defer func() {
 		StopServer(t, configData)
 	}()
-	url := fmt.Sprintf("ff/user/stuart/loc/pics/name/%s", encodeValue("benchPic.jpg"))
+	url := fmt.Sprintf("files/user/stuart/loc/pics/name/%s", encodeValue("benchPic.jpg"))
 	resp, _ := RunClientGet(t, "TestHttpContentLocPath 1", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestHttpContentLocPath 1", resp, []string{"image/jpeg"}, "6038855")
 }
@@ -45,7 +45,7 @@ func TestHttpContentJpeg(t *testing.T) {
 	defer func() {
 		StopServer(t, configData)
 	}()
-	url := fmt.Sprintf("ff/user/stuart/loc/pics/name/%s", encodeValue("benchPic.jpg"))
+	url := fmt.Sprintf("files/user/stuart/loc/pics/name/%s", encodeValue("benchPic.jpg"))
 	resp, _ := RunClientGet(t, "TestHttpContentJpeg 1", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestHttpContentJpeg 1", resp, []string{"image/jpeg"}, "6038855")
 }

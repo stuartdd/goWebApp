@@ -57,10 +57,9 @@ func execDataAsJson(execId string, rc int, stdOut []byte, stdErr []byte, queries
 	m["stdOut"] = string(stdOut)
 	m["stdErr"] = string(stdErr)
 	updateMapWithQueries(m, queries)
-
 	v, err := json.Marshal(m)
 	if err != nil {
-		panic(NewControllerError("controllers:execDataAsJson:Marshal", http.StatusInternalServerError, fmt.Sprintf("JSON Marshal:Error:%s", err.Error())))
+		panic(config.NewControllerError("controllers:execDataAsJson:Marshal", http.StatusInternalServerError, fmt.Sprintf("JSON Marshal:Error:%s", err.Error())))
 	}
 	return v
 }
@@ -74,7 +73,7 @@ func statusAsJson(status int, cause string, error bool, queries map[string][]str
 	updateMapWithQueries(m, queries)
 	v, err := json.Marshal(m)
 	if err != nil {
-		panic(NewControllerError("controllers:statusAsJson:Marshal", http.StatusInternalServerError, fmt.Sprintf("JSON Marshal:Error:%s", err.Error())))
+		panic(config.NewControllerError("controllers:statusAsJson:Marshal", http.StatusInternalServerError, fmt.Sprintf("JSON Marshal:Error:%s", err.Error())))
 	}
 	return v
 }
@@ -123,7 +122,7 @@ func listFilesAsJson(ents []fs.DirEntry, params *UrlRequestParts, verbose func(s
 
 	buffer.WriteString("]}")
 	if verbose != nil {
-		verbose(fmt.Sprintf("ListFilesAsJson:%s Returned[%d]", path, count))
+		verbose(fmt.Sprintf("ListFilesAsJson:%s Returned[%d]", params.config.GetPathForDisplay(path), count))
 	}
 
 	return buffer.Bytes()

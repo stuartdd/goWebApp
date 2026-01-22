@@ -31,13 +31,6 @@ if [ $? -eq 1 ]; then
   exit 1
 fi
 
-cd ../pictures
-echo "--------------------------------------- $PWD"
-go test
-if [ $? -eq 1 ]; then
-  exit 1
-fi
-
 cd ../controllers
 echo "--------------------------------------- $PWD"
 go test
@@ -54,8 +47,8 @@ fi
 
 cd ../server
 echo "--------------------------------------- $PWD"
-rem Limit the number of procs to limit the number of concurrent connections.
-rem This prevents Test Failures from 'connection reset by user' events.
+# Limit the number of procs to limit the number of concurrent connections.
+# This prevents Test Failures from 'connection reset by user' events.
 GOMAXPROCS=3 go test
 if [ $? -eq 1 ]; then
   exit 1

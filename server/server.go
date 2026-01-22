@@ -29,10 +29,10 @@ const (
 )
 
 type LoggableError interface {
-	Error() string
-	LogError() string
-	Status() int
-	Map() map[string]interface{}
+	Error() string               // Display to the user, such as cause. NO Sensitive data!
+	LogError() string            // Append to the logs. Contains diagnostic data for admin.
+	Status() int                 // The status code returned to the browser
+	Map() map[string]interface{} // A map that constructs the JSON respo
 }
 
 type ActionEvent struct {
@@ -53,46 +53,46 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 	return &ActionEvent{Id: id, Rc: i, Msg: m}
 }
 
-var matcherRequestIds = NewRootUrls()
+var rootUrlList = NewRootUrlList()
 
-var getPingMatch = matcherRequestIds.Add(NewUrlRequestMatcher("/ping", "GET", shouldLogNo))
-var getIsUpMatch = matcherRequestIds.Add(NewUrlRequestMatcher("/isup", "GET", shouldLogNo))
+var getPingMatch = rootUrlList.AddUrlRequestMatcher("/ping", "GET", shouldLogNo)
+var getIsUpMatch = rootUrlList.AddUrlRequestMatcher("/isup", "GET", shouldLogNo)
 
-var getServerStatusMatch = NewUrlRequestMatcher("/server/status", "GET", shouldLogYes)
-var getReloadConfigMatch = NewUrlRequestMatcher("/server/config", "GET", shouldLogYes)
-var getServerTimeMatch = NewUrlRequestMatcher("/server/time", "GET", shouldLogNo)
-var getServerUsersMatch = NewUrlRequestMatcher("/server/users", "GET", shouldLogYes)
-var getServerRestartMatch = NewUrlRequestMatcher("/server/restart", "GET", shouldLogYes)
-var getServerExitMatch = NewUrlRequestMatcher(ServerExitUrl, "GET", shouldLogYes)
-var getServerLogMatch = NewUrlRequestMatcher("/server/log", "GET", shouldLogNo)
-var delServerLogMatch = NewUrlRequestMatcher("/server/log/*", "DELETE", shouldLogYes)
+var getServerStatusMatch = rootUrlList.AddUrlRequestMatcher("/server/status", "GET", shouldLogYes)
+var getReloadConfigMatch = rootUrlList.AddUrlRequestMatcher("/server/config", "GET", shouldLogYes)
+var getServerTimeMatch = rootUrlList.AddUrlRequestMatcher("/server/time", "GET", shouldLogNo)
+var getServerUsersMatch = rootUrlList.AddUrlRequestMatcher("/server/users", "GET", shouldLogYes)
+var getServerRestartMatch = rootUrlList.AddUrlRequestMatcher("/server/restart", "GET", shouldLogYes)
+var getServerExitMatch = rootUrlList.AddUrlRequestMatcher(ServerExitUrl, "GET", shouldLogYes)
+var getServerLogMatch = rootUrlList.AddUrlRequestMatcher("/server/log", "GET", shouldLogNo)
+var delServerLogMatch = rootUrlList.AddUrlRequestMatcher("/server/log/*", "DELETE", shouldLogYes)
 
 // Exec a script via an ID in config:"Exec" section.
 // Script must be in  config:"ExecPath":
 // User will be "admin"
-var getExecMatch = NewUrlRequestMatcher("/exec/*", "GET", shouldLogYes)
-var getPropUserNameValueMatch = NewUrlRequestMatcher("/prop/user/*/name/*/value/*", "GET", shouldLogYes)
-var getPropUserNameMatch = NewUrlRequestMatcher("/prop/user/*/name/*", "GET", shouldLogYes)
-var getPropUserMatch = NewUrlRequestMatcher("/prop/user/*", "GET", shouldLogYes)
+var getExecMatch = rootUrlList.AddUrlRequestMatcher("/exec/*", "GET", shouldLogYes)
+var getPropUserNameValueMatch = rootUrlList.AddUrlRequestMatcher("/prop/user/*/name/*/value/*", "GET", shouldLogYes)
+var getPropUserNameMatch = rootUrlList.AddUrlRequestMatcher("/prop/user/*/name/*", "GET", shouldLogYes)
+var getPropUserMatch = rootUrlList.AddUrlRequestMatcher("/prop/user/*", "GET", shouldLogYes)
 
 // Get File asAdmin user. Location (loc) must be defined in admin user.
-// var getFileLocNameMatch = NewUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLogYes)
-var getFileUserLocPathMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLogYes)
-var getFileUserLocMatch = NewUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLogYes)
-var getFileUserLocTreeMatch = NewUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLogYes)
+// var getFileLocNameMatch = rootUrlList.AddUrlRequestMatcher("/files/loc/*/name/*", "GET", shouldLogYes)
+var getFileUserLocPathMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/path/*", "GET", shouldLogYes)
+var getFileUserLocMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*", "GET", shouldLogYes)
+var getFileUserLocTreeMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/tree", "GET", shouldLogYes)
 
 // Specific File GET matchers Sub for FastFile!
-var getFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLogYes)
-var getFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLogYes)
+var getFileUserLocNameMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/name/*", "GET", shouldLogYes)
+var getFileUserLocPathNameMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "GET", shouldLogYes)
 
 // File NON GET matchers
-var delFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLogYes)
-var postFileUserLocNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLogYes)
-var postFileUserLocPathNameMatch = NewUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLogYes)
+var delFileUserLocNameMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/name/*", "DELETE", shouldLogYes)
+var postFileUserLocNameMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/name/*", "POST", shouldLogYes)
+var postFileUserLocPathNameMatch = rootUrlList.AddUrlRequestMatcher("/files/user/*/loc/*/path/*/name/*", "POST", shouldLogYes)
 
-var getPathsUserLocMatch = NewUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogYes)
+var getPathsUserLocMatch = rootUrlList.AddUrlRequestMatcher("/paths/user/*/loc/*", "GET", shouldLogYes)
 
-var getTestUserLocNameMatch = NewUrlRequestMatcher("/test/user/*/loc/*/name/*", "GET", shouldLogNo)
+var getTestUserLocNameMatch = rootUrlList.AddUrlRequestMatcher("/test/user/*/loc/*/name/*", "GET", shouldLogNo)
 
 type ServerHandler struct {
 	config      *config.ConfigData
@@ -106,6 +106,7 @@ func NewServerHandler(configData *config.ConfigData, actionQueue chan *ActionEve
 	if lrm == nil {
 		lrm = runCommand.NewLongRunningManagerDisabled()
 	}
+
 	return &ServerHandler{
 		config:      configData,
 		actionQueue: actionQueue,
@@ -127,20 +128,16 @@ func (h *ServerHandler) close() {
 	h.logger.Close()
 }
 
-func (h *ServerHandler) serveFile(w http.ResponseWriter, r *http.Request, name string, verboseFunc func(string), logFunc func(string), shouldLog bool) {
+func (h *ServerHandler) serveFile(w http.ResponseWriter, r *http.Request, name string, verboseFunc func(string), shouldLog bool) {
 	stat, err := os.Stat(name)
 	if err != nil {
-		panic(config.NewConfigError("File not found", http.StatusNotFound, fmt.Sprintf("File not found. :%s", err.Error())))
+		panic(config.NewServerError("File not found", http.StatusNotFound, fmt.Sprintf("File not found. :%s", h.config.GetPathForDisplay(name))))
 	}
 	if stat.IsDir() {
-		panic(config.NewConfigError("Is a Directory", http.StatusBadRequest, fmt.Sprintf("File %s is a Directory.", name)))
+		panic(config.NewServerError("Is a Directory", http.StatusBadRequest, fmt.Sprintf("File %s is a Directory.", h.config.GetPathForDisplay(name))))
 	}
-	if shouldLog && logFunc != nil {
-		logFunc(fmt.Sprintf("FastFile: %s", h.config.GetPathForDisplay(name)))
-	} else {
-		if verboseFunc != nil {
-			verboseFunc(fmt.Sprintf("FastFile: %s", h.config.GetPathForDisplay(name)))
-		}
+	if verboseFunc != nil {
+		verboseFunc(fmt.Sprintf("FastFile: %s", h.config.GetPathForDisplay(name)))
 	}
 	w.Header().Set("Server", h.config.GetServerName())
 	w.Header().Set("Content-Type", config.LookupContentType(name))
@@ -157,19 +154,18 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case LoggableError:
 				le = x
 			case string:
-				le = config.NewConfigErrorFromString(x, 404)
+				le = config.NewPanicError(x, 404)
 			case error:
-				le = config.NewConfigErrorFromString(x.Error(), 404)
+				le = config.NewPanicError(x.Error(), 404)
 			default:
 				// Fallback err (per specs, error strings should be lowercase w/o punctuation
-				le = config.NewConfigErrorFromString(fmt.Sprintf("%v", rec), 404)
+				le = config.NewPanicError(fmt.Sprintf("%v", rec), 404)
 			}
 			logFunc(le.LogError())
 			h.writeResponse(w, controllers.NewResponseData(le.Status()).SetHasErrors(true).WithContentMapAsJson(le.Map(), r.URL.Query()), true)
 		}
 	}()
 
-	var requestUrlparts []string
 	urlPath := strings.TrimSpace(r.URL.Path)
 	if urlPath == "/" {
 		if h.config.HasStaticWebData {
@@ -177,58 +173,68 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if h.config.ShouldTemplateFile(homePage) {
 				h.writeResponse(w, controllers.StaticFileTemplate(homePage, controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header), logFunc), true)
 			} else {
-				h.serveFile(w, r, homePage, verboseFunc, logFunc, shouldLogYes)
+				h.serveFile(w, r, homePage, verboseFunc, shouldLogYes)
 			}
 			return
 		}
-		panic(config.NewConfigError("Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s:%s", r.Method, urlPath)))
+		panic(config.NewServerError("Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s:%s", r.Method, urlPath)))
 	}
-	requestUrlparts = strings.Split(urlPath, "/")
+
+	requestUrlparts := strings.Split(urlPath, "/")
 	if requestUrlparts[0] == "" {
 		requestUrlparts = requestUrlparts[1:]
 	}
 	requestUrlpartsLen := len(requestUrlparts)
 	if requestUrlpartsLen == 0 {
-		panic(config.NewConfigError("Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s: is empty", r.Method)))
-	}
-	requestMatchRoot := matcherRequestIds.Get(requestUrlparts[0])
-
-	// url 'get' starts with 'ff' so return the file ASAP
-	if requestUrlparts[0] == "ff" && r.Method == "GET" {
-		// Panic Check Done
-		tn := r.URL.Query().Get("thumbnail")
-		name := controllers.GetFastFileName(h.config, requestUrlparts, urlPath, (tn == "true"))
-		h.serveFile(w, r, name, verboseFunc, logFunc, shouldLogYes)
+		h.writeErrorResponse(w, "Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s: is empty", r.Method))
 		return
 	}
 
+	// Is the root of the url cached in matcherRequestIds
+	requestMatchesRoot := rootUrlList.HasRoot(requestUrlparts[0])
+
+	// If there is Web Data there may be static files.. html , json, icons, jpg etc...
 	if h.config.HasStaticWebData {
-		staticFile := ""
+		staticFileName := ""
+		// If url is singular and not a pre defined root url it may be a file name like 'favicon.ico'
+		// Root files are not allowed so they are re-mapped to StaticWebData.Paths['static'] path
 		if requestUrlpartsLen == 1 {
-			if !requestMatchRoot {
-				staticFile = h.config.GetStaticWebData().GetStaticFile(requestUrlparts[0])
+			// requestMatchesRoot is true for /ping, /isup, /server and other  'non-static' web data
+			// so must be excluded.
+			if !requestMatchesRoot {
+				staticFileName = h.config.GetStaticWebData().GetStaticFile(requestUrlparts[0])
 			}
 		} else {
+			// If url is multiple and the first is found in StaticWebData.Paths[requestUrlparts[0]]
+			// This allows a mapping to 'images' of other paths defined in StaticWebData.Paths
 			if requestUrlpartsLen > 1 {
 				path, ok := h.config.GetStaticWebData().Paths[requestUrlparts[0]]
 				if ok {
+					// if root url is found then build a file path and name from the url parts (exclude [0])
 					l := append([]string{path}, requestUrlparts[1:]...)
-					staticFile = filepath.Join(l...)
+					staticFileName = filepath.Join(l...)
 				}
 			}
 		}
-		if staticFile != "" {
-			if h.config.ShouldTemplateFile(staticFile) {
-				h.writeResponse(w, controllers.StaticFileTemplate(staticFile, controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header), logFunc), true)
+		if staticFileName != "" {
+			// if we derived a static file name then return the file ASAP
+			if h.config.ShouldTemplateFile(staticFileName) {
+				h.writeResponse(w, controllers.StaticFileTemplate(staticFileName, controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header), verboseFunc), true)
 			} else {
-				h.serveFile(w, r, staticFile, verboseFunc, logFunc, shouldLogYes)
+				h.serveFile(w, r, staticFileName, verboseFunc, shouldLogYes)
 			}
 			return
 		}
+		// Url is not a static file (yet!) so carry on..
 	}
 
+	urlRequestParts := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
+	if !requestMatchesRoot {
+		// The root of the url does not match any Matcher so 404!
+		h.writeErrorResponse(w, "Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s:%s%s", r.Method, urlPath, urlRequestParts.QueryAsString()))
+		return
+	}
 	requestInfo := NewRequestInfo(r.Method, urlPath, r.URL.RawQuery, logFunc, verboseFunc)
-	requestData := controllers.NewUrlRequestParts(h.config).WithQuery(r.URL.Query()).WithHeader(r.Header)
 
 	_, ok, shouldLog := getPingMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
@@ -242,6 +248,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("ServerIsUp", nil), shouldLog)
 		return
 	}
+
 	_, ok, shouldLog = getServerTimeMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
@@ -252,101 +259,96 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		tn := r.URL.Query().Get("thumbnail")
 		name := controllers.GetFastFileName(h.config, requestUrlparts, urlPath, (tn == "true"))
-		h.serveFile(w, r, name, verboseFunc, logFunc, shouldLog)
+		h.serveFile(w, r, name, verboseFunc, shouldLog)
 		return
 	}
 	_, ok, shouldLog = getFileUserLocPathNameMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		tn := r.URL.Query().Get("thumbnail")
 		name := controllers.GetFastFileName(h.config, requestUrlparts, urlPath, (tn == "true"))
-		h.serveFile(w, r, name, verboseFunc, logFunc, shouldLog)
+		h.serveFile(w, r, name, verboseFunc, shouldLog)
 		return
 	}
 	_, ok, shouldLog = getTestUserLocNameMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		tn := r.URL.Query().Get("thumbnail")
 		name := controllers.GetFastFileName(h.config, requestUrlparts, urlPath, (tn == "true"))
-		h.serveFile(w, r, name, verboseFunc, logFunc, shouldLog)
+		h.serveFile(w, r, name, verboseFunc, shouldLog)
 		return
 	}
 	p, ok, shouldLog := getFileUserLocPathMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
-		if shouldLog {
-			h.logger.Log(fmt.Sprintf("Req:  %s:%s %s", r.Method, urlPath, r.URL.RawQuery))
-		}
-		h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewDirHandler(urlRequestParts.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	p, ok, shouldLog = getFileUserLocMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		if shouldLog {
-			h.logger.Log(fmt.Sprintf("Req:  %s:%s %s", r.Method, urlPath, r.URL.RawQuery))
-		}
-		h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewDirHandler(urlRequestParts.WithParameters(p), h.config, true, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	p, ok, shouldLog = getPathsUserLocMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewDirHandler(requestData.WithParameters(p), h.config, false, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewDirHandler(urlRequestParts.WithParameters(p), h.config, false, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	p, ok, shouldLog = getFileUserLocTreeMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewTreeHandler(requestData.WithParameters(p), h.config).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewTreeHandler(urlRequestParts.WithParameters(p), h.config).Submit(), shouldLog)
 		return
 	}
 	//  Service using FastFiles
 	p, ok, shouldLog = delFileUserLocNameMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewDeleteFileHandler(requestData.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewDeleteFileHandler(urlRequestParts.WithParameters(p), h.config, verboseFunc).Submit(), shouldLog)
 		return
 	}
 
 	p, ok, shouldLog = getPropUserNameValueMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.GetSetProperty(requestData.WithParameters(p), h.config), shouldLog)
+		h.writeResponse(w, controllers.NewResponseData(200).WithContentBytes([]byte(h.config.GetSetUserProp(p))).WithMimeType("txt").AndLogContent(true), shouldLog)
 		return
 	}
 	p, ok, shouldLog = getPropUserNameMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.GetSetProperty(requestData.WithParameters(p), h.config), shouldLog)
+		//
+		h.writeResponse(w, controllers.NewResponseData(200).WithContentBytes([]byte(h.config.GetSetUserProp(p))).WithMimeType("txt").AndLogContent(true), shouldLog)
 		return
 	}
 	p, ok, shouldLog = getPropUserMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.GetPropertiesForUser(requestData.WithParameters(p), h.config), shouldLog)
+		h.writeResponse(w, controllers.GetPropertiesForUser(urlRequestParts.WithParameters(p), h.config), shouldLog)
 		return
 	}
 	p, ok, shouldLog = postFileUserLocPathNameMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, false, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewPostFileHandler(urlRequestParts.WithParameters(p), h.config, r, false, verboseFunc).Submit(), shouldLog)
 		return
 	}
 
 	p, ok, shouldLog = getExecMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
-		h.writeResponse(w, controllers.NewExecHandler(requestData.WithParameters(p).AsAdmin(), h.config.GetExecPath(), nil, logFunc, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewExecHandler(urlRequestParts.WithParameters(p).AsAdmin(), h.config.GetExecPath(), nil, logFunc, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	p, ok, shouldLog = postFileUserLocNameMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		h.writeResponse(w, controllers.NewPostFileHandler(requestData.WithParameters(p), h.config, r, false, verboseFunc).Submit(), shouldLog)
+		h.writeResponse(w, controllers.NewPostFileHandler(urlRequestParts.WithParameters(p), h.config, r, false, verboseFunc).Submit(), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getServerRestartMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "23"), 23, "Restart Requested")
+		a := NewActionEvent(Exit, urlRequestParts.GetOptionalQuery("rc", "23"), 23, "Restart Requested")
 		h.actionQueue <- a
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentMapAsJson(map[string]interface{}{"Status": "RESTARTED"}, nil), shouldLog)
 		return
@@ -354,7 +356,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getServerExitMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check Done
-		a := NewActionEvent(Exit, requestData.GetOptionalQuery("rc", "11"), 11, "Exit Requested")
+		a := NewActionEvent(Exit, urlRequestParts.GetOptionalQuery("rc", "11"), 11, "Exit Requested")
 		h.actionQueue <- a
 		h.writeResponse(w, controllers.NewResponseData(http.StatusAccepted).WithContentWithCauseAsJson(a.String(), nil), shouldLog)
 		return
@@ -378,13 +380,13 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	p, ok, shouldLog = delServerLogMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
-		h.writeResponse(w, controllers.DelLog(h.config, p["log"], h.logger.LogFileName(), requestData.Query), shouldLog)
+		h.writeResponse(w, controllers.DelLog(h.config, p["log"], h.logger.LogFileName(), urlRequestParts.Query), shouldLog)
 		return
 	}
 	_, ok, shouldLog = getServerLogMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		// Panic Check ????
-		ofs := requestData.AsAdmin().GetOptionalQuery("offset", "0")
+		ofs := urlRequestParts.AsAdmin().GetOptionalQuery("offset", "0")
 		h.writeResponse(w, controllers.GetLog(h.config, h.logger.LogFileName(), ofs), shouldLog)
 		return
 	}
@@ -397,12 +399,16 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))
 			h.writeResponse(w, controllers.NewResponseData(http.StatusOK).WithContentWithCauseAsJson("Config Reloaded", nil), shouldLog)
 		} else {
-			panic(config.NewConfigError("Config: Failed to re-load", http.StatusInternalServerError, fmt.Sprintf("Config Reload Failed with %d errors", configErrors.ErrorCount())))
+			h.writeErrorResponse(w, "Config: Failed to re-load", http.StatusInternalServerError, fmt.Sprintf("Config Reload Failed with %d errors", configErrors.ErrorCount()))
 		}
 		return
 	}
+	h.writeErrorResponse(w, "Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s:%s%s", r.Method, urlPath, urlRequestParts.QueryAsString()))
+}
 
-	panic(config.NewConfigError("Resource not found", http.StatusNotFound, fmt.Sprintf("Req:  %s:%s%s", r.Method, urlPath, requestData.QueryAsString())))
+func (p *ServerHandler) writeErrorResponse(w http.ResponseWriter, cause string, status int, log string) {
+	m := config.NewServerError(cause, status, log)
+	p.writeResponse(w, controllers.NewResponseData(m.Status()).WithContentMapAsJson(m.Map(), nil), true)
 }
 
 func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.ResponseData, shouldLog bool) {
@@ -418,7 +424,6 @@ func (p *ServerHandler) writeResponse(w http.ResponseWriter, resp *controllers.R
 			}
 		}
 	}
-
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Server", p.config.GetServerName())
 	w.WriteHeader(resp.Status)

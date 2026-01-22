@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/stuartdd/goWebApp/config"
+	"github.com/stuartdd/goWebApp/controllers"
 	"github.com/stuartdd/goWebApp/logging"
 	"github.com/stuartdd/goWebApp/runCommand"
 )
@@ -34,6 +36,7 @@ func (l *TLog) Log(s string) {
 	l.B.WriteString("LOG: ")
 	l.B.WriteString(s)
 	l.B.WriteString("\n")
+	os.Stdout.WriteString("LOG: ")
 	os.Stdout.WriteString(s)
 	os.Stdout.WriteString("\n")
 }
@@ -42,6 +45,7 @@ func (l *TLog) LogVerbose(s string) {
 	l.B.WriteString("VERBOSE: ")
 	l.B.WriteString(s)
 	l.B.WriteString("\n")
+	os.Stdout.WriteString("VERBOSE: ")
 	os.Stdout.WriteString(s)
 	os.Stdout.WriteString("\n")
 }
@@ -83,22 +87,28 @@ const testConfigFile = "../goWebAppTest.json"
 const testPropertyFile = "../userProperties.json"
 
 func TestUrlRequestParamsMap(t *testing.T) {
-	AssertMatch(t, "0", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/x/b/1/c/4", "GET", false, "")
-	AssertMatch(t, "1", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/x/4", "GET", false, "b=1")
-	AssertMatch(t, "2", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c", "GET", false, "")
-	AssertMatch(t, "3", NewUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c/3", "GET", true, "b=1,c=3")
-	AssertMatch(t, "4", NewUrlRequestMatcher("a", "get", true), "/a", "get", true, "")
-	AssertMatch(t, "5", NewUrlRequestMatcher("a", "get", true), "a", "get", true, "")
-	AssertMatch(t, "5", NewUrlRequestMatcher("/a", "get", true), "/a", "get", true, "")
-	AssertMatch(t, "6", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "post", false, "")
-	AssertMatch(t, "7", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/C/3", "GET", false, "b=1")
-	AssertMatch(t, "8", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "get", true, "b=1,c=3")
-	AssertMatch(t, "9", NewUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "GET", true, "b=1,c=3")
-	AssertMatch(t, "10", NewUrlRequestMatcher("/a/*/b/*/c/*", "get", true), "/a/1/b/2/c/3", "GET", true, "a=1,b=2,c=3")
-	AssertMatch(t, "10", NewUrlRequestMatcher("", "get", true), "/a/1/b/2/c/3", "GET", false, "")
-	AssertMatch(t, "11", NewUrlRequestMatcher("", "get", true), "", "GET", false, "")
-	AssertMatch(t, "12", NewUrlRequestMatcher("", "post", true), "", "GET", false, "")
+	rootUrlList := NewRootUrlList()
+	AssertMatch(t, "0", rootUrlList.AddUrlRequestMatcher("/a/b/*/c/*", "get", true), "/x/b/1/c/4", "GET", false, "")
+	AssertMatch(t, "1", rootUrlList.AddUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/x/4", "GET", false, "b=1")
+	AssertMatch(t, "2", rootUrlList.AddUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c", "GET", false, "")
+	AssertMatch(t, "3", rootUrlList.AddUrlRequestMatcher("/a/b/*/c/*", "get", true), "/a/b/1/c/3", "GET", true, "b=1,c=3")
+	AssertMatch(t, "4", rootUrlList.AddUrlRequestMatcher("a", "get", true), "/a", "get", true, "")
+	AssertMatch(t, "5", rootUrlList.AddUrlRequestMatcher("a", "get", true), "a", "get", true, "")
+	AssertMatch(t, "5", rootUrlList.AddUrlRequestMatcher("/a", "get", true), "/a", "get", true, "")
+	AssertMatch(t, "6", rootUrlList.AddUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "post", false, "")
+	AssertMatch(t, "7", rootUrlList.AddUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/C/3", "GET", false, "b=1")
+	AssertMatch(t, "8", rootUrlList.AddUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "get", true, "b=1,c=3")
+	AssertMatch(t, "9", rootUrlList.AddUrlRequestMatcher("/a/b/*/*/c/*", "get", true), "/a/b/1/2/c/3", "GET", true, "b=1,c=3")
+	AssertMatch(t, "10", rootUrlList.AddUrlRequestMatcher("/a/*/b/*/c/*", "get", true), "/a/1/b/2/c/3", "GET", true, "a=1,b=2,c=3")
+	AssertMatch(t, "10", rootUrlList.AddUrlRequestMatcher("", "get", true), "/a/1/b/2/c/3", "GET", false, "")
+	AssertMatch(t, "11", rootUrlList.AddUrlRequestMatcher("", "get", true), "", "GET", false, "")
+	AssertMatch(t, "12", rootUrlList.AddUrlRequestMatcher("", "post", true), "", "GET", false, "")
+	rootUrlList.AddUrlRequestMatcher("b", "post", true)
+	if rootUrlList.String() != "a,b," {
+		t.Fatal("RootUrlList is incorrect: Expected:a,b, Actual:", rootUrlList.String())
+	}
 }
+
 func TestGetSetPropNewFile(t *testing.T) {
 	os.Remove(testPropertyFile)
 	configData, _ := UpdateConfigAndLoad(t, func(cdff *config.ConfigDataFromFile) {
@@ -286,26 +296,30 @@ func TestServerStatus(t *testing.T) {
 }
 func TestServer(t *testing.T) {
 	configData := loadConfigData(t, testConfigFile)
+	url := ""
 
 	if serverState != "Running" {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	url := "files/user/stuart/loc/pics"
+	url = "files/user/stuart/loc/pics"
 	r, respBody := RunClientGet(t, "TestServer 1", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServer 1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"name\":\"pic1.jpeg\", \"encName\":\"X0XcGljMS5qcGVn\"",
 		"\"error\":false,\"user\":\"stuart\",\"loc\":\"pics\",\"path\":null,",
 	})
+	AssertLogContains(t, logger, []string{"VERBOSE: ListFilesAsJson:"})
 
+	logger.Reset()
 	url = "files/user/stuart/loc/pics/name/t1.JSON"
 	r, respBody = RunClientGet(t, "TestServer 2", configData, url, 200, "?", -1, 10)
 	AssertHeader(t, "TestServer 1.1", r, []string{"application/json", "charset=utf-8"}, strconv.Itoa(len(respBody)))
 	AssertContains(t, respBody, []string{
 		"\"UserDataRoot\": \"..\"", "\"ServerName\": \"TestServer\"",
 	})
+	AssertLogContains(t, logger, []string{"VERBOSE: FastFile:"})
 
 	url = fmt.Sprintf("files/user/stuart/loc/pics/path/%s/name/t5.json", encodeValue("s-testfolder"))
 	r, respBody = RunClientGet(t, "TestServer 3", configData, url, 200, "?", -1, 10)
@@ -313,6 +327,7 @@ func TestServer(t *testing.T) {
 	AssertContains(t, respBody, []string{
 		"\"UserDataRoot\": \"..\"", "\"ServerName\": \"TestServer\"",
 	})
+	AssertLogContains(t, logger, []string{"VERBOSE: FastFile:"})
 
 	url = "server/status"
 	r, respBody = RunClientGet(t, "TestServer 4", configData, url, 200, "?", -1, 10)
@@ -918,13 +933,15 @@ func TestClient(t *testing.T) {
 		go RunServer(configData, logger)
 		time.Sleep(100 * time.Millisecond)
 	}
-	res, _ := RunClientGet(t, "TestClient 1", configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"File not found\"}", 70, 0)
+	res, _ := RunClientGet(t, "TestClient 1", configData, "ABC/123", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"Resource not found\"}", 74, 0)
+	AssertHeader(t, "TestClient 1", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
+	res, _ = RunClientGet(t, "TestClient 1", configData, "ABC", 404, "{\"error\":true, \"status\":404, \"msg\":\"Not Found\", \"cause\":\"File not found\"}", 70, 0)
 	AssertHeader(t, "TestClient 1", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
 	res, _ = RunClientGet(t, "TestClient 2", configData, "ping", 200, "{\"error\":false, \"status\":200, \"msg\":\"OK\", \"cause\":\"Ping\"}", 54, 2)
 	AssertHeader(t, "TestClient 2", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
 	res, _ = RunClientGet(t, "TestClient 3", configData, "server/exit", http.StatusAccepted, "{\"error\":false, \"status\":202, \"msg\":\"Accepted\", \"cause\":\"[11] Exit Requested\"}", 75, 2)
 	AssertHeader(t, "TestClient 3", res, []string{config.DefaultContentType, "charset=utf-8"}, "")
-	AssertLogContains(t, logger, []string{"Resp: Error: Status:404:", "ABC: no such file or directory", "GET:/ping", "GET:/server/exit"})
+	AssertLogContains(t, logger, []string{"Server Error: Status:404. Msg:File not found", "/testdata/static/ABC", "GET:/ping", "GET:/server/exit", "Server Shutdown Clean"})
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -1179,7 +1196,7 @@ func trimString(res string) string {
 	return strings.Trim(buffer.String(), " ")
 }
 
-func AssertMatch(t *testing.T, message string, matcher *UrlRequestMatcher, url string, reqType string, match bool, params string) {
+func AssertMatch(t *testing.T, message string, matcher *urlRequestMatcher, url string, reqType string, match bool, params string) {
 	requestUriparts := strings.Split(strings.TrimSpace(url), "/")
 	if requestUriparts[0] == "" {
 		requestUriparts = requestUriparts[1:]
@@ -1262,4 +1279,11 @@ func UpdateConfigAndLoad(t *testing.T, callBack func(*config.ConfigDataFromFile)
 		return configData, configTmp
 	}
 	return nil, configTmp
+}
+
+func encodeValue(unEncoded string) string {
+	if unEncoded == "" {
+		return ""
+	}
+	return controllers.EncodedValuePrefix + base64.StdEncoding.EncodeToString([]byte(unEncoded))
 }

@@ -1,73 +1,52 @@
 package config
 
 import (
-	"fmt"
-	"math"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestPanicMessage(t *testing.T) {
-	pm := NewConfigErrorFromString("Status:404: Running process with ID:12345 could not be found", 500)
-	AssertEquals(t, "String 8", pm.LogError(), "Config Error: Status:404. Running process with ID:12345 could not be found")
-	AssertEquals(t, "String 8.1", pm.log, "")
+	var pm LoggableError
+	pm = NewPanicError("ABC: Status:4.9.4", 500)
+	AssertEquals(t, "PanicMessage 1", pm.LogError(), "Panic Error: Status:494. ABC:")
+	AssertEquals(t, "PanicMessage 1.1", pm.Error(), "ABC:")
 
-	pm = NewConfigErrorFromString("running process with ID:12345 could not be found Status:404", 500)
-	AssertEquals(t, "String 9", pm.LogError(), "Config Error: Status:404. running process with ID:12345 could not be found")
-	AssertEquals(t, "String 9.1", pm.log, "")
+	pm = NewPanicError("ABC: Status:4.9 4", 500)
+	AssertEquals(t, "PanicMessage 2", pm.LogError(), "Panic Error: Status:49. ABC: 4")
+	AssertEquals(t, "PanicMessage 2.1", pm.Error(), "ABC: 4")
 
-	pm = NewConfigErrorFromString("ABC log:LM Status:404", 500)
-	AssertEquals(t, "Recover 2", pm.Error(), "Config Error: Status:404. ABC")
-	AssertEquals(t, "Recover 2.1", pm.log, "LM Status:404")
+	pm = NewPanicError("ABC: Status:32768", 500) // Overflow status returns math.MaxInt16
+	AssertEquals(t, "PanicMessage 3", pm.LogError(), "Panic Error: Status:32767. ABC:")
+	AssertEquals(t, "PanicMessage 3.1", pm.Error(), "ABC:")
 
-	pm = NewConfigErrorFromString("ABC log:LM", 500)
-	AssertEquals(t, "Recover 3", pm.Error(), "Config Error: Status:500. ABC")
-	AssertEquals(t, "Recover 3.1", pm.log, "LM")
+	pm = NewPanicError("ABC: log:LM Status:404", 500)
+	AssertEquals(t, "PanicMessage 4", pm.LogError(), "Panic Error: Status:404. Msg:ABC:. Log:LM")
+	AssertEquals(t, "PanicMessage 4.1", pm.Error(), "ABC:")
 
-	pm = NewConfigErrorFromString("ABC: log:LM Status:404", 500)
-	AssertEquals(t, "Recover 4", pm.Error(), "Config Error: Status:404. ABC:")
-	AssertEquals(t, "Recover 4.1", pm.log, "LM Status:404")
+	pm = NewPanicError("ABC log:LM Status:404", 500)
+	AssertEquals(t, "PanicMessage 5", pm.LogError(), "Panic Error: Status:404. Msg:ABC. Log:LM")
+	AssertEquals(t, "PanicMessage 5.1", pm.Error(), "ABC")
 
-	pm = NewConfigErrorFromString("ABC: Status:32768", 500)
-	AssertEquals(t, "Recover 5", pm.LogError(), fmt.Sprintf("Config Error: Status:%d. ABC:", math.MaxInt16))
-	AssertEquals(t, "Recover 5.1", pm.log, "")
+	pm = NewPanicError("ABC log:LM", 500)
+	AssertEquals(t, "PanicMessage 6", pm.LogError(), "Panic Error: Status:500. Msg:ABC. Log:LM")
+	AssertEquals(t, "PanicMessage 6.1", pm.Error(), "ABC")
 
-	pm = NewConfigErrorFromString("ABC: Status:4.9 4", 500)
-	AssertEquals(t, "Recover 6", pm.LogError(), "Config Error: Status:49. ABC: 4")
-	AssertEquals(t, "Recover 6.1", pm.log, "")
+	pm = NewPanicError("running process with ID:12345 could not be found", 500)
+	AssertEquals(t, "PanicMessage 10", pm.LogError(), "Panic Error: Status:500. running process with ID:12345 could not be found")
+	AssertEquals(t, "PanicMessage 10.1", pm.Error(), "running process with ID:12345 could not be found")
 
-	pm = NewConfigErrorFromString("ABC: Status:4.0.4", 500)
-	AssertEquals(t, "Recover 7", pm.LogError(), "Config Error: Status:404. ABC:")
-	AssertEquals(t, "Recover 7.1", pm.log, "")
+	pm = NewPanicError("running process with ID:12345 could not be found Status:404", 500)
+	AssertEquals(t, "PanicMessage 9", pm.LogError(), "Panic Error: Status:404. running process with ID:12345 could not be found")
+	AssertEquals(t, "PanicMessage 9.1", pm.Error(), "running process with ID:12345 could not be found")
 
-	pm = NewConfigErrorFromString("ABC: Status:404 log:LM", 500)
-	AssertEquals(t, "Recover 8", pm.LogError(), "Config Error: Status:404. ABC: Log:LM")
-	AssertEquals(t, "Recover 8.1", pm.log, "LM")
+	pm = NewPanicError("Status:404: Running process with ID:12345 could not be found", 500)
+	AssertEquals(t, "PanicMessage 8", pm.LogError(), "Panic Error: Status:404. Running process with ID:12345 could not be found")
+	AssertEquals(t, "PanicMessage 8.1", pm.Error(), "Running process with ID:12345 could not be found")
 
-	pm = NewConfigErrorFromString("ABC", 500)
-	AssertEquals(t, "Recover 9", pm.Error(), "Config Error: Status:500. ABC")
-	AssertEquals(t, "Recover 9.1", pm.log, "")
-
-	pm = NewConfigError("R:X", 400, "LM")
-	AssertEquals(t, "Simple 1", pm.Error(), "Config Error: Status:400. R:X")
-	AssertEquals(t, "Simple 1.1", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
-
-	pm = NewConfigError("R:X Status", 400, "LM")
-	AssertEquals(t, "Simple 2", pm.Error(), "Config Error: Status:400. R:X Status")
-
-	pm = NewConfigError("R:X Status", 400, "L Status:500")
-	AssertEquals(t, "Simple 3", pm.Error(), "Config Error: Status:400. R:X Status")
-
-	pm = NewConfigError("R:X", 400, "LM")
-	AssertEquals(t, "Simple 4", pm.LogError(), "Config Error: Status:400. R:X Log:LM")
-	AssertEquals(t, "Simple 4.1", pm.log, "LM")
-
-	pm = NewConfigError("R:X Status", 400, "LM")
-	AssertEquals(t, "Simple 5", pm.Error(), "Config Error: Status:400. R:X Status")
-
-	pm = NewConfigError("R:X Status", 400, "L Status:500")
-	AssertEquals(t, "Simple 6", pm.Error(), "Config Error: Status:400. R:X Status")
+	pm = NewPanicError("ABC", 500)
+	AssertEquals(t, "PanicMessage 1", pm.LogError(), "Panic Error: Status:500. ABC")
+	AssertEquals(t, "PanicMessage 1.1", pm.Error(), "ABC")
 
 }
 
@@ -182,12 +161,12 @@ func TestUserExecBadExecId(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			pm, ok := r.(*ConfigError)
+			pm, ok := r.(*LoggableErrorWithStatus)
 			if !ok || pm == nil {
 				t.Fatalf("TestUserExecBadExecId: Should have returned a ConfigError")
 			}
-			AssertEquals(t, "TestUserExecBadExecId", pm.LogError(), "Config Error: Status:404. Exec ID not found Log:exec-id=notid")
-			AssertEquals(t, "TestUserExecBadExecId", pm.String(), "Exec ID not found")
+			AssertEquals(t, "TestUserExecBadExecId", pm.LogError(), "Config Error: Status:404. Msg:Exec ID not found. Log:exec-id=notid")
+			AssertEquals(t, "TestUserExecBadExecId", pm.Error(), "Exec ID not found")
 		}
 	}()
 
@@ -229,12 +208,12 @@ func TestGetUserLocPathBadUser(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			pm, ok := r.(*ConfigError)
+			pm, ok := r.(*LoggableErrorWithStatus)
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a ConfigError")
 			}
-			AssertEquals(t, "TestGetUserLocPathBadUser", pm.Error(), "Config Error: Status:404. User not found")
-			AssertEquals(t, "TestGetUserLocPathBadUser", pm.LogError(), "Config Error: Status:404. User not found Log:User=fred")
+			AssertEquals(t, "TestGetUserLocPathBadUser", pm.Error(), "User not found")
+			AssertEquals(t, "TestGetUserLocPathBadUser", pm.LogError(), "Config Error: Status:404. Msg:User not found. Log:User=fred")
 		}
 	}()
 
@@ -247,12 +226,12 @@ func TestGetUserLocPathBadLoc(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			pm, ok := r.(*ConfigError)
+			pm, ok := r.(*LoggableErrorWithStatus)
 			if !ok || pm == nil {
 				t.Fatalf("Should have returned a PanicMessage")
 			}
-			AssertEquals(t, "TestGetUserLocPathBadLoc", pm.Error(), "Config Error: Status:404. Location not found")
-			AssertEquals(t, "TestGetUserLocPathBadLoc", pm.LogError(), "Config Error: Status:404. Location not found Log:User=stuart Location=nothome")
+			AssertEquals(t, "TestGetUserLocPathBadLoc", pm.Error(), "Location not found")
+			AssertEquals(t, "TestGetUserLocPathBadLoc", pm.LogError(), "Config Error: Status:404. Msg:Location not found. Log:User=stuart Location=nothome")
 		}
 	}()
 

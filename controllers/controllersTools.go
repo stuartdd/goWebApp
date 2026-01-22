@@ -23,41 +23,6 @@ const ErrorParam = "error"
 const AdminName = "admin"
 const EncodedValuePrefix = "X0X"
 
-type ControllerError struct {
-	status  int
-	message string
-	log     string
-}
-
-func (pm *ControllerError) Error() string {
-	return fmt.Sprintf("Config Error: Status:%d. %s", pm.status, pm.message)
-}
-
-func (ee *ControllerError) Map() map[string]interface{} {
-	m := make(map[string]interface{})
-	m["error"] = true
-	m["status"] = ee.Status()
-	m["msg"] = http.StatusText(ee.status)
-	m["cause"] = ee.String()
-	return m
-}
-
-func (ee *ControllerError) Status() int {
-	return ee.status
-}
-
-func (ee *ControllerError) String() string {
-	return ee.message
-}
-
-func (pm *ControllerError) LogError() string {
-	return fmt.Sprintf("%s. %s", pm.Error(), pm.log)
-}
-
-func NewControllerError(message string, status int, logged string) *ControllerError {
-	return &ControllerError{message: message, status: status, log: logged}
-}
-
 type UrlRequestParts struct {
 	parameters map[string]string
 	Query      map[string][]string
@@ -194,7 +159,7 @@ func (p *UrlRequestParts) GetOptionalQueryAsInt(key string, fallback int) int {
 	}
 	i, err := strconv.Atoi(v)
 	if err != nil {
-		panic(NewControllerError(fmt.Sprintf("Optional query '%s' is not an int", key), http.StatusNotAcceptable, ""))
+		panic(config.NewControllerError(fmt.Sprintf("Optional query '%s' is not an int", key), http.StatusNotAcceptable, ""))
 	}
 	return i
 }
@@ -203,7 +168,7 @@ func (p *UrlRequestParts) GetQueryAsInt(key string, fallback int) int {
 	v := p.GetOptionalQuery(key, strconv.Itoa(fallback))
 	i, err := strconv.Atoi(v)
 	if err != nil {
-		panic(NewControllerError(fmt.Sprintf("Query value '%s' is not an int", key), http.StatusNotAcceptable, ""))
+		panic(config.NewControllerError(fmt.Sprintf("Query value '%s' is not an int", key), http.StatusNotAcceptable, ""))
 	}
 	return i
 }
@@ -223,7 +188,7 @@ func (p *UrlRequestParts) GetParam(key string) string {
 	if ok {
 		return decodeValue(v)
 	}
-	panic(NewControllerError(fmt.Sprintf("URL parameter '%s' not found", key), http.StatusNotAcceptable, ""))
+	panic(config.NewControllerError(fmt.Sprintf("URL parameter '%s' not found", key), http.StatusNotAcceptable, ""))
 }
 
 func (p *UrlRequestParts) GetOptionalParam(key string, fallback string) string {
@@ -428,7 +393,7 @@ func (p *ResponseData) WithContentMapAsJson(data map[string]interface{}, queries
 	updateMapWithQueries(data, queries)
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		panic(NewControllerError("Data Map to Json failed", http.StatusInternalServerError, fmt.Sprintf("WithContentMapAsJson:Marshal failed with Error:%s", err.Error())))
+		panic(config.NewControllerError("Data Map to Json failed", http.StatusInternalServerError, fmt.Sprintf("WithContentMapAsJson:Marshal failed with Error:%s", err.Error())))
 	} else {
 		p.content = jsonData
 	}
