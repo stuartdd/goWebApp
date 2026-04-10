@@ -138,36 +138,32 @@ func (p *urlRequestMatcher) Match(requestParts []string, reqType string, rqi *Re
 	return params, true, p.shouldLog
 }
 
-func SendToHost(port string, path string) (*[]byte, int, error) {
+func SendToHost(port string, path string, callback func(string, int, error)) {
+	path = strings.TrimLeft(path, "/")
 	url := fmt.Sprintf("http://localHost%s/%s", port, path)
 	fmt.Printf("Client-Request:%s\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		em := fmt.Errorf("could not GET data. %s", err.Error())
-		fmt.Printf("Client-Error:%s\n", em.Error())
-		return nil, -1, em
+		callback("could not build new requet", -1, err)
+		return
 	}
 	client := http.Client{Timeout: 5 * time.Second}
 	// send the request
 	res, err := client.Do(req)
 	if err != nil {
-		em := fmt.Errorf("could not GET data. %s", err.Error())
-		fmt.Printf("Client-Error:%s\n", em.Error())
-		return nil, -1, em
+		callback("could not GET data.", -2, err)
+		return
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 && res.StatusCode != 201 && res.StatusCode != 202 {
-		em := fmt.Errorf("bad response code. Want 200,201 or 202 Got %d (%s)", res.StatusCode, http.StatusText(res.StatusCode))
-		fmt.Printf("Client-Error:%s\n", em.Error())
-		return nil, res.StatusCode, em
+		callback(http.StatusText(res.StatusCode), res.StatusCode, nil)
+		return
 	}
 	// read body
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		em := fmt.Errorf("could not read response data for file. %s", err.Error())
-		fmt.Printf("Client-Error:%s\n", em.Error())
-		return nil, res.StatusCode, em
+		callback("could not read response data.", -3, err)
+		return
 	}
-	fmt.Printf("Client-Response:[%d] %s\n", res.StatusCode, resBody)
-	return &resBody, res.StatusCode, nil
+	callback(string(resBody), res.StatusCode, nil)
 }

@@ -63,7 +63,7 @@ func LoadConfigDataBenchmark() *config.ConfigData {
 		return nil
 	}
 	errList := config.NewConfigErrorData()
-	cd := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
+	cd := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, errList)
 	if errList.ErrorCount() > 1 {
 		panic(errList.String())
 	}

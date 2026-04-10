@@ -9,55 +9,59 @@
     # export WebServerPictures="/media/USBHDD1/shares"
     # export WebServerThumbnails="$HOME/server/thumbnails"
 
+if [ x$1 == "x" ]; then
+    echo "########################################################"
+    echo "Checking environment vars:"
+    env | grep WebSer
+    echo "########################################################"
+fi
 
-echo "########################################################"
-echo "Checking environment vars:"
-env | grep WebSer
-echo "########################################################"
-
-if [ x"${WebServerParent}" == "x" ]; then 
+if [ x"${WebServerParent}" == "x" ]; then
   echo "Value 'WebServerParent' is not assigned to a variable"
   echo "Should be dir that contains WebServerRoot --> ${WebServerRoot}"
   exit 1
 fi
 
-if [ x"${WebServerRoot}" == "x" ]; then 
+if [ x"${WebServerRoot}" == "x" ]; then
   echo "Value 'WebServerRoot' is not assigned to a variable"
   echo "Should be dir that executable is in. The dir the server is deployed to"
   exit 1
 fi
 
-if [ x"${WebServerUserData}" == "x" ]; then 
+if [ x"${WebServerUserData}" == "x" ]; then
   echo "Value 'WebServerUserData' is not assigned to a variable"
   echo "Should be dir outside of "WebServerUserData" that contains user data. Shared, Users, Images and files"
 	exit 1
 fi
-if [ x"${WebServerConfig}" == "x" ]; then 
+if [ x"${WebServerConfig}" == "x" ]; then
   echo "Value 'WebServerConfig' is not assigned to a variable"
   echo "Should be dir that contains userData.json (RO) and userProps.json (RW)"
-	exit 1
+  exit 1
 fi
 
-if [ x"${WebServerHome}" == "x" ]; then 
+if [ x"${WebServerHome}" == "x" ]; then
   echo "Value 'WebServerHome' is not assigned to a variable"
   echo "Should be dir the web files are dployed to. Should contain 'static' dir. E.g. web/static"
-	exit 1
+  exit 1
 fi
 
-if [ x"${WebServerPictures}" == "x" ]; then 
+if [ x"${WebServerPictures}" == "x" ]; then
   echo "Value 'WebServerPictures' is not assigned to a variable"
   echo "Should be the root of the users pictures dir. Used by location 'originals" in user data in UserDataPath
   exit 1
 fi
 
-if [ x"${WebServerThumbnails}" == "x" ]; then 
+if [ x"${WebServerThumbnails}" == "x" ]; then
   echo "Value 'WebServerThumbnails' is not assigned to a variable"
   echo "Should be the root of the thumbnails dir. Used by location 'thumbs' in user data in UserDataPath"
   exit 1
 fi
 
 
-echo "Checking Paths exist:"
+if [ x$1 == "x" ]; then
+    echo "Checking Paths exist:"
+fi
+
 if [ ! -d $WebServerParent ]; then
   echo "Deploy dir '$WebServerParent' does not exist"
   exit 1
@@ -113,14 +117,7 @@ if [ ! -d $WebServerThumbnails ]; then
   exit 1
 fi
 
-if [ "$1" == "test" ]; then 
-  echo "Exec tests completed OK"
-  exit 0
-fi
 
-cd $WebServerRoot
-echo "########################################################"
-echo "Running in: $WebServerRoot"
 
 if [ ! -e $WebServerRoot/goWebApp ]; then
   echo "Exec file '$WebServerRoot/goWebApp' does not exist"
@@ -132,12 +129,25 @@ if [ ! -e $WebServerRoot/exec/webtools ]; then
   exit 1
 fi
 
+if [ "$1" == "test" ]; then
+  echo "Environment and Path checks completed OK"
+  exit 0
+fi
 
- 
+cd $WebServerRoot
+echo "########################################################"
+echo "Running in: $WebServerRoot"
+
+if [ "$1" == "stop" ]; then
+  echo "########################################################"
+  echo "Server STOP"
+  ./goWebApp config=goWebApp.json -k
+  exit 0
+fi
 
 while true
 do
-  ./goWebApp config=goWebApp.json -vr port=$1
+  ./goWebApp config=goWebApp.json -vr $1 $2
   RESP=$?
   echo "########################################################"
   echo "Response: $RESP"
@@ -163,4 +173,3 @@ do
   fi
   echo "Server restarted"
 done
-

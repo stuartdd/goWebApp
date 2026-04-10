@@ -227,12 +227,9 @@ func writeToFile(t *testing.T, name string, bytes []byte) {
 
 func loadConfigData(t *testing.T) *config.ConfigData {
 	errList := config.NewConfigErrorData()
-	configData := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, false, errList)
+	configData := config.NewConfigData("../goWebAppTest.json", "goWebApp", false, false, errList)
 	if errList.ErrorCount() > 1 || configData == nil {
 		t.Fatal(errList.String())
-	}
-	if configData == nil {
-		t.Fatalf("Config is nil. Load failed\n%s", errList.String())
 	}
 	return configData
 }

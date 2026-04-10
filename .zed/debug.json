@@ -1,0 +1,14 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+    "label": "Go (Delve)",
+    "adapter": "Delve",
+    "program": "goWebApp.go",
+    "request": "launch",
+    "mode": "debug",
+    "args": ["isup"],
+  },
+]

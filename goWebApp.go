@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,12 +17,29 @@ import (
 const fallbackModuleName = "goWebApp"
 
 func main() {
-	createLocationsFlag := getArgFlag("c")
-	doNotRun := getArgFlag("t")
-	verbose := getArgFlag("v")
-	killServer := getArgFlag("k")
-	help := getArgFlag("h")
-	portOverride, portOverrideFound := getArgValue("port")
+	createLocationsFlag := false
+	doNotRun := false
+	verbose := false
+	killServer := false
+	isServerUp := false
+	help := false
+
+	getArgFlags(func(r string) {
+		switch r {
+		case "c":
+			createLocationsFlag = true
+		case "t":
+			doNotRun = true
+		case "v":
+			verbose = true
+		case "stop":
+			killServer = true
+		case "isup":
+			isServerUp = true
+		case "h":
+			help = true
+		}
+	})
 
 	if help {
 		h, err := os.ReadFile("helptext.md")
@@ -31,11 +49,22 @@ func main() {
 		osExitWithMessage(0, string(h))
 	}
 
-	moduleName, debugging := getApplicationModuleName(fallbackModuleName)
-	configFileName, ok := getArgValue("config=")
-	if !ok {
-		configFileName = moduleName
-	}
+	portOverride := ""
+	portOverrideFound := false
+	getArgValue("port", func(v string) {
+		portOverride = v
+		portOverrideFound = true
+		_, err := strconv.Atoi(portOverride)
+		if err != nil {
+			osExitWithMessage(1, fmt.Sprintf("Invalid port override '%s'. Must be an integer.", portOverride))
+		}
+	})
+
+	moduleName := getApplicationModuleName(fallbackModuleName)
+	configFileName := moduleName
+	getArgValue("config", func(s string) {
+		configFileName = s
+	})
 
 	if createLocationsFlag {
 		c := osReader("Create missing USER locations:", "y/n")
@@ -45,11 +74,11 @@ func main() {
 	}
 
 	if verbose || doNotRun {
-		fmt.Printf("Verbose: debugging=%t. killServer(k)=%t. createLocationsFlag(c)=%t.\n", killServer, debugging, createLocationsFlag)
+		fmt.Printf("Verbose: killServer(k)=%t. createLocationsFlag(c)=%t.\n", killServer, createLocationsFlag)
 	}
 
 	configErrors := config.NewConfigErrorData()
-	cfg := config.NewConfigData(configFileName, moduleName, debugging, createLocationsFlag, verbose, configErrors)
+	cfg := config.NewConfigData(configFileName, moduleName, createLocationsFlag, verbose, configErrors)
 	if configErrors.ErrorCount() > 0 {
 		os.Stdout.WriteString(configErrors.String())
 		osExitWithMessage(1, "Config Errors: Cannot continue")
@@ -59,9 +88,39 @@ func main() {
 	}
 
 	if killServer {
-		server.SendToHost(cfg.GetPortString(), server.ServerExitUrl)
+		server.SendToHost(cfg.GetPortString(), server.ServerExitUrl, func(s string, status int, err error) {
+			if err != nil {
+				os.Stdout.WriteString(err.Error())
+				os.Stdout.WriteString("\n")
+				osExitWithMessage(1, "Server exit requested")
+			}
+			os.Stdout.WriteString(s)
+			os.Stdout.WriteString("\n")
+			osExitWithMessage(0, "Server exit requested")
+		})
 		time.Sleep(999 * time.Millisecond)
-		osExitWithMessage(0, "Server exit requested")
+		osExitWithMessage(0, "Server exit request timed out")
+	}
+
+	if isServerUp {
+		exitCode := 0
+		server.SendToHost(cfg.GetPortString(), server.ServerIsUpUrl, func(s string, status int, err error) {
+			if err != nil {
+				os.Stdout.WriteString(err.Error())
+				os.Stdout.WriteString("\n")
+				os.Stdout.WriteString("Server is NOT up (probably!)")
+				os.Stdout.WriteString("\n")
+				exitCode = 1
+			} else {
+				os.Stdout.WriteString(s)
+				os.Stdout.WriteString("\n")
+				os.Stdout.WriteString("Server us up")
+				os.Stdout.WriteString("\n")
+				exitCode = 0
+			}
+		})
+		time.Sleep(999 * time.Millisecond)
+		osExitWithMessage(exitCode, "Server isup requested")
 	}
 
 	if createLocationsFlag {
@@ -153,28 +212,28 @@ func main() {
 	os.Exit(rc)
 }
 
-func getArgFlag(name string) bool {
-	for i := 1; i < len(os.Args); i++ {
-		a := os.Args[i]
+func getArgFlags(arg func(string)) {
+	for _, a := range os.Args[1:] {
 		if strings.HasPrefix(a, "-") {
-			if strings.Contains(a, name) {
-				return true
+			for _, c := range a[1:] {
+				arg(string(c))
+			}
+		} else {
+			if !strings.Contains(a, "=") {
+				arg(strings.ToLower(a))
 			}
 		}
 	}
-	return false
 }
 
-func getArgValue(name string) (string, bool) {
+func getArgValue(name string, argV func(string)) {
 	nl := strings.ToLower(name) + "="
-	for i := 1; i < len(os.Args); i++ {
-		a := os.Args[i]
+	for _, a := range os.Args[1:] {
 		al := strings.ToLower(a)
 		if strings.HasPrefix(al, nl) {
-			return a[len(nl):], true
+			argV(a[len(nl):])
 		}
 	}
-	return "", false
 }
 
 func osExitWithMessage(rc int, message string) {
@@ -209,25 +268,24 @@ func osReader(message string, chars string) string {
 }
 
 /*
-GetApplicationModuleName returns the name of the application. Testing and debugging changes this name so the code
-removes debug, test and .exe from the executable name.
+GetApplicationModuleName returns the name of the application. Testing changes this name so the code
+removes test and .exe from the executable name.
 */
-func getApplicationModuleName(fallbackModuleName string) (string, bool) {
+func getApplicationModuleName(fallbackModuleName string) string {
 	exec, err := os.Executable()
 	if err != nil {
-		return fallbackModuleName, false
+		return fallbackModuleName
 	}
-
 	parts := strings.Split(exec, string(os.PathSeparator))
 	exec = parts[len(parts)-1]
-	if strings.HasPrefix(exec, "__debug_") {
-		return fallbackModuleName, true
+	if strings.HasPrefix(strings.ToLower(exec), "__debug_") {
+		return fallbackModuleName
 	}
 	if strings.HasSuffix(strings.ToLower(exec), ".exe") {
-		return exec[0 : len(exec)-4], false
+		return exec[0 : len(exec)-4]
 	}
 	if strings.HasSuffix(strings.ToLower(exec), ".test") {
-		return exec[0 : len(exec)-5], false
+		return exec[0 : len(exec)-5]
 	}
-	return exec, false
+	return exec
 }

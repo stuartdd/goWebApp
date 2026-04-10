@@ -578,7 +578,6 @@ type ConfigData struct {
 	CurrentPath      string
 	ModuleName       string
 	ConfigName       string
-	Debugging        bool
 	Environment      map[string]string
 	UserProps        *UserProperties
 	LocationsCreated []string
@@ -593,7 +592,7 @@ type ConfigData struct {
 LoadConfigData method loads the config data from a file
 */
 
-func NewConfigData(configFileName string, moduleName string, debugging, createDir, verbose bool, configErrors *ConfigErrorData) *ConfigData {
+func NewConfigData(configFileName string, moduleName string, createDir, verbose bool, configErrors *ConfigErrorData) *ConfigData {
 	environ := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
@@ -616,7 +615,6 @@ func NewConfigData(configFileName string, moduleName string, debugging, createDi
 	configDataExternal := &ConfigData{
 		ConfigFileData:   nil,
 		UserProps:        nil,
-		Debugging:        debugging,
 		CurrentPath:      wd,
 		ModuleName:       moduleName,
 		ConfigName:       configFileName,

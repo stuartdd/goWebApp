@@ -20,6 +20,7 @@ import (
 const shouldLogYes = true
 const shouldLogNo = false
 const ServerExitUrl = "/server/exit"
+const ServerIsUpUrl = "/isup"
 
 type ActionId int
 
@@ -56,7 +57,7 @@ func NewActionEvent(id ActionId, rc string, fallback int, m string) *ActionEvent
 var rootUrlList = NewRootUrlList()
 
 var getPingMatch = rootUrlList.AddUrlRequestMatcher("/ping", "GET", shouldLogNo)
-var getIsUpMatch = rootUrlList.AddUrlRequestMatcher("/isup", "GET", shouldLogNo)
+var getIsUpMatch = rootUrlList.AddUrlRequestMatcher(ServerIsUpUrl, "GET", shouldLogNo)
 
 var getServerStatusMatch = rootUrlList.AddUrlRequestMatcher("/server/status", "GET", shouldLogYes)
 var getReloadConfigMatch = rootUrlList.AddUrlRequestMatcher("/server/config", "GET", shouldLogYes)
@@ -393,7 +394,7 @@ func (h *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, ok, shouldLog = getReloadConfigMatch.Match(requestUrlparts, r.Method, requestInfo)
 	if ok {
 		configErrors := config.NewConfigErrorData()
-		cfg := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, h.config.Debugging, false, h.config.IsVerbose, configErrors)
+		cfg := config.NewConfigData(h.config.ConfigName, h.config.ModuleName, false, h.config.IsVerbose, configErrors)
 		if configErrors.ErrorCount() == 0 {
 			h.config = cfg
 			h.Log(fmt.Sprintf("Config: %s file reload on demand!", h.config.ConfigName))

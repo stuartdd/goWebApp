@@ -1233,7 +1233,7 @@ func AssertMatch(t *testing.T, message string, matcher *urlRequestMatcher, url s
 
 func loadConfigData(t *testing.T, file string) *config.ConfigData {
 	errList := config.NewConfigErrorData()
-	configData := config.NewConfigData(file, "goWebApp", false, false, false, errList)
+	configData := config.NewConfigData(file, "goWebApp", false, false, errList)
 	if errList.ErrorCount() > 1 {
 		t.Fatal(errList.String())
 	}
@@ -1272,7 +1272,7 @@ func UpdateConfigAndLoad(t *testing.T, callBack func(*config.ConfigDataFromFile)
 			maxErr = 1
 			errList = config.NewConfigErrorData()
 		}
-		configData := config.NewConfigData(configTmp, "goWebApp", false, false, false, errList)
+		configData := config.NewConfigData(configTmp, "goWebApp", false, false, errList)
 		if errList.ErrorCount() > maxErr || configData == nil {
 			t.Fatal(errList.String())
 		}

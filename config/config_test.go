@@ -262,7 +262,7 @@ func LoadConfigData(t *testing.T, name string, errList *ConfigErrorData) *Config
 		maxErr = 1
 		errList = NewConfigErrorData()
 	}
-	configData := NewConfigData(name, "goWebApp", false, false, false, errList)
+	configData := NewConfigData(name, "goWebApp",  false, false, errList)
 	if errList.ErrorCount() > maxErr || configData == nil {
 		t.Fatal(errList.String())
 	}
